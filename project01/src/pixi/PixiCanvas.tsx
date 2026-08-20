@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Application, Graphics } from 'pixi.js'
+import { Application, Graphics, type Ticker } from 'pixi.js'
 
 export function PixiCanvas() {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -10,9 +10,26 @@ export function PixiCanvas() {
       return
     }
 
+    // StrictMode remounts run this effect twice, and `app.init()` is async:
+    // the cleanup may fire while init is still pending. `initialized` makes
+    // sure destroy happens exactly once, and never before init resolves.
     let disposed = false
+    let initialized = false
     const app = new Application()
-    let tickerCallback: ((time: unknown) => void) | null = null
+    let tickerCallback: ((ticker: Ticker) => void) | null = null
+
+    const destroyApp = () => {
+      if (tickerCallback) {
+        app.ticker.remove(tickerCallback)
+        tickerCallback = null
+      }
+
+      app.destroy(true, {
+        children: true,
+        texture: true,
+        textureSource: true,
+      })
+    }
 
     const init = async () => {
       await app.init({
@@ -21,8 +38,10 @@ export function PixiCanvas() {
         resizeTo: container,
       })
 
+      initialized = true
+
       if (disposed) {
-        app.destroy(true)
+        destroyApp()
         return
       }
 
@@ -33,10 +52,12 @@ export function PixiCanvas() {
       orb.y = 120
       app.stage.addChild(orb)
 
-      tickerCallback = (time) => {
-        const t = typeof time === 'number' ? time : 0
-        orb.x = 120 + Math.sin(t / 40) * 70
-        orb.y = 120 + Math.cos(t / 50) * 45
+      // Pixi v8 hands the Ticker itself to the callback, not a number.
+      let elapsed = 0
+      tickerCallback = (ticker) => {
+        elapsed += ticker.deltaTime
+        orb.x = 120 + Math.sin(elapsed / 40) * 70
+        orb.y = 120 + Math.cos(elapsed / 50) * 45
       }
       app.ticker.add(tickerCallback)
     }
@@ -46,15 +67,9 @@ export function PixiCanvas() {
     return () => {
       disposed = true
 
-      if (tickerCallback) {
-        app.ticker.remove(tickerCallback)
+      if (initialized) {
+        destroyApp()
       }
-
-      app.destroy(true, {
-        children: true,
-        texture: true,
-        textureSource: true,
-      })
     }
   }, [])
 
