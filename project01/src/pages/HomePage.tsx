@@ -99,8 +99,10 @@ export function HomePage() {
           <nav className="menu-cluster" aria-label="Main menu">
             {MENU_TILES.map((tile) => (
               <button type="button" key={tile.id} className={`tile tile-${tile.tone}`}>
-                {tile.event ? <span className="tile-ribbon">EVENT!</span> : null}
                 <span className="tile-inner">
+                  {/* inside the counter-rotated layer so the ribbon sits against
+                      the tile's upper-right edge rather than a rotated corner */}
+                  {tile.event ? <span className="tile-ribbon">EVENT!</span> : null}
                   <span className="tile-icon">{tile.icon}</span>
                   <span className="tile-en">{tile.en}</span>
                   <span className="tile-jp">{tile.jp}</span>

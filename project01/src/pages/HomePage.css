@@ -228,7 +228,7 @@
 
 .tile {
   position: absolute;
-  width: 15.5cqw;
+  width: 12cqw;
   aspect-ratio: 1;
   transform: translate(-50%, -50%) rotate(45deg);
   border-radius: 1.4cqh;
@@ -257,65 +257,64 @@
 }
 
 .tile-icon {
-  font-size: 4.6cqh;
+  font-size: 4.2cqh;
 }
 
 .tile-en {
-  font-size: 2.9cqh;
+  font-size: 2.6cqh;
   font-weight: 800;
   letter-spacing: 0.03em;
 }
 
 .tile-jp {
-  font-size: 1.7cqh;
+  font-size: 1.6cqh;
   color: rgba(255, 255, 255, 0.85);
 }
 
 .tile-ribbon {
   position: absolute;
-  top: -1.5cqh;
-  right: -1.5cqh;
-  transform: rotate(-45deg);
+  top: -1.2cqh;
+  right: -2.5cqw;
   padding: 0.5cqh 1cqw;
   border-radius: 2cqh;
   background: linear-gradient(160deg, #ff5470, #d61f4a);
   border: 0.25cqh solid #fff;
-  font-size: 1.7cqh;
+  font-size: 1.6cqh;
   font-weight: 800;
   white-space: nowrap;
 }
 
+/* Diamond lattice: a tile is a square rotated 45deg, so neighbours meet edge to
+   edge when their centres differ by the half-diagonal S/sqrt(2) (plus a small
+   gap). Steps are 8.99cqw / 15.99cqh -- the same absolute distance either way.
+   Cells sit at (i,j) with i+j even, which is what keeps the lattice regular. */
 .tile-story {
-  left: 68%;
-  top: 34%;
+  left: 63.5%;
+  top: 38%;
   background: linear-gradient(160deg, #1f63d8, #0b2a6b);
 }
 
 .tile-character {
-  left: 57.5%;
-  top: 58%;
-  width: 14.5cqw;
+  left: 54.5%;
+  top: 54%;
   background: linear-gradient(160deg, #d6247f, #6d0f42);
 }
 
 .tile-explore {
-  left: 79%;
-  top: 58%;
-  width: 14.5cqw;
+  left: 72.5%;
+  top: 54%;
   background: linear-gradient(160deg, #16b189, #06503f);
 }
 
 .tile-studio {
-  left: 63%;
-  top: 80%;
-  width: 13cqw;
+  left: 63.5%;
+  top: 70%;
   background: linear-gradient(160deg, #1d7ae0, #0a2f6b);
 }
 
 .tile-gacha {
-  left: 78.5%;
-  top: 84%;
-  width: 13cqw;
+  left: 81.5%;
+  top: 70%;
   background: linear-gradient(160deg, #8b46d6, #3d1670);
 }
 
