@@ -12,8 +12,11 @@ export interface Live2DStageHandle {
 interface Live2DStageProps {
   config?: Live2DModelConfig
   muted?: boolean
-  /** Fired whenever a voice line starts, including taps on the model itself. */
-  onLine?: (caption: string) => void
+  /**
+   * Fired with the caption when a voice line starts (including taps on the
+   * model itself), and with null once it finishes.
+   */
+  onLine?: (caption: string | null) => void
   onReady?: () => void
 }
 
@@ -86,16 +89,40 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
 
     const pickLine = () => config.voiceLines[Math.floor(Math.random() * config.voiceLines.length)]
 
+    // Lines can overlap if the character is tapped again mid-sentence, so each
+    // one carries a token -- a stale callback must not retract the newer line.
+    let lineSeq = 0
+    let lineTimer: ReturnType<typeof setTimeout> | undefined
+
+    const endLine = (token: number) => {
+      if (token !== lineSeq) {
+        return
+      }
+      clearTimeout(lineTimer)
+      onLineRef.current?.(null)
+    }
+
     const playLine = (): string | null => {
       if (!model) {
         return null
       }
       const line = pickLine()
+      const token = ++lineSeq
+      clearTimeout(lineTimer)
+
       // The motion carries its own Sound reference, so this plays the voice and
-      // drives the LipSync parameter group in one call.
+      // drives the LipSync parameter group in one call. onFinish is fired off
+      // the sound's completion, not the motion's.
       void model.motion(config.tapMotionGroup, line.motionIndex, undefined, {
         volume: mutedRef.current ? 0 : config.voiceVolume,
+        onFinish: () => endLine(token),
+        onError: () => endLine(token),
       })
+
+      // Fallback so a callback that never arrives cannot strand the bubble
+      // on screen; the longest sample line is a few seconds.
+      lineTimer = setTimeout(() => endLine(token), 12000)
+
       onLineRef.current?.(line.caption)
       return line.caption
     }
@@ -148,6 +175,7 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
 
     return () => {
       disposed = true
+      clearTimeout(lineTimer)
       speakRef.current = () => null
       resizeObserver.disconnect()
       modelRef.current = null

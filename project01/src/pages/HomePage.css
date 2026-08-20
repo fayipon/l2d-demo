@@ -420,11 +420,13 @@
 }
 
 /* ---------- speech bubble ---------- */
+/* Sits in the open space to the upper right of the character's head; the tail
+   hangs off the bottom left so it points back at her. */
 .speech-bubble {
   position: absolute;
-  left: 3cqw;
-  top: 24cqh;
-  max-width: 26cqw;
+  left: 34cqw;
+  top: 17cqh;
+  max-width: 20cqw;
   padding: 1.6cqh 1.8cqw;
   border-radius: 2.4cqh;
   background: rgba(255, 255, 255, 0.94);
@@ -433,19 +435,24 @@
   font-weight: 700;
   text-align: left;
   box-shadow: 0 0.6cqh 1.8cqh rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(1.2cqh) scale(0.96);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+}
+
+.speech-bubble.is-visible {
+  opacity: 1;
+  transform: none;
 }
 
 .speech-bubble::after {
   content: "";
   position: absolute;
-  left: 3cqw;
+  left: 2cqw;
   bottom: -1.6cqh;
   border-width: 1.8cqh 1.4cqh 0 0;
   border-style: solid;
   border-color: rgba(255, 255, 255, 0.94) transparent transparent transparent;
 }
 
-.speech-bubble:disabled {
-  opacity: 0.7;
-  cursor: default;
-}

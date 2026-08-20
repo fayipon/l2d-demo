@@ -37,9 +37,10 @@ const RAIL_ITEMS: RailItem[] = [
 
 export function HomePage() {
   const stageRef = useRef<Live2DStageHandle>(null)
-  const [caption, setCaption] = useState('今日はどこへ行く？')
   const [muted, setMuted] = useState(false)
-  const [ready, setReady] = useState(false)
+  // The bubble is hidden until the character is tapped. Text is kept while it
+  // fades out so the words do not vanish before the animation does.
+  const [bubble, setBubble] = useState({ text: '', visible: false })
 
   return (
     <div className="home-root">
@@ -49,8 +50,11 @@ export function HomePage() {
         <Live2DStage
           ref={stageRef}
           muted={muted}
-          onLine={setCaption}
-          onReady={() => setReady(true)}
+          onLine={(caption) =>
+            setBubble((prev) =>
+              caption ? { text: caption, visible: true } : { ...prev, visible: false },
+            )
+          }
         />
 
         <div className="hud">
@@ -152,16 +156,10 @@ export function HomePage() {
             <button type="button" className="round-btn" title="設定">⚙️</button>
           </div>
 
-          {/* The bubble is the one control wired to the model: it plays a voiced
-              tap motion, same as clicking the character. */}
-          <button
-            type="button"
-            className="speech-bubble"
-            onClick={() => stageRef.current?.speak()}
-            disabled={!ready}
-          >
-            {ready ? caption : 'ロード中…'}
-          </button>
+          {/* Display only -- tapping the character is what raises it. */}
+          <div className={`speech-bubble${bubble.visible ? ' is-visible' : ''}`} aria-live="polite">
+            {bubble.text}
+          </div>
         </div>
       </div>
     </div>
