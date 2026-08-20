@@ -4,6 +4,10 @@
 These instructions apply to this repository.
 Project target: PixiJS + React + SPA router.
 
+## Repository Layout
+Application source now lives under `project01/`.
+Run app-related commands from `project01/`.
+
 ## Current Repository State
 This repository is currently empty (only .git exists).
 Before coding features, scaffold the app first.
@@ -34,14 +38,14 @@ Expected common scripts after setup:
 Keep React UI/state and Pixi rendering logic separated.
 
 Use this shape by default:
-- src/app for app shell and providers
-- src/routes for SPA router config
-- src/pages for route-level React pages
-- src/features for domain logic
-- src/pixi for Pixi app lifecycle, scenes, assets, and render systems
-- src/components for shared React UI components
-- src/lib for generic utilities
-- src/types for shared TypeScript types
+- project01/src/app for app shell and providers
+- project01/src/routes for SPA router config
+- project01/src/pages for route-level React pages
+- project01/src/features for domain logic
+- project01/src/pixi for Pixi app lifecycle, scenes, assets, and render systems
+- project01/src/components for shared React UI components
+- project01/src/lib for generic utilities
+- project01/src/types for shared TypeScript types
 
 ## PixiJS + React Integration Rules
 Create one Pixi Application per mounted canvas host unless a task requires otherwise.
