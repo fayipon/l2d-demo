@@ -1,0 +1,452 @@
+/*
+ * Fixed 16:9 stage, letterboxed into whatever the viewport is. All sizing uses
+ * container query units against the stage, so the whole HUD scales as one piece
+ * instead of needing breakpoints.
+ */
+.home-root {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #05060f;
+  overflow: hidden;
+}
+
+.home-stage {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  overflow: hidden;
+  container-type: size;
+  font-family: "Segoe UI", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  color: #fff;
+}
+
+.stage-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 18% 30%, rgba(120, 90, 220, 0.55), transparent 60%),
+    radial-gradient(100% 80% at 80% 20%, rgba(60, 190, 220, 0.35), transparent 55%),
+    radial-gradient(90% 90% at 70% 90%, rgba(190, 80, 200, 0.35), transparent 60%),
+    linear-gradient(160deg, #2a1b5e 0%, #3a2472 40%, #21173f 100%);
+}
+
+.stage-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.07) 45%, transparent 48%),
+    linear-gradient(75deg, transparent 60%, rgba(255, 255, 255, 0.05) 63%, transparent 66%);
+}
+
+.live2d-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.live2d-error {
+  position: absolute;
+  left: 4cqw;
+  bottom: 6cqh;
+  max-width: 40cqw;
+  padding: 2cqh;
+  border-radius: 1cqh;
+  background: rgba(180, 30, 60, 0.85);
+  font-size: 2.2cqh;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud button {
+  pointer-events: auto;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+}
+
+/* ---------- shared panel look ---------- */
+.player-card,
+.currency-pill,
+.rail-btn,
+.wide-btn,
+.round-btn {
+  background: linear-gradient(160deg, rgba(18, 22, 52, 0.92), rgba(10, 12, 32, 0.92));
+  border: 0.25cqh solid rgba(120, 200, 255, 0.35);
+  box-shadow: 0 0 1.4cqh rgba(90, 180, 255, 0.25), inset 0 0 1.2cqh rgba(70, 140, 255, 0.15);
+}
+
+/* ---------- player card ---------- */
+.player-card {
+  position: absolute;
+  top: 2.2cqh;
+  left: 1.6cqw;
+  display: flex;
+  align-items: stretch;
+  gap: 1cqw;
+  padding: 1cqh 1.4cqw 1cqh 1cqw;
+  border-radius: 1cqh;
+  min-width: 24cqw;
+}
+
+.player-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-right: 1cqw;
+  border-right: 0.2cqh solid rgba(120, 200, 255, 0.3);
+}
+
+.player-level-label {
+  font-size: 1.5cqh;
+  letter-spacing: 0.05em;
+  color: #9fd7ff;
+}
+
+.player-level-value {
+  font-size: 5cqh;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 0 1.2cqh rgba(120, 210, 255, 0.8);
+}
+
+.player-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6cqh;
+  flex: 1;
+}
+
+.player-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+}
+
+.player-name {
+  font-size: 3.4cqh;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.icon-mini {
+  font-size: 1.8cqh;
+  padding: 0.3cqh 0.5cqh;
+  border-radius: 0.5cqh;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.exp-bar,
+.energy-bar {
+  height: 1.1cqh;
+  border-radius: 1cqh;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.exp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #34e0d0, #7b6bff, #d55cff);
+}
+
+.energy-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd23f, #ff9d2e);
+}
+
+.exp-text {
+  display: flex;
+  gap: 1cqw;
+  font-size: 1.6cqh;
+  color: #cfe6ff;
+}
+
+/* ---------- currencies ---------- */
+.currency-row {
+  position: absolute;
+  top: 2.2cqh;
+  right: 9.5cqw;
+  display: flex;
+  align-items: flex-start;
+  gap: 1cqw;
+}
+
+.currency-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.7cqw;
+  padding: 0.9cqh 1cqw;
+  border-radius: 3cqh;
+}
+
+.currency-icon {
+  font-size: 2.6cqh;
+}
+
+.currency-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqh;
+  min-width: 9cqw;
+}
+
+.currency-value {
+  font-size: 2.2cqh;
+  font-weight: 700;
+}
+
+.currency-sub {
+  font-size: 1.4cqh;
+  color: #ffd98a;
+}
+
+.plus {
+  width: 3cqh;
+  height: 3cqh;
+  border-radius: 50%;
+  font-size: 2cqh;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(160deg, #59d5ff, #2b7bd6);
+  box-shadow: 0 0 0.8cqh rgba(90, 200, 255, 0.7);
+}
+
+/* ---------- diamond menu ---------- */
+.menu-cluster {
+  position: absolute;
+  inset: 0;
+}
+
+.tile {
+  position: absolute;
+  width: 15.5cqw;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 1.4cqh;
+  border: 0.35cqh solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 0 2cqh rgba(120, 200, 255, 0.45),
+    inset 0 0 2.5cqh rgba(255, 255, 255, 0.18);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.tile:hover {
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.05);
+  filter: brightness(1.2);
+}
+
+.tile-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4cqh;
+  transform: rotate(-45deg);
+  text-shadow: 0 0.3cqh 0.6cqh rgba(0, 0, 0, 0.6);
+}
+
+.tile-icon {
+  font-size: 4.6cqh;
+}
+
+.tile-en {
+  font-size: 2.9cqh;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.tile-jp {
+  font-size: 1.7cqh;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tile-ribbon {
+  position: absolute;
+  top: -1.5cqh;
+  right: -1.5cqh;
+  transform: rotate(-45deg);
+  padding: 0.5cqh 1cqw;
+  border-radius: 2cqh;
+  background: linear-gradient(160deg, #ff5470, #d61f4a);
+  border: 0.25cqh solid #fff;
+  font-size: 1.7cqh;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tile-story {
+  left: 68%;
+  top: 34%;
+  background: linear-gradient(160deg, #1f63d8, #0b2a6b);
+}
+
+.tile-character {
+  left: 57.5%;
+  top: 58%;
+  width: 14.5cqw;
+  background: linear-gradient(160deg, #d6247f, #6d0f42);
+}
+
+.tile-explore {
+  left: 79%;
+  top: 58%;
+  width: 14.5cqw;
+  background: linear-gradient(160deg, #16b189, #06503f);
+}
+
+.tile-studio {
+  left: 63%;
+  top: 80%;
+  width: 13cqw;
+  background: linear-gradient(160deg, #1d7ae0, #0a2f6b);
+}
+
+.tile-gacha {
+  left: 78.5%;
+  top: 84%;
+  width: 13cqw;
+  background: linear-gradient(160deg, #8b46d6, #3d1670);
+}
+
+/* ---------- right rail ---------- */
+.side-rail {
+  position: absolute;
+  top: 13cqh;
+  right: 1.2cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1cqh;
+}
+
+.rail-btn {
+  position: relative;
+  width: 7cqw;
+  padding: 0.9cqh 0;
+  border-radius: 1cqh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3cqh;
+}
+
+.rail-icon {
+  font-size: 3.2cqh;
+  line-height: 1;
+}
+
+.rail-label {
+  font-size: 1.4cqh;
+  color: #cfe6ff;
+}
+
+.badge {
+  position: absolute;
+  top: -0.8cqh;
+  right: -0.6cqh;
+  width: 2.4cqh;
+  height: 2.4cqh;
+  border-radius: 50%;
+  background: #ff3355;
+  border: 0.2cqh solid #fff;
+  font-size: 1.6cqh;
+  font-weight: 800;
+  line-height: 2cqh;
+  text-align: center;
+}
+
+/* ---------- bottom corners ---------- */
+.bottom-left {
+  position: absolute;
+  left: 1.6cqw;
+  bottom: 2.5cqh;
+  display: flex;
+  gap: 1cqw;
+}
+
+.wide-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+  padding: 1.1cqh 1.4cqw;
+  border-radius: 1.2cqh;
+}
+
+.wide-icon {
+  font-size: 3.6cqh;
+}
+
+.wide-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.wide-en {
+  font-size: 2.4cqh;
+  font-weight: 800;
+}
+
+.wide-jp {
+  font-size: 1.5cqh;
+  color: #cfe6ff;
+}
+
+.bottom-right {
+  position: absolute;
+  right: 1.2cqw;
+  bottom: 2.5cqh;
+  display: flex;
+  gap: 0.8cqw;
+}
+
+.round-btn {
+  width: 6.5cqh;
+  height: 6.5cqh;
+  border-radius: 50%;
+  font-size: 3cqh;
+  display: grid;
+  place-items: center;
+}
+
+/* ---------- speech bubble ---------- */
+.speech-bubble {
+  position: absolute;
+  left: 3cqw;
+  top: 24cqh;
+  max-width: 26cqw;
+  padding: 1.6cqh 1.8cqw;
+  border-radius: 2.4cqh;
+  background: rgba(255, 255, 255, 0.94);
+  color: #241a3f;
+  font-size: 2.4cqh;
+  font-weight: 700;
+  text-align: left;
+  box-shadow: 0 0.6cqh 1.8cqh rgba(0, 0, 0, 0.35);
+}
+
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  left: 3cqw;
+  bottom: -1.6cqh;
+  border-width: 1.8cqh 1.4cqh 0 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.94) transparent transparent transparent;
+}
+
+.speech-bubble:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
