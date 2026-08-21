@@ -1,0 +1,821 @@
+/*
+ * Story screen. Three columns: chapters on the
+ * left, that chapter's stages down the middle, and a preview of the selected
+ * stage on the right.
+ *
+ * The stage shell, the back button and the currency row come from
+ * styles/stage.css. Everything here is specific to this screen.
+ */
+
+.story-hud {
+  /*
+   * Sampled off the mock rather than picked. It is not one red: the headings
+   * and stars sit around a desaturated rose, stage codes and the selected
+   * edges run brighter and pinker, the start button is a distinctly warmer
+   * coral, and the timeline is a muted mauve far darker than any of them.
+   * Driving all of it from a single saturated pink is what made the screen
+   * look flat.
+   */
+  --rose: #ef5277;
+  --rose-bright: #ff5f8e;
+  --rose-edge: #f4598a;
+  --coral: #d35275;
+  --rail: #6a4250;
+  /* Kept as aliases so nothing that reads them has to change at once. */
+  --pink: var(--rose);
+  --pink-soft: #ff8fae;
+  /* Where all three columns begin. One value rather than three, so the content
+     block can be nudged as a unit without the columns drifting apart. Set so
+     the slack lands above the block rather than below it -- stretching the
+     cards to fill downwards instead just spreads them out. */
+  --content-top: 16.5cqh;
+  --content-bottom: 3cqh;
+  /* Height of a chapter card, as its vertical padding. */
+  --chapter-pad: 2.4cqh;
+  /* Half a stage row. Rows are a fixed height whatever the chapter holds, so
+     this is what puts the rail's ends on the first and last node centres. */
+  --stage-row-half: 5.51cqh;
+}
+
+/*
+ * A scrim, because three columns of small text are unreadable over the
+ * painting. It is a real element rather than a ::before so that the columns
+ * paint over it by DOM order alone -- lifting them with `.story-hud > *`
+ * instead overrides their own `position: absolute` and drops the whole layout
+ * back into document flow.
+ */
+.story-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6, 3, 10, 0.72), rgba(6, 3, 10, 0.9));
+}
+
+/* ---------- top bar ---------- */
+.story-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8.4cqh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.4cqw;
+  /* The gradient alone separates the bar from the content; a rule under it as
+     well drew a hard line across the screen. */
+  background: linear-gradient(180deg, rgba(6, 3, 10, 0.96), rgba(6, 3, 10, 0.5));
+}
+
+/* Inside the bar these are laid out by it, not by the absolute positions they
+   carry for screens with no bar. Overridden by name rather than with `> *`,
+   which is what flattened this layout the first time. */
+.story-topbar .back-btn,
+.story-topbar .currency-row {
+  position: static;
+}
+
+/* The currencies headline the home screen; here they are chrome above three
+   columns of content, so they shrink to fit the bar. The back button does not:
+   it is the same control on every screen and looked wrong at two sizes. */
+.story-topbar .currency-row {
+  gap: 0.9cqw;
+}
+
+.story-topbar .currency-pill {
+  gap: 0.7cqw;
+  padding: 0.5cqh 0.7cqw;
+}
+
+.story-topbar .currency-icon {
+  font-size: 2.6cqh;
+}
+
+.story-topbar .currency-value {
+  min-width: 5.4cqw;
+  font-size: 2.1cqh;
+}
+
+.story-topbar .plus {
+  width: 2.8cqh;
+  height: 2.8cqh;
+  font-size: 1.9cqh;
+}
+
+/* ---------- chapters ---------- */
+.chapter-col {
+  position: absolute;
+  left: 1.4cqw;
+  top: var(--content-top);
+  bottom: var(--content-bottom);
+  width: 19cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4cqh;
+}
+
+/* Pushed down with the list rather than left at the top of the column: the
+   heading belongs to the chapters under it, and stranding it up there with a
+   gap in between made it read as a page title for the whole screen. */
+.story-head {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.9cqw;
+}
+
+.story-head-icon {
+  font-size: 4cqh;
+  color: #fff;
+}
+
+.story-title {
+  margin: 0;
+  font-size: 3.6cqh;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+.story-sub {
+  margin: 0.4cqh 0 0;
+  font-size: 1.6cqh;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Natural height, pushed to the foot of the column: the cards stay compact and
+   the slack collects above them, under the header. Filling the column with
+   `flex: 1` on the cards instead makes them grow to whatever is left, which is
+   how they ended up too far apart. */
+.chapter-list {
+  flex: 0 0 auto;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4cqh;
+  overflow: hidden;
+}
+
+/*
+ * A chapter card, as the mock draws it: art across the whole card, a left zone
+ * holding the lock when the chapter is closed, and the text as a LEFT-aligned
+ * block sitting about 40% in. Right-aligning the text instead is a different
+ * shape entirely -- the two lines stop lining up with each other.
+ */
+.chapter {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 45.5% 1fr auto;
+  align-items: center;
+  gap: 0.6cqw;
+  padding: var(--chapter-pad) 1cqw;
+  border-radius: 0.8cqh;
+  /* 2px at the mock's size. Thinner than this and the outline disappears
+     against the card art. */
+  border: 0.2cqh solid rgba(255, 255, 255, 0.14);
+  background: #0b0610;
+  text-align: left;
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Fades left to right: the art reads on the left, the text keeps something
+   solid behind it on the right. A flat scrim dark enough for the text killed
+   the art everywhere, which made all six read as plain black panels. */
+/*
+ * The three layers are ordered explicitly. Left to auto z-index they stack in
+ * DOM order, and ::before counts as the first child -- so the scrim painted
+ * UNDER the art and did nothing at all, which is why the closed chapters stayed
+ * bright however far their brightness was turned down.
+ */
+.chapter-art {
+  position: absolute;
+  /* Inset, so a dark margin separates the picture from the edge. Bleeding the
+     art into the border is most of what made the card look flat. */
+  inset: 0.45cqh 0.3cqw;
+  border-radius: 0.45cqh;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.chapter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(8, 4, 12, 0.28) 0%,
+    rgba(8, 4, 12, 0.7) 46%,
+    rgba(8, 4, 12, 0.9) 100%
+  );
+}
+
+/* The open chapter shows the most of its art. That, the pink edge and the
+   white title are what the mock uses to say "you are here". */
+.chapter.is-selected::before {
+  background: linear-gradient(
+    90deg,
+    rgba(8, 4, 12, 0) 0%,
+    rgba(8, 4, 12, 0.28) 40%,
+    rgba(8, 4, 12, 0.74) 72%,
+    rgba(8, 4, 12, 0.86) 100%
+  );
+}
+
+/* Named, not `.chapter > *`. A universal child selector also caught the art
+   layer and overrode its `position: absolute`, which put it back in the grid
+   as a fourth item -- the chevron wrapped to a second row and the card doubled
+   in height. */
+.chapter-mark,
+.chapter-text,
+.chapter-chevron {
+  position: relative;
+  z-index: 2;
+}
+
+/* No hover state by design: the card changes when it is the selected chapter
+   and at no other time, so nothing competes with that signal. */
+/* A hairline edge with a soft bloom outside it, which is what the mock draws.
+   A thick border reads as a completely different component. */
+.chapter.is-selected {
+  border-color: var(--pink);
+  box-shadow:
+    0 0 0.5cqh rgba(244, 89, 138, 0.9),
+    0 0 3.6cqh rgba(244, 89, 138, 0.5);
+}
+
+/* A closed chapter is defined by its outline, since it has no colour and
+   almost no light left inside it. Measured off the mock at rgb(32,31,34);
+   carried here as a white alpha so it holds up over the art underneath. */
+/*
+ * The selected edge is a gradient ring, not a flat border: the mock runs it
+ * near-white at the corners and settles into saturated pink along the straight
+ * sections, which is what gives the card its edge-lit look. Drawn as a masked
+ * gradient because a border can only be one colour.
+ */
+.chapter.is-selected::after {
+  content: "";
+  position: absolute;
+  inset: -0.2cqh;
+  z-index: 3;
+  border-radius: inherit;
+  padding: 0.26cqh;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    #ffe3ee 0%,
+    var(--rose-edge) 14%,
+    var(--rose-edge) 50%,
+    var(--rose-edge) 86%,
+    #ffd9e8 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.chapter.is-locked {
+  cursor: default;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* A closed chapter keeps its art but loses its colour and most of its light,
+   so the list reads as progress at a glance rather than as six similar cards. */
+/* Far enough down that the shapes are only a suggestion, which is how the mock
+   draws a closed chapter -- at 0.5 the castles and moons were still legible and
+   the six cards competed with the open one. */
+.chapter.is-locked .chapter-art {
+  filter: grayscale(1) brightness(0.3);
+}
+
+/* No lift here. The chapter-1 crop is already the warm one, and boosting it in
+   CSS as well stacked two corrections and blew the highlights out. */
+
+.chapter.is-locked::before {
+  background: rgba(6, 3, 9, 0.72);
+}
+
+/* Left zone. Empty for an open chapter -- that is the gap the art shows
+   through -- and the lock when it is closed. */
+.chapter-mark {
+  display: grid;
+  place-items: center;
+}
+
+.chapter-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5cqh;
+  min-width: 0;
+}
+
+.chapter-label {
+  font-size: 1.6cqh;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.chapter.is-selected .chapter-label {
+  color: var(--pink);
+}
+
+.chapter-name {
+  font-size: 2.1cqh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.9);
+  /* Measured off the mock. It had crept up to 2.7, which wrapped the name onto
+     a second line and broke the card height along with it. */
+  white-space: nowrap;
+}
+
+.chapter.is-selected .chapter-name {
+  color: #fff;
+}
+
+.chapter.is-locked .chapter-label {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.chapter.is-locked .chapter-name {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.chapter-chevron {
+  font-size: 2.6cqh;
+  color: var(--pink);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.chapter.is-selected .chapter-chevron {
+  opacity: 1;
+}
+
+/* Sits over the art, so it needs a shadow to hold its edge against whatever is
+   behind it, and more weight than the 0.4 grey it had against a flat panel. */
+.chapter-lock {
+  font-size: 3.4cqh;
+  color: rgba(255, 255, 255, 0.72);
+  filter: drop-shadow(0 0.3cqh 0.6cqh rgba(0, 0, 0, 0.9));
+}
+
+/* ---------- stages ---------- */
+.stage-col {
+  position: absolute;
+  left: 23cqw;
+  top: var(--content-top);
+  bottom: var(--content-bottom);
+  width: 38cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6cqh;
+}
+
+/* Indented by the same 3cqw the list reserves for the rail, so the heading
+   lines up with the stage cards instead of starting to the left of the
+   timeline and reading as a heading for the timeline itself. */
+/* Pushed to the foot of the column, the same way the chapter column handles it:
+   the block sits low and the slack collects above it. Derived from the content
+   rather than set as an offset, so it stays right if a chapter gains a stage. */
+.stage-head {
+  margin-top: auto;
+  padding-left: 3cqw;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.6cqw;
+}
+
+.stage-chapter-label {
+  margin: 0;
+  font-size: 1.9cqh;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--pink);
+}
+
+.stage-chapter-name {
+  margin: 0.3cqh 0 0;
+  font-size: 3.2cqh;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.stage-chapter-intro {
+  margin: 1cqh 0 0;
+  font-size: 1.7cqh;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.84);
+  white-space: pre-line;
+}
+
+.stage-list {
+  position: relative;
+  flex: 0 0 auto;
+  padding-left: 3cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 1cqh;
+  /* Visible, so the rail can run on past the last stage as it does in the
+     mock -- clipped to the list it stopped dead at the final node. */
+  overflow: visible;
+}
+
+/* One line behind every row rather than a segment per row, so the path stays
+   continuous through the gaps between cards. */
+.stage-rail {
+  position: absolute;
+  left: 1.05cqw;
+  /* Runs node centre to node centre. Any overhang past the end nodes reads as
+     a path continuing somewhere, and it does not. */
+  top: var(--stage-row-half);
+  bottom: var(--stage-row-half);
+  width: 0.12cqw;
+  /* Deep crimson while there are stages behind you, going cold at the end where
+     the run stops -- not the flat pink fade it had. */
+  background: linear-gradient(180deg, var(--rail) 0%, var(--rail) 68%, #4a4550 100%);
+}
+
+.stage-row {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+/*
+ * A ring, a dark gap, then a white-hot core -- three parts, which is what makes
+ * it read as a light rather than a dot. A single filled circle, which is what
+ * this was, has no depth at any size.
+ *
+ * The opaque base matters: without it the rail shows straight through the gap
+ * and the ring stops looking like a ring.
+ */
+.stage-node {
+  position: absolute;
+  left: -2.5cqw;
+  width: 2.2cqh;
+  height: 2.2cqh;
+  border-radius: 50%;
+  border: 0.18cqh solid var(--rose-edge);
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      #ffffff 0%,
+      #ffffff 11%,
+      #ffc2d5 21%,
+      #ee5486 38%,
+      rgba(238, 84, 134, 0.45) 46%,
+      rgba(10, 5, 16, 0) 60%
+    ),
+    #0a0510;
+  box-shadow: 0 0 1.3cqh rgba(239, 82, 119, 0.5);
+}
+
+/* Unreached: the ring survives, the light does not. */
+.stage-node.is-locked {
+  border-color: rgba(255, 255, 255, 0.26);
+  background: #0d0812;
+  box-shadow: none;
+}
+
+.stage {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 9cqw 1fr auto;
+  align-items: center;
+  gap: 1cqw;
+  padding: 0.9cqh 1cqw;
+  border-radius: 0.8cqh;
+  border: 0.18cqh solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 6, 14, 0.78);
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* No hover state here either, for the same reason as the chapter cards: the
+   only thing that should change a card is being the selected one. */
+.stage.is-selected {
+  border-color: var(--pink);
+  box-shadow: 0 0 2cqh rgba(244, 89, 138, 0.4);
+}
+
+.stage.is-locked {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.stage-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 0.5cqh;
+  display: block;
+}
+
+.stage-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4cqh;
+  min-width: 0;
+}
+
+.stage-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7cqw;
+  font-size: 2.1cqh;
+  font-weight: 700;
+}
+
+.stage-code {
+  color: var(--rose-bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.stage-summary {
+  font-size: 1.6cqh;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: pre-line;
+}
+
+.stage-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5cqh;
+}
+
+.stage-clear {
+  font-size: 1.7cqh;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.stage-stars {
+  display: flex;
+  gap: 0.2cqw;
+  font-size: 2.2cqh;
+}
+
+.star-on {
+  color: var(--pink);
+}
+
+.star-off {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.stage-lock {
+  font-size: 3cqh;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- preview ---------- */
+/* Bottom-aligned like the other two columns, so the panel finishes level with
+   the stage list rather than starting at the top of the screen and running
+   taller than everything beside it. */
+.preview-col {
+  position: absolute;
+  right: 1.4cqw;
+  top: var(--content-top);
+  bottom: var(--content-bottom);
+  width: 35.5cqw;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1.4cqh;
+}
+
+.recap-btn {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  padding: 0.9cqh 1.4cqw;
+  border-radius: 1cqh;
+  font-size: 1.9cqh;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  transition: background-color 0.15s ease;
+}
+
+.recap-btn:hover {
+  background-color: rgba(40, 30, 48, 0.9);
+  color: #fff;
+}
+
+.recap-btn svg {
+  font-size: 2.4cqh;
+}
+
+.preview {
+  flex: 0 0 auto;
+  padding: 1.4cqh 1.4cqw 1.6cqh;
+  border-radius: 1.2cqh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2cqh;
+  background: rgba(6, 4, 10, 0.88);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+/* Wider than 16:9 so the panel comes down to the height of the stage list
+   beside it; at 16:9 the art alone was 300px and pushed everything past it. */
+.preview-art {
+  width: 100%;
+  aspect-ratio: 24 / 9;
+  object-fit: cover;
+  border-radius: 0.8cqh;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.preview-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1cqw;
+}
+
+.preview-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.8cqw;
+  font-size: 2.6cqh;
+  font-weight: 700;
+}
+
+.preview-level {
+  font-size: 1.9cqh;
+  font-weight: 700;
+  color: var(--pink);
+  white-space: nowrap;
+}
+
+.preview-summary {
+  margin: 0;
+  font-size: 1.8cqh;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: pre-line;
+  padding-bottom: 1.2cqh;
+  border-bottom: 0.18cqh solid rgba(255, 255, 255, 0.14);
+}
+
+.preview-cols {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1.4cqw;
+  align-items: start;
+}
+
+.preview-heading {
+  margin: 0 0 0.9cqh;
+  font-size: 1.9cqh;
+  font-weight: 700;
+  color: var(--pink);
+  letter-spacing: 0.06em;
+}
+
+.objective-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqh;
+  font-size: 1.75cqh;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.objective-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+}
+
+.objective-star {
+  font-size: 1.9cqh;
+  color: rgba(255, 255, 255, 0.7);
+  flex: 0 0 auto;
+}
+
+.reward-row {
+  display: flex;
+  gap: 0.7cqw;
+}
+
+/* Neutral frame, coloured contents. The mock draws every tile the same dark
+   grey and lets the coin, the crystal and the EXP sigil supply the colour --
+   tinting the frame as well made the row shout. */
+.reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5cqh;
+  width: 7cqh;
+  padding: 0.9cqh 0.4cqw;
+  border-radius: 0.8cqh;
+  border: 0.18cqh solid #3a3a3d;
+  background: #0c0c0e;
+}
+
+.reward-icon {
+  font-size: 3.2cqh;
+  color: var(--reward-tone);
+}
+
+.reward-amount {
+  font-size: 1.5cqh;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reward-coin {
+  --reward-tone: #ffc74a;
+}
+
+.reward-gem {
+  --reward-tone: #4fc3ff;
+}
+
+.reward-exp {
+  --reward-tone: #a05cff;
+}
+
+/* ---------- start ---------- */
+.start-quest {
+  position: relative;
+  margin-top: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5cqw;
+  padding: 1.9cqh 1cqw;
+  border-radius: 0.8cqh;
+  border: 0.18cqh solid var(--coral);
+  /* Sampled: #35111d to #3c111e, a near-flat dark maroon. What was here was
+     twice as saturated and read as a lit button rather than a dark one with a
+     lit edge. */
+  background: linear-gradient(180deg, #35111d, #3c111e);
+  font-size: 2.9cqh;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  box-shadow:
+    0 0 2.4cqh rgba(215, 98, 86, 0.42),
+    inset 0 0 2.4cqh rgba(215, 98, 86, 0.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.start-quest:hover {
+  transform: translateY(-0.3cqh);
+  box-shadow:
+    0 0 3.6cqh rgba(215, 98, 86, 0.65),
+    inset 0 0 3cqh rgba(215, 98, 86, 0.3);
+}
+
+.start-quest svg {
+  font-size: 3.7cqh;
+}
+
+/* Corner ticks, which the mock puts at all four corners. Four gradients rather
+   than four elements: each corner is one horizontal and one vertical stub. */
+.start-quest::after {
+  content: "";
+  position: absolute;
+  inset: 0.3cqh 0.2cqw;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--coral) 0 0), linear-gradient(var(--coral) 0 0),
+    linear-gradient(var(--coral) 0 0), linear-gradient(var(--coral) 0 0),
+    linear-gradient(var(--coral) 0 0), linear-gradient(var(--coral) 0 0),
+    linear-gradient(var(--coral) 0 0), linear-gradient(var(--coral) 0 0);
+  background-size:
+    0.9cqh 0.14cqh, 0.14cqh 0.9cqh,
+    0.9cqh 0.14cqh, 0.14cqh 0.9cqh,
+    0.9cqh 0.14cqh, 0.14cqh 0.9cqh,
+    0.9cqh 0.14cqh, 0.14cqh 0.9cqh;
+  background-position:
+    left top, left top,
+    right top, right top,
+    left bottom, left bottom,
+    right bottom, right bottom;
+}

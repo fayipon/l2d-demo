@@ -27,6 +27,10 @@ export type IconName =
   | 'burst'
   | 'shield'
   | 'sigil'
+  | 'home'
+  | 'chevron'
+  | 'swords'
+  | 'exp'
 
 const PATHS: Record<IconName, ReactElement> = {
   book: (
@@ -108,10 +112,12 @@ const PATHS: Record<IconName, ReactElement> = {
   ),
   pencil: <path d="m4.8 19.2 3.5-.8 10-10a1.9 1.9 0 0 0-2.7-2.7l-10 10-.8 3.5Z" />,
   back: <path d="M14.6 5.4 8 12l6.6 6.6" />,
+  // Solid body, stroked shackle: an outlined body disappears against the busy
+  // chapter art it now sits on.
   lock: (
     <>
-      <rect x="5" y="10.4" width="14" height="9.4" rx="1.8" />
       <path d="M8.2 10.4V7.8a3.8 3.8 0 0 1 7.6 0v2.6" />
+      <rect x="5" y="10.4" width="14" height="9.4" rx="1.8" fill="currentColor" stroke="none" />
     </>
   ),
   sigil: (
@@ -120,6 +126,34 @@ const PATHS: Record<IconName, ReactElement> = {
       <circle cx="12" cy="12" r="3.4" />
       <path d="M12 1.6v6.2M12 16.2v6.2M1.6 12h6.2M16.2 12h6.2" />
       <path d="m6.2 6.2 3.1 3.1M14.7 14.7l3.1 3.1M17.8 6.2l-3.1 3.1M9.3 14.7l-3.1 3.1" />
+    </>
+  ),
+  home: (
+    <>
+      <path d="M3.6 10.6 12 3.4l8.4 7.2" />
+      <path d="M5.8 9.4V19a1.4 1.4 0 0 0 1.4 1.4h9.6A1.4 1.4 0 0 0 18.2 19V9.4" />
+    </>
+  ),
+  chevron: <path d="m9.4 5.4 6.6 6.6-6.6 6.6" />,
+  /*
+   * Crossed swords: thick blades, a guard across each near the hilt, a short
+   * pommel below it. Earlier versions marked the tips with corner brackets,
+   * which at button size read as arrowheads rather than blades.
+   */
+  swords: (
+    <>
+      <path d="M19.9 3.9 9.9 13.9" strokeWidth={2.9} />
+      <path d="M4.1 3.9 14.1 13.9" strokeWidth={2.9} />
+      <path d="m7.3 12.7 4 4" strokeWidth={1.7} />
+      <path d="m16.7 12.7-4 4" strokeWidth={1.7} />
+      <path d="m4.6 16.2 3.2 3.2" strokeWidth={1.7} />
+      <path d="m19.4 16.2-3.2 3.2" strokeWidth={1.7} />
+    </>
+  ),
+  exp: (
+    <>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M9 9.2h6M12 9.2v5.6" />
     </>
   ),
   moon: <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4Z" />,

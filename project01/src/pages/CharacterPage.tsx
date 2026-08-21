@@ -58,7 +58,7 @@ export function CharacterPage() {
       <div className="hud char-hud" style={{ '--accent': character.accent } as CSSProperties}>
         <button type="button" className="back-btn panel" onClick={() => navigate('/')}>
           <Icon name="back" />
-          <span>返回</span>
+          <span>BACK</span>
         </button>
 
         <button

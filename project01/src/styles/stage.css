@@ -66,7 +66,14 @@
   animation: hud-in 0.28s ease both;
 }
 
-.hud button {
+/*
+ * Written with :where() so the reset carries no specificity of its own.
+ * As `.hud button` it scored (0,1,1) and silently beat any component styled by
+ * a single class -- the chapter cards had `border: 0.2cqh solid` set and
+ * rendered at 0px, so their outlines, including the selected card's pink edge,
+ * never appeared at all.
+ */
+:where(.hud) button {
   pointer-events: auto;
   font: inherit;
   color: inherit;
@@ -121,6 +128,163 @@
 
 .round-btn:hover {
   color: #fff;
+}
+
+/* ---------- back ---------- */
+/* Top-left on every sub-screen, so "where is the way out" has one answer
+   wherever you are. */
+.back-btn {
+  position: absolute;
+  top: 2.6cqh;
+  left: 1.4cqw;
+  display: flex;
+  align-items: center;
+  gap: 0.7cqw;
+  padding: 1.1cqh 1.8cqw 1.1cqh 1.3cqw;
+  border-radius: 3cqh;
+  font-size: 2.2cqh;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.9);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.back-btn:hover {
+  background-color: rgba(44, 34, 52, 0.92);
+  color: #fff;
+}
+
+.back-btn svg {
+  font-size: 2.6cqh;
+}
+
+/* ---------- player card and currencies ---------- */
+/* Shared: the home and story screens both carry this header. */
+/* ---------- player card ---------- */
+.player-card {
+  position: absolute;
+  top: 2.4cqh;
+  left: 1.5cqw;
+  display: flex;
+  align-items: stretch;
+  gap: 1.1cqw;
+  padding: 0.9cqh 1.6cqw 0.9cqh 1cqw;
+  border-radius: 1.4cqh;
+  min-width: 25cqw;
+}
+
+.player-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-right: 1cqw;
+  border-right: 0.2cqh solid rgba(255, 255, 255, 0.16);
+}
+
+.player-level-label {
+  font-size: 1.5cqh;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.player-level-value {
+  font-size: 5.4cqh;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.player-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.7cqh;
+  flex: 1;
+}
+
+.player-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7cqw;
+}
+
+.player-name {
+  font-size: 3.6cqh;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.player-crest {
+  font-size: 3cqh;
+  line-height: 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.exp-bar {
+  height: 1.1cqh;
+  border-radius: 1cqh;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.exp-fill {
+  height: 100%;
+  border-radius: 1cqh;
+  background: linear-gradient(90deg, #6d4bff, #a45cff);
+  box-shadow: 0 0 1cqh rgba(140, 90, 255, 0.7);
+}
+
+.exp-text {
+  font-size: 1.7cqh;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ---------- currencies ---------- */
+.currency-row {
+  position: absolute;
+  top: 2.6cqh;
+  right: 1.4cqw;
+  display: flex;
+  align-items: center;
+  gap: 1.2cqw;
+}
+
+.currency-pill {
+  display: flex;
+  align-items: center;
+  gap: 1cqw;
+  padding: 0.8cqh 0.9cqw;
+  border-radius: 4cqh;
+}
+
+.currency-icon {
+  font-size: 3.2cqh;
+}
+
+.currency-value {
+  min-width: 7cqw;
+  font-size: 2.6cqh;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.plus {
+  display: grid;
+  place-items: center;
+  width: 3.6cqh;
+  height: 3.6cqh;
+  border-radius: 50%;
+  border: 0.2cqh solid rgba(255, 255, 255, 0.55);
+  font-size: 2.4cqh;
+  font-weight: 400;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.9);
+  transition: background-color 0.15s ease;
+}
+
+.plus:hover {
+  background-color: rgba(255, 255, 255, 0.16);
 }
 
 /* ---------- speech bubble ---------- */

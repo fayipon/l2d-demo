@@ -40,6 +40,30 @@ const BACKGROUNDS = [
   { out: 'game-background-04.webp', from: 'game_background_01.png', modulate: { hue: 205, saturation: 0.9 } },
 ]
 
+/*
+ * Scene art for the story screen: chapter cards, stage rows and the stage
+ * preview panel. There is no art for these, so each is a different region of
+ * one of the two paintings, colour graded. Cropping is what makes them read as
+ * different places -- the same painting hue-shifted six times still looks like
+ * six pictures of the same castle.
+ *
+ * They are 560x315 because the largest place one appears is the preview panel,
+ * around 550 device pixels wide. Replace an entry with real art and nothing
+ * else has to change.
+ */
+const STORY_ART = [
+  { out: 'scene-01.webp', from: 'game_background_02.png', crop: [1030, 470, 560, 315] },
+  { out: 'scene-02.webp', from: 'game_background_01.png', crop: [60, 520, 560, 315], modulate: { hue: 120, saturation: 0.7 } },
+  { out: 'scene-03.webp', from: 'game_background_02.png', crop: [560, 180, 560, 315], modulate: { hue: 40, saturation: 0.75 } },
+  { out: 'scene-04.webp', from: 'game_background_01.png', crop: [1090, 300, 560, 315], modulate: { hue: 265, saturation: 0.8 } },
+  { out: 'scene-05.webp', from: 'game_background_02.png', crop: [80, 60, 560, 315], modulate: { hue: 200, saturation: 0.85 } },
+  { out: 'scene-06.webp', from: 'game_background_01.png', crop: [600, 600, 560, 315], modulate: { hue: 330, saturation: 0.9 } },
+  // The chapter-1 card. The blood moon and the castle, ungraded and pushed a
+  // little warmer -- the crop with the most contrast and the only warm one,
+  // which is what the mock puts there.
+  { out: 'scene-07.webp', from: 'game_background_02.png', crop: [770, 250, 560, 315], modulate: { saturation: 1.05 } },
+]
+
 /** Every model's textures, named by the folder they live in. */
 const MODELS = [
   { dir: 'haru', textures: ['Haru.2048/texture_00', 'Haru.2048/texture_01'] },
@@ -54,6 +78,13 @@ const JOBS = [
     to: resolve(assets, bg.out),
     webp: BACKGROUND_WEBP,
     modulate: bg.modulate,
+  })),
+  ...STORY_ART.map((art) => ({
+    from: resolve(repo, 'DESIGN', art.from),
+    to: resolve(assets, art.out),
+    webp: BACKGROUND_WEBP,
+    modulate: art.modulate,
+    crop: art.crop,
   })),
   ...MODELS.flatMap((model) =>
     model.textures.map((texture) => ({
@@ -73,6 +104,10 @@ for (const job of JOBS) {
   await mkdir(dirname(job.to), { recursive: true })
   const input = await readFile(job.from)
   let pipeline = sharp(input)
+  if (job.crop) {
+    const [left, top, width, height] = job.crop
+    pipeline = pipeline.extract({ left, top, width, height })
+  }
   if (job.modulate) {
     pipeline = pipeline.modulate(job.modulate)
   }

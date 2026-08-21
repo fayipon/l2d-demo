@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { HomePage } from '../pages/HomePage'
 import { CharacterPage } from '../pages/CharacterPage'
+import { StoryPage } from '../pages/StoryPage'
 import '../pages/GamePage.css'
 
 /**
@@ -19,6 +20,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/character" element={<CharacterPage />} />
+      <Route path="/story" element={<StoryPage />} />
       <Route
         path="/battle"
         element={
