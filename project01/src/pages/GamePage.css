@@ -1,0 +1,91 @@
+/*
+ * Battle screen. Phaser's scale manager does the letterboxing here, so this
+ * only has to give it the full viewport and lay a small DOM overlay on top.
+ *
+ * The lobby's stage variables are deliberately not in play: two things trying
+ * to letterbox the same canvas is how you get a canvas that is fitted twice.
+ */
+.game-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #05020a;
+  font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  color: #fff;
+}
+
+.game-host {
+  position: absolute;
+  inset: 0;
+}
+
+.game-host canvas {
+  display: block;
+}
+
+/* Transparent to input except where a control actually sits, so clicks and key
+   presses reach the game canvas underneath. */
+.game-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.game-overlay button {
+  pointer-events: auto;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+}
+
+.game-overlay svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* This screen has no container-query stage, so the back button is sized in rem
+   rather than the lobby's cq units. */
+.game-overlay .back-btn {
+  position: absolute;
+  top: 1.2rem;
+  left: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem 0.5rem 0.7rem;
+  border-radius: 2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: rgba(8, 6, 12, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  color: rgba(255, 255, 255, 0.9);
+  transition: background-color 0.15s ease;
+}
+
+.game-overlay .back-btn:hover {
+  background-color: rgba(40, 30, 48, 0.92);
+  color: #fff;
+}
+
+.game-overlay .back-btn svg {
+  font-size: 1.2rem;
+}
+
+/* Shown while the Phaser chunk downloads. It is about 1.3 MB, kept out of the
+   lobby bundle by lazy-loading this route, so on a slow connection this is on
+   screen for a moment. */
+.game-loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #05020a;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+}

@@ -103,8 +103,7 @@ export function HomePage() {
           ))}
         </nav>
 
-        {/* Nothing to launch yet, so START just prompts the character. */}
-        <button type="button" className="start-btn" onClick={() => stageRef.current?.speak()}>
+        <button type="button" className="start-btn" onClick={() => navigate('/battle')}>
           <span className="start-en">START</span>
           <span className="start-sub">
             <i className="start-rule" />
