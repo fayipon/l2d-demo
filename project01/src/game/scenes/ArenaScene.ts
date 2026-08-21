@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { ARENA_HEIGHT, ARENA_WIDTH, STEP_SECONDS, World } from '../sim/world'
 import { ENEMY_KINDS, WEAPONS } from '../data/content'
-import { ATLAS_KEY, buildAtlas } from '../view/atlas'
+import { ATLAS_KEY, FONT_KEY, buildAtlas, buildDamageFont } from '../view/atlas'
 import { consumeRestart, consumeUpgrade, publishRun } from '../runStore'
 
 export { ARENA_WIDTH, ARENA_HEIGHT }
@@ -27,6 +27,45 @@ const FLASH_TINT = 0xffffff
  *  without a damage-number pool. */
 const CRIT_TINT = 0xffd166
 const PICKUP_TINT = 0x4fc3ff
+
+/**
+ * Floating damage numbers.
+ *
+ * A ring rather than a free list: spawning always takes the oldest slot, so
+ * the count is capped by construction and there is no bookkeeping. Overwriting
+ * a number that is still fading is the correct behaviour anyway -- at that
+ * rate it was unreadable.
+ */
+const NUMBER_CAPACITY = 56
+const NUMBER_LIFE = 0.62
+const NUMBER_RISE = -74
+const NUMBER_GRAVITY = 128
+const NUMBER_TINT = 0xffe9f0
+const NUMBER_CRIT_TINT = 0xffd166
+
+/**
+ * Enemy health bars.
+ *
+ * Only drawn for an enemy that has actually been hit. Most of a crowd is at
+ * full health at any moment, so hiding those costs nothing to check and saves
+ * the screen from a thousand identical full bars -- which is also the more
+ * readable choice: a visible bar means "this one is worth finishing".
+ *
+ * The atlas frame is 16x4 and every bar is that frame scaled, so all of this
+ * stays inside the one batch.
+ */
+const BAR_FRAME_WIDTH = 16
+const BAR_FRAME_HEIGHT = 4
+const BAR_HEIGHT = 3.5
+/** Bar width as a multiple of the enemy's radius. */
+const BAR_SPAN = 2.1
+/** Gap between the top of the enemy and the bar. */
+const BAR_LIFT = 7
+/* Light enough to read against the floor. At near-black the missing portion
+   of a bar was invisible and the bar carried no information at all. */
+const BAR_TRACK_TINT = 0x53293c
+/** Fill colour by remaining fraction, healthiest first. */
+const BAR_TINTS = [0x5ce6a0, 0xffc74a, 0xf4436c]
 
 /**
  * The arena.
@@ -56,6 +95,18 @@ export class ArenaScene extends Phaser.Scene {
   private enemyFrames = new Int8Array(0)
   private enemyTints = new Int32Array(0)
   private projectileFrames = new Int8Array(0)
+  private barTracks: Phaser.GameObjects.Sprite[] = []
+  private barFills: Phaser.GameObjects.Sprite[] = []
+  private barTints = new Int32Array(0)
+
+  private numbers: {
+    text: Phaser.GameObjects.BitmapText
+    x: number
+    y: number
+    vy: number
+    life: number
+  }[] = []
+  private numberCursor = 0
 
   private accumulator = 0
   private publishTimer = 0
@@ -72,6 +123,7 @@ export class ArenaScene extends Phaser.Scene {
 
   create(): void {
     buildAtlas(this)
+    buildDamageFont(this)
 
     this.cameras.main.setBackgroundColor('#07030d')
     this.drawFloor()
@@ -84,12 +136,35 @@ export class ArenaScene extends Phaser.Scene {
     this.pickupSprites = this.makeSprites(this.world.pickups.capacity, 'material', PICKUP_TINT)
     this.enemySprites = this.makeSprites(this.world.enemies.capacity, 'grunt', 0xffffff)
     this.projectileSprites = this.makeSprites(this.world.projectiles.capacity, 'bullet', 0xffffff)
+    // Added after the crowd and the shots, so a bar is never buried by the
+    // enemy standing in front of the one it belongs to.
+    this.barTracks = this.makeSprites(this.world.enemies.capacity, 'bar', BAR_TRACK_TINT)
+    this.barFills = this.makeSprites(this.world.enemies.capacity, 'bar', BAR_TINTS[0])
+    for (const sprite of this.barTracks) {
+      sprite.setOrigin(0, 0.5)
+    }
+    for (const sprite of this.barFills) {
+      // Anchored left, so scaleX alone is the remaining fraction -- no
+      // repositioning as it empties.
+      sprite.setOrigin(0, 0.5)
+    }
+
     this.enemyFrames = new Int8Array(this.enemySprites.length).fill(-1)
     this.enemyTints = new Int32Array(this.enemySprites.length).fill(-1)
+    this.barTints = new Int32Array(this.enemySprites.length).fill(-1)
     this.projectileFrames = new Int8Array(this.projectileSprites.length).fill(-1)
 
     this.playerSprite = this.add.sprite(this.world.player.x, this.world.player.y, ATLAS_KEY, 'player')
     this.playerSprite.setTint(PLAYER_TINT)
+
+    // Added last, so they draw over everything without needing depth sorting.
+    this.numbers = Array.from({ length: NUMBER_CAPACITY }, () => {
+      const text = this.add.bitmapText(0, 0, FONT_KEY, '', 22)
+      text.setOrigin(0.5)
+      text.visible = false
+      return { text, x: 0, y: 0, vy: 0, life: 0 }
+    })
+    this.numberCursor = 0
 
     const keyboard = this.requireKeyboard()
     this.keys = keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT') as Record<
@@ -151,6 +226,9 @@ export class ArenaScene extends Phaser.Scene {
       }
     }
 
+    this.drainHits()
+    this.stepNumbers(world.pendingLevels > 0 ? 0 : Math.min(delta, MAX_FRAME_MS) / 1000)
+
     if (world.shake > 0) {
       this.cameras.main.shake(140, Math.min(0.012, world.shake * 0.0009))
       world.shake = 0
@@ -196,6 +274,49 @@ export class ArenaScene extends Phaser.Scene {
     this.moveInput.y = y
   }
 
+  /* ---------- damage numbers ---------- */
+
+  private drainHits(): void {
+    const world = this.world
+    for (let i = 0; i < world.hitCount; i++) {
+      const hit = world.hits[i]
+      const slot = this.numbers[this.numberCursor]
+      this.numberCursor = (this.numberCursor + 1) % this.numbers.length
+
+      slot.x = hit.x + (Math.random() - 0.5) * 16
+      slot.y = hit.y - 12
+      slot.vy = NUMBER_RISE
+      slot.life = NUMBER_LIFE
+      // Rounded up, never to zero: a hit that reported "0" would read as a
+      // miss, and there is no such thing here.
+      slot.text.setText(String(Math.max(1, Math.round(hit.amount))))
+      slot.text.setTint(hit.crit ? NUMBER_CRIT_TINT : NUMBER_TINT)
+      slot.text.setScale(hit.crit ? 1.45 : 1)
+      slot.text.visible = true
+    }
+    // Drained. The world appends from zero again on the next step.
+    world.hitCount = 0
+  }
+
+  private stepNumbers(dt: number): void {
+    for (const slot of this.numbers) {
+      if (slot.life <= 0) {
+        continue
+      }
+      slot.life -= dt
+      if (slot.life <= 0) {
+        slot.text.visible = false
+        continue
+      }
+      // Thrown upwards and pulled back, so a cluster of numbers fans out
+      // instead of sliding up in a column.
+      slot.vy += NUMBER_GRAVITY * dt
+      slot.y += slot.vy * dt
+      slot.text.setPosition(slot.x, slot.y)
+      slot.text.alpha = Math.min(1, slot.life / 0.22)
+    }
+  }
+
   /* ---------- view ---------- */
 
   private syncSprites(): void {
@@ -222,6 +343,8 @@ export class ArenaScene extends Phaser.Scene {
       const sprite = this.enemySprites[i]
       if (!enemy.active) {
         sprite.visible = false
+        this.barTracks[i].visible = false
+        this.barFills[i].visible = false
         this.enemyFrames[i] = -1
         continue
       }
@@ -247,6 +370,33 @@ export class ArenaScene extends Phaser.Scene {
       sprite.visible = true
       sprite.x = enemy.x
       sprite.y = enemy.y
+
+      const track = this.barTracks[i]
+      const fill = this.barFills[i]
+      if (enemy.hp >= enemy.maxHp) {
+        track.visible = false
+        fill.visible = false
+        continue
+      }
+
+      const ratio = Math.max(0, enemy.hp / enemy.maxHp)
+      const span = enemy.radius * BAR_SPAN
+      const left = enemy.x - span / 2
+      const top = enemy.y - enemy.radius - BAR_LIFT
+
+      track.visible = true
+      track.setPosition(left, top)
+      track.setScale(span / BAR_FRAME_WIDTH, BAR_HEIGHT / BAR_FRAME_HEIGHT)
+
+      fill.visible = true
+      fill.setPosition(left, top)
+      fill.setScale((span * ratio) / BAR_FRAME_WIDTH, BAR_HEIGHT / BAR_FRAME_HEIGHT)
+
+      const barTint = BAR_TINTS[ratio > 0.6 ? 0 : ratio > 0.3 ? 1 : 2]
+      if (this.barTints[i] !== barTint) {
+        this.barTints[i] = barTint
+        fill.setTint(barTint)
+      }
     }
 
     const shots = world.projectiles.items

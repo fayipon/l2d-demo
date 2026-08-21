@@ -17,6 +17,7 @@ export type SpriteFrame =
   | 'bullet'
   | 'blade'
   | 'material'
+  | 'bar'
 
 export interface EnemyKind {
   id: string

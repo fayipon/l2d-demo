@@ -59,6 +59,36 @@ const BREAK_SECONDS = 3
 const PLAYER_INVULN = 0.55
 const CAPACITY = { enemies: 700, projectiles: 500, pickups: 600 }
 
+/** How far past the player's own edge a drop counts as collected. */
+const PICKUP_REACH = 12
+
+/** How long a drop flies its death burst before the magnet may take it. */
+const PICKUP_SCATTER = 0.18
+
+/** Homing speed at the edge of the magnet, and right on top of the player. */
+const HOMING_MIN = 190
+const HOMING_MAX = 1020
+
+/**
+ * The magnet during the gap between waves.
+ *
+ * Surviving the clock is the win condition, so anything still lying on the
+ * floor when the wave ends was earned -- making the player walk a lap to pick
+ * it up is busywork, and forgetting to is a silent loss. Ten times the radius
+ * covers most of the arena, and the homing speed ramps with distance, so the
+ * floor clears well inside the break.
+ */
+const BREAK_LOOT_MULTIPLIER = 10
+
+/**
+ * Hits the scene may be told about between frames.
+ *
+ * Fixed, and the excess is dropped rather than queued: a frame with more than
+ * this many hits is already showing more damage numbers than anyone can read,
+ * and an unbounded queue would be an allocation on the busiest frames.
+ */
+const HIT_EVENT_CAPACITY = 64
+
 export type RunStatus = 'fighting' | 'break' | 'dead'
 
 export interface Enemy extends Pooled {
@@ -109,6 +139,20 @@ export interface Pickup extends Pooled {
 export interface WeaponSlot {
   kind: number
   cooldown: number
+}
+
+/**
+ * One damage instance, for the floating numbers.
+ *
+ * Simulation output rather than a view concern: the amount actually dealt is
+ * something only the simulation knows, after crit and before the renderer sees
+ * anything. The scene decides how to draw it; the world only reports it.
+ */
+export interface HitEvent {
+  x: number
+  y: number
+  amount: number
+  crit: boolean
 }
 
 export interface PlayerState {
@@ -165,6 +209,21 @@ export class World {
    * allocate.
    */
   shake = 0
+
+  /**
+   * Hits since the scene last drained them.
+   *
+   * Preallocated and reused -- the scene reads the first `hitCount` entries
+   * and zeroes the count. A step can add to this several times before the
+   * renderer looks, because a slow frame runs several steps.
+   */
+  readonly hits: HitEvent[] = Array.from({ length: HIT_EVENT_CAPACITY }, () => ({
+    x: 0,
+    y: 0,
+    amount: 0,
+    crit: false,
+  }))
+  hitCount = 0
 
   /** Public so the HUD can count the gap between waves down, same as it counts
    *  the wave itself. */
@@ -301,6 +360,7 @@ export class World {
     this.kills = 0
     this.elapsed = 0
     this.shake = 0
+    this.hitCount = 0
     this.pendingLevels = 0
     this.offers = []
     this.random = mulberry32(0x9e3779b9)
@@ -770,9 +830,18 @@ export class World {
      * far less often for the same average.
      */
     const crit = stats.critChance > 0 && this.random() < stats.critChance
-    enemy.hp -= crit ? shot.damage * stats.critDamage : shot.damage
+    const dealt = crit ? shot.damage * stats.critDamage : shot.damage
+    enemy.hp -= dealt
     enemy.flash = crit ? 0.12 : 0.07
     enemy.flashCrit = crit
+
+    if (this.hitCount < this.hits.length) {
+      const event = this.hits[this.hitCount++]
+      event.x = enemy.x
+      event.y = enemy.y
+      event.amount = dealt
+      event.crit = crit
+    }
 
     if (stats.lifesteal > 0 && player.hp < stats.maxHp) {
       player.hp = Math.min(stats.maxHp, player.hp + stats.lifesteal)
@@ -820,10 +889,30 @@ export class World {
 
   /* ---------- pickups ---------- */
 
+  /**
+   * Drops: burst, then home, then collect.
+   *
+   * The magnet steers the velocity rather than adding a force to it. A force
+   * leaves the sideways part of the death-burst velocity untouched, so a drop
+   * arrives with momentum across the player rather than into them, sails past,
+   * gets pulled back, and orbits -- which is what made collection feel
+   * approximate. Steering discards that component every step, so a drop moves
+   * at the player and only at the player.
+   *
+   * The arrival test is swept, not a radius check. Near the player the homing
+   * speed is over 1000px/s, which is 17px in a step -- comparable to the reach
+   * itself, so a plain "is it close enough now" test can be straddled by a
+   * single step and miss.
+   */
   private stepPickups(dt: number): void {
     const player = this.player
-    const magnet = BASE_LOOT_RANGE * player.stats.lootRange
+    const magnet =
+      BASE_LOOT_RANGE *
+      player.stats.lootRange *
+      (this.status === 'break' ? BREAK_LOOT_MULTIPLIER : 1)
+    const reach = player.radius + PICKUP_REACH
     const items = this.pickups.items
+
     // Everything here is measured against one point, so there is nothing for a
     // broadphase to do -- one pass over the pool is the whole job.
     for (let i = 0; i < items.length; i++) {
@@ -838,17 +927,20 @@ export class World {
       const dy = player.y - drop.y
       const distance = Math.hypot(dx, dy) || 0.001
 
-      if (distance < player.radius + 8) {
+      if (distance <= reach) {
         this.collect(drop)
         continue
       }
 
-      if (drop.age > 0.18 && distance < magnet) {
-        // Pulls harder the closer it gets, so a drop that is nearly home snaps
-        // in rather than trailing the player around.
-        const pull = 520 * (1 - distance / magnet) + 160
-        drop.vx += (dx / distance) * pull * dt
-        drop.vy += (dy / distance) * pull * dt
+      if (drop.age > PICKUP_SCATTER && distance < magnet) {
+        const closeness = 1 - distance / magnet
+        const speed = HOMING_MIN + (HOMING_MAX - HOMING_MIN) * closeness * closeness
+        if (speed * dt >= distance - reach) {
+          this.collect(drop)
+          continue
+        }
+        drop.vx = (dx / distance) * speed
+        drop.vy = (dy / distance) * speed
       } else {
         // Scatter velocity from the corpse burst, bleeding off.
         drop.vx *= 0.92

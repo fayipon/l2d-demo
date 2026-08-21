@@ -36,6 +36,9 @@ interface ShapeSpec {
   name: SpriteFrame
   width: number
   height: number
+  /** Skips the punched core, for shapes that want to be a flat block of
+   *  colour rather than a lit outline. */
+  solid?: boolean
   draw: (ctx: CanvasRenderingContext2D, w: number, h: number, inset: number) => void
 }
 
@@ -85,6 +88,18 @@ const SHAPES: ShapeSpec[] = [
     height: 14,
     draw: (ctx, w, h, inset) => polygon(ctx, w / 2, h / 2, w / 2 - inset, 4, 0),
   },
+  {
+    // Health bars. Solid and rectangular: it is stretched to whatever width and
+    // height a bar needs, and a rim would stretch with it into a smear.
+    name: 'bar',
+    width: 16,
+    height: 4,
+    solid: true,
+    draw: (ctx, w, h) => {
+      ctx.beginPath()
+      ctx.rect(0, 0, w, h)
+    },
+  },
 ]
 
 export function buildAtlas(scene: Phaser.Scene): void {
@@ -122,12 +137,14 @@ export function buildAtlas(scene: Phaser.Scene): void {
     shape.draw(ctx, shape.width, shape.height, 0)
     ctx.fill()
 
-    // Punched out of the middle rather than drawn over it: drawing a dark core
-    // would tint along with the rim and the shape would stay solid.
-    ctx.globalCompositeOperation = 'destination-out'
-    ctx.globalAlpha = 1 - CORE_ALPHA
-    shape.draw(ctx, shape.width, shape.height, RIM)
-    ctx.fill()
+    if (!shape.solid) {
+      // Punched out of the middle rather than drawn over it: drawing a dark
+      // core would tint along with the rim and the shape would stay solid.
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.globalAlpha = 1 - CORE_ALPHA
+      shape.draw(ctx, shape.width, shape.height, RIM)
+      ctx.fill()
+    }
 
     ctx.restore()
     ctx.globalCompositeOperation = 'source-over'
@@ -152,6 +169,80 @@ export function buildAtlas(scene: Phaser.Scene): void {
   for (const placement of placements) {
     texture.add(placement.name, 0, placement.x, placement.y, placement.width, placement.height)
   }
+}
+
+/* ---------- damage numbers ---------- */
+
+/**
+ * A fixed-width bitmap font of digits, also drawn at boot.
+ *
+ * Damage numbers are the one thing on this screen made of text, and there can
+ * be dozens on screen at once. A Phaser Text object carries its own canvas and
+ * re-renders it whenever the string changes, which at this rate is dozens of
+ * canvas rasterisations a second. A bitmap font is one texture and one batch,
+ * and the glyphs are already on the machine -- so they get baked into a grid
+ * here and handed to Phaser's RetroFont parser, which is exactly the fixed-cell
+ * layout this produces.
+ *
+ * Its own texture rather than a corner of the sprite atlas, because RetroFont
+ * needs a uniform grid and the sprite frames are all different sizes. One
+ * extra batch for all the numbers is a fair price.
+ */
+export const FONT_KEY = 'arena-digits'
+
+const DIGITS = '0123456789'
+/*
+ * The cell is only a little wider than a digit.
+ *
+ * RetroFont is fixed-width, so the cell IS the advance: at 20px a bold digit
+ * is about 12px across and the rest of the cell became a gap, which made every
+ * number read as separated characters rather than one figure.
+ */
+const CELL_WIDTH = 13
+const CELL_HEIGHT = 26
+
+export function buildDamageFont(scene: Phaser.Scene): void {
+  if (scene.cache.bitmapFont.has(FONT_KEY)) {
+    return
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = CELL_WIDTH * DIGITS.length
+  canvas.height = CELL_HEIGHT
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('no 2D context for the damage font')
+  }
+
+  ctx.font = `700 ${CELL_HEIGHT - 6}px "Segoe UI", system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = '#ffffff'
+  for (let i = 0; i < DIGITS.length; i++) {
+    // Centred in its own cell, which is what makes the grid uniform by
+    // construction rather than by hoping the font's metrics cooperate.
+    ctx.fillText(DIGITS[i], i * CELL_WIDTH + CELL_WIDTH / 2, CELL_HEIGHT / 2 + 1)
+  }
+
+  if (!scene.textures.exists(FONT_KEY)) {
+    scene.textures.addCanvas(FONT_KEY, canvas)
+  }
+
+  scene.cache.bitmapFont.add(
+    FONT_KEY,
+    Phaser.GameObjects.RetroFont.Parse(scene, {
+      image: FONT_KEY,
+      'offset.x': 0,
+      'offset.y': 0,
+      width: CELL_WIDTH,
+      height: CELL_HEIGHT,
+      chars: DIGITS,
+      charsPerRow: DIGITS.length,
+      'spacing.x': 0,
+      'spacing.y': 0,
+      lineSpacing: 0,
+    }),
+  )
 }
 
 /* Path helpers. Each leaves a path on the context without filling it, so the
