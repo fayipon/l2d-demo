@@ -9,15 +9,44 @@
     <!--
       The model textures are the largest thing on the page and the last thing
       requested: nothing asks for them until the bundle has booted, React has
-      mounted, and Haru.model3.json has been fetched and parsed. Preloading
-      starts them here instead, in parallel with the bundle.
+      mounted, and a model3.json has been fetched and parsed. This starts them
+      during HTML parse instead, in parallel with the bundle.
 
-      `as="image"` is what makes this safe -- Pixi loads textures through an
-      <img> element, so the preload matches the real request and is reused
-      rather than downloaded twice.
+      Which textures depends on the character the player last selected, which
+      only localStorage knows this early -- hence a script rather than static
+      link tags. `as="image"` is what makes the preload count: Pixi builds
+      textures from an <img>, so the request matches and is reused rather than
+      issued twice.
+
+      The manifest below duplicates what live2d/*/*.model3.json already says. A
+      stale entry costs only the optimisation -- a wrong path 404s in the
+      background and the model still loads its textures normally.
     -->
-    <link rel="preload" as="image" href="/live2d/haru/Haru.2048/texture_00.webp" fetchpriority="high" />
-    <link rel="preload" as="image" href="/live2d/haru/Haru.2048/texture_01.webp" fetchpriority="high" />
+    <script>
+      (function () {
+        var TEXTURES = {
+          haru: ['haru/Haru.2048/texture_00', 'haru/Haru.2048/texture_01'],
+          hiyori: ['hiyori/Hiyori.2048/texture_00', 'hiyori/Hiyori.2048/texture_01'],
+          mao: ['mao/Mao.2048/texture_00'],
+          rice: ['rice/Rice.2048/texture_00', 'rice/Rice.2048/texture_01'],
+        }
+        var id = 'haru'
+        try {
+          id = localStorage.getItem('l2d-demo:selected-character') || id
+        } catch (e) {
+          // Storage blocked; fall back to preloading the default character.
+        }
+        var list = TEXTURES[id] || TEXTURES.haru
+        for (var i = 0; i < list.length; i++) {
+          var link = document.createElement('link')
+          link.rel = 'preload'
+          link.as = 'image'
+          link.href = '%BASE_URL%live2d/' + list[i] + '.webp'
+          link.setAttribute('fetchpriority', 'high')
+          document.head.appendChild(link)
+        }
+      })()
+    </script>
 
     <!--
       Cubism Core is not published on npm and must be defined before any Live2D
@@ -25,6 +54,19 @@
       served from here rather than cubism.live2d.com so it costs no extra DNS
       and TLS handshake, and so an outage there cannot leave the page without a
       character. The file is the SDK's "Redistributable Code".
+
+      DO NOT UPGRADE THIS FILE. It is Core 5, from
+      cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js, and it is
+      pinned to the Cubism Framework that pixi-live2d-display-advanced@1.1.0
+      bundles. Core 6 (in CubismSdkForWeb-5-r.5) loads fine but returns drawable
+      arrays that framework does not read, so every model renders as nothing:
+      getDrawableRenderOrders() comes back undefined inside doDrawModel.
+
+      The practical consequence is a ceiling on models: Core 5 refuses moc3
+      version 6 with "Failed to CubismMoc.create()". A model's moc3 version is
+      the fifth byte of its .moc3 file, and scripts/fetch-models.mjs rejects
+      anything above 5 rather than letting it fail in the browser. Lifting the
+      ceiling means upgrading the library, not the Core.
 
       `defer` keeps it from blocking the parser. Deferred classic scripts run in
       document order before module scripts, so the core is always ready by the

@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Application } from 'pixi.js'
 import { Live2DModel, MotionPreloadStrategy } from 'pixi-live2d-display-advanced/cubism4'
-import { haruConfig, type Live2DModelConfig } from './live2dConfig'
+import { haruHome, type Live2DModelConfig } from './live2dConfig'
 
 export interface Live2DStageHandle {
   /** Play a random voiced tap motion. Returns the caption for the speech bubble. */
@@ -21,7 +21,7 @@ interface Live2DStageProps {
 }
 
 export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(function Live2DStage(
-  { config = haruConfig, muted = false, onLine, onReady },
+  { config = haruHome, muted = false, onLine, onReady },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null)
@@ -46,7 +46,7 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
   useImperativeHandle(ref, () => ({
     speak: () => speakRef.current(),
     setExpression: (index: number) => {
-      void modelRef.current?.expression(config.expressions[index] ?? index)
+      void modelRef.current?.expression(config.expressions[index]?.id ?? index)
     },
   }))
 
@@ -76,18 +76,131 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
 
     let model: Live2DModel | null = null
 
+    /**
+     * Bounding box of the artwork itself, in the model canvas's pixel space.
+     *
+     * Framing on the canvas instead is what put Rice off to one side: a model's
+     * canvas is authored around whatever the artist needed, so its centre is
+     * not the character's centre, and how much empty margin surrounds the art
+     * differs from model to model. Measuring the drawables makes one set of
+     * framing numbers mean the same thing for every model.
+     */
+    let artBounds: { x: number; y: number; width: number; height: number } | null = null
+
+    /**
+     * Opacity below which a drawable is treated as not on screen.
+     *
+     * Not zero: Rice parks spare parts at a hair above transparent, and the
+     * visibility flag still reports them visible. Testing for exactly zero let
+     * a mesh at the far left of the canvas set the bounding box's left edge,
+     * which dragged the measured centre back to the canvas centre and undid the
+     * whole correction. Anything this faint cannot be what the framing is for.
+     */
+    const MIN_OPACITY = 0.05
+
+    const measureArt = (target: Live2DModel, requireVisible: boolean) => {
+      const core = target.internalModel.coreModel as {
+        getDrawableCount(): number
+        getDrawableVertices(index: number): Float32Array
+        getDrawableOpacity(index: number): number
+        getDrawableDynamicFlagIsVisible(index: number): boolean
+      }
+      const { originalWidth, originalHeight } = target.internalModel
+      const ppu = (target.internalModel as unknown as { pixelsPerUnit: number }).pixelsPerUnit
+
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+
+      for (let i = 0; i < core.getDrawableCount(); i++) {
+        // Hidden parts still carry vertices -- an alternate mouth parked off to
+        // the side would drag the box out for nothing.
+        if (requireVisible) {
+          if (!core.getDrawableDynamicFlagIsVisible(i) || core.getDrawableOpacity(i) < MIN_OPACITY) {
+            continue
+          }
+        }
+        const vertices = core.getDrawableVertices(i)
+        for (let v = 0; v < vertices.length; v += 2) {
+          // Same mapping the library uses: model units to canvas pixels, with
+          // y flipped because Cubism's axis points up.
+          const x = vertices[v] * ppu + originalWidth / 2
+          const y = -vertices[v + 1] * ppu + originalHeight / 2
+          if (x < minX) minX = x
+          if (x > maxX) maxX = x
+          if (y < minY) minY = y
+          if (y > maxY) maxY = y
+        }
+      }
+
+      if (!Number.isFinite(minX) || !Number.isFinite(minY) || !(maxX > minX) || !(maxY > minY)) {
+        return null
+      }
+      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+    }
+
+    /**
+     * Runs each frame until the model has posed once and the measurement takes,
+     * then unsubscribes. The frame budget is a backstop: if a model somehow
+     * never reports a visible drawable, measuring every drawable is still far
+     * better than framing on the canvas.
+     */
+    let measureAttempts = 0
+
+    function measureWhenPosed() {
+      if (!model) {
+        return
+      }
+      measureAttempts++
+      const bounds = measureArt(model, true)
+      if (!bounds) {
+        // Give up refining after a second or so and keep the all-drawables box
+        // measured at load; it is close, and retrying forever costs a frame
+        // callback for nothing.
+        if (measureAttempts > 60) {
+          app.ticker.remove(measureWhenPosed)
+        }
+        return
+      }
+      app.ticker.remove(measureWhenPosed)
+      artBounds = bounds
+      layout()
+    }
+
     const layout = () => {
       if (!model) {
         return
       }
       const { width, height } = app.screen
-      // Scale from the model's own height so the framing survives a model swap.
-      const scale = (height * config.heightRatio) / model.internalModel.height
+      const internal = model.internalModel
+      // localTransform is baked into internalModel.width/height; recover it so
+      // canvas pixels can be converted to display pixels.
+      const unitX = internal.width / internal.originalWidth
+      const unitY = internal.height / internal.originalHeight
+      const art = artBounds
+
+      if (!art) {
+        // Fall back to canvas framing if the drawables could not be measured.
+        const scale = (height * config.heightRatio) / internal.height
+        model.scale.set(scale)
+        model.position.set(width * config.position.x, height * config.position.y)
+        return
+      }
+
+      // heightRatio is the artwork's height as a fraction of stage height, so a
+      // value above 1 crops the character deliberately.
+      const scale = (height * config.heightRatio) / (art.height * unitY)
       model.scale.set(scale)
-      model.position.set(width * config.position.x, height * config.position.y)
+
+      // The model's anchor is its canvas centre, so shift by the distance from
+      // that centre to the art's centre to land the character on the mark.
+      const dx = (art.x + art.width / 2 - internal.originalWidth / 2) * unitX * scale
+      const dy = (art.y + art.height / 2 - internal.originalHeight / 2) * unitY * scale
+      model.position.set(width * config.position.x - dx, height * config.position.y - dy)
     }
 
-    const pickLine = () => config.voiceLines[Math.floor(Math.random() * config.voiceLines.length)]
+    const pickLine = () => config.tapLines[Math.floor(Math.random() * config.tapLines.length)]
 
     // Lines can overlap if the character is tapped again mid-sentence, so each
     // one carries a token -- a stale callback must not retract the newer line.
@@ -103,10 +216,11 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
     }
 
     const playLine = (): string | null => {
-      if (!model) {
+      const line = pickLine()
+      // A model with no tap motions declared has nothing to play.
+      if (!model || !line) {
         return null
       }
-      const line = pickLine()
       const token = ++lineSeq
       clearTimeout(lineTimer)
 
@@ -148,7 +262,10 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
 
         model = loaded
         modelRef.current = loaded
-        loaded.anchor.set(config.anchor.x, config.anchor.y)
+        // Fixed at the canvas centre: layout() offsets from there to put the
+        // artwork on its mark, so a configurable anchor would be a second,
+        // conflicting way to say the same thing.
+        loaded.anchor.set(0.5, 0.5)
         loaded.eventMode = 'static'
         loaded.cursor = 'pointer'
 
@@ -159,6 +276,14 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
         })
 
         app.stage.addChild(loaded)
+        // Two-step on purpose. The drawable visibility flags are only
+        // meaningful once the model has posed, and it has not ticked yet -- so
+        // measure every drawable now to get framing that is right immediately,
+        // and let the ticker refine it to visible-only once a frame has run.
+        // Measuring only on the ticker would leave the first paint mis-framed,
+        // and on a backgrounded tab rAF never fires, so it could stay that way.
+        artBounds = measureArt(loaded, false)
+        app.ticker.add(measureWhenPosed)
         layout()
         onReadyRef.current?.()
       } catch (e) {
@@ -177,6 +302,9 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
       disposed = true
       clearTimeout(lineTimer)
       speakRef.current = () => null
+      // Harmless if it already unsubscribed itself, and required if the model
+      // was torn down before it ever posed.
+      app.ticker.remove(measureWhenPosed)
       resizeObserver.disconnect()
       modelRef.current = null
       model?.destroy()

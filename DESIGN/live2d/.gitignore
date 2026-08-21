@@ -1,0 +1,5 @@
+# Texture sources for project01/scripts/optimize-assets.mjs. They come straight
+# from Live2D's sample repository and are re-fetchable with `npm run
+# models:fetch`, so ~12 MB of them is not worth carrying in git history. The
+# WebP the app actually serves is committed under project01/public/live2d.
+*/*/*.png

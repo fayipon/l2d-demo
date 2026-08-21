@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "assets:optimize": "node scripts/optimize-assets.mjs",
+    "models:fetch": "node scripts/fetch-models.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
