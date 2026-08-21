@@ -11,7 +11,8 @@
     "models:fetch": "node scripts/fetch-models.mjs",
     "shot": "node scripts/screenshot.mjs",
     "preview": "vite preview",
-    "bench": "node scripts/bench.mjs"
+    "bench": "node scripts/bench.mjs",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@pixi/sound": "^5.2.3",

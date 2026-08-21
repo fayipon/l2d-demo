@@ -80,14 +80,42 @@ const CELL_SIZE = 64
 const SPAWN_MARGIN = 46
 
 /**
- * How far from the player an enemy arrives.
+ * The band around the player an enemy arrives in.
  *
- * Past the corner of a 1280x720 window, which is 734 away, so nothing is
- * watched appearing. The simulation has no business knowing the viewport --
- * what it needs is "far enough that the player does not see it happen", and
- * the window is only where the number came from.
+ * Inside the window, deliberately, and that is the whole point of the arrival
+ * state below: an enemy that materialises out of sight is not being announced,
+ * it is just walking in from off screen the way it always did.
+ *
+ * The largest circle that fits inside a 1280x720 window has a radius of 360,
+ * and the far end is set short of that: at 355 an arrival directly above the
+ * player lands five pixels from the top of the screen, half under the HUD.
+ * Twenty pixels of clearance costs nothing and puts the whole ring in view.
+ *
+ * The near end is set past the shortest weapon in the game (150) with room to
+ * spare, so an arrival is something to shoot rather than something already
+ * touching you.
+ *
+ * The simulation has no business knowing the viewport, and it does not: what
+ * it needs is "close enough that the player watches it happen", and the window
+ * is only where the number came from. When vision becomes a stat this band
+ * ties to the vision radius instead, which is the same idea with the number
+ * made a variable.
  */
-const SPAWN_DISTANCE = 780
+const SPAWN_NEAR = 280
+const SPAWN_FAR = 340
+
+/**
+ * How long an enemy spends arriving.
+ *
+ * During it the enemy does not move, does not collide, cannot be hit, cannot
+ * be targeted, and cannot hurt the player -- all five, or the warning is not
+ * one. Damageable while arriving and every spawn point becomes a farm;
+ * harmful while arriving and it is an ambush rather than a telegraph.
+ *
+ * Long enough to read as a warning at a glance, short enough that a wave does
+ * not spend its time waiting to begin.
+ */
+export const ARRIVAL_SECONDS = 0.6
 
 /**
  * How far an enemy may fall behind before it is recycled.
@@ -172,6 +200,13 @@ export interface Enemy extends Pooled {
   flash: number
   /** Whether the current flash is a crit, which the scene draws differently. */
   flashCrit: boolean
+  /**
+   * Seconds left of the arrival telegraph; zero once it is a real enemy.
+   *
+   * While above zero this one is inert in every direction -- see
+   * ARRIVAL_SECONDS. The scene reads it to blink and fade the sprite up.
+   */
+  arriving: number
   kind: number
 }
 
@@ -340,6 +375,7 @@ export class World {
       mass: 1,
       flash: 0,
       flashCrit: false,
+      arriving: 0,
       kind: 0,
     }))
 
@@ -764,6 +800,7 @@ export class World {
     enemy.mass = kind.mass
     enemy.flash = 0
     enemy.flashCrit = false
+    enemy.arriving = ARRIVAL_SECONDS
   }
 
   /**
@@ -786,8 +823,9 @@ export class World {
     const player = this.player
     for (let attempt = 0; attempt < 12; attempt++) {
       const angle = this.random() * Math.PI * 2
-      const x = player.x + Math.cos(angle) * SPAWN_DISTANCE
-      const y = player.y + Math.sin(angle) * SPAWN_DISTANCE
+      const distance = SPAWN_NEAR + this.random() * (SPAWN_FAR - SPAWN_NEAR)
+      const x = player.x + Math.cos(angle) * distance
+      const y = player.y + Math.sin(angle) * distance
       if (
         x >= SPAWN_MARGIN &&
         x <= WORLD_WIDTH - SPAWN_MARGIN &&
@@ -798,7 +836,7 @@ export class World {
       }
     }
     return {
-      x: clamp(player.x + SPAWN_DISTANCE, SPAWN_MARGIN, WORLD_WIDTH - SPAWN_MARGIN),
+      x: clamp(player.x + SPAWN_FAR, SPAWN_MARGIN, WORLD_WIDTH - SPAWN_MARGIN),
       y: clamp(player.y, SPAWN_MARGIN, WORLD_HEIGHT - SPAWN_MARGIN),
     }
   }
@@ -811,6 +849,8 @@ export class World {
 
     for (let i = 0; i < items.length; i++) {
       const enemy = items[i]
+      // Arriving enemies are emphatically not skipped here: this is the pass
+      // that runs their countdown down, further below.
       if (!enemy.active) {
         continue
       }
@@ -831,6 +871,13 @@ export class World {
         continue
       }
 
+      // Still arriving: it holds its position and does nothing at all. The
+      // countdown is the only thing about it that moves.
+      if (enemy.arriving > 0) {
+        enemy.arriving -= dt
+        continue
+      }
+
       if (distance > 0.001) {
         const step = (enemy.speed * dt) / distance
         enemy.x += dx * step
@@ -844,12 +891,21 @@ export class World {
     }
   }
 
+  /**
+   * Rebuilt from scratch every step -- see SpatialGrid.
+   *
+   * An enemy still arriving is left out of it, which is most of the arrival
+   * state in one line: the grid is what separation and the projectiles both
+   * query, so a body that is not in it cannot be pushed, cannot push, and
+   * cannot be hit. Only contact damage tests positions directly, and it checks
+   * the countdown itself.
+   */
   private rebuildGrid(): void {
     this.grid.clear()
     const items = this.enemies.items
     for (let i = 0; i < items.length; i++) {
       const enemy = items[i]
-      if (enemy.active) {
+      if (enemy.active && enemy.arriving <= 0) {
         this.grid.insert(i, enemy.x, enemy.y)
       }
     }
@@ -922,7 +978,9 @@ export class World {
     const items = this.enemies.items
     for (let i = 0; i < items.length; i++) {
       const enemy = items[i]
-      if (!enemy.active) {
+      // Arriving enemies are checked here rather than through the grid,
+      // because this is the one pass that reads positions directly.
+      if (!enemy.active || enemy.arriving > 0) {
         continue
       }
       const dx = player.x - enemy.x
@@ -997,7 +1055,9 @@ export class World {
 
     for (let i = 0; i < items.length; i++) {
       const enemy = items[i]
-      if (!enemy.active) {
+      // Not yet a target: an arriving enemy cannot be hit, so aiming a volley
+      // at one would be a volley thrown away.
+      if (!enemy.active || enemy.arriving > 0) {
         continue
       }
       const dx = enemy.x - x
@@ -1120,7 +1180,9 @@ export class World {
 
     for (let i = 0; i < items.length; i++) {
       const enemy = items[i]
-      if (!enemy.active) {
+      // Not yet a target: an arriving enemy cannot be hit, so aiming a volley
+      // at one would be a volley thrown away.
+      if (!enemy.active || enemy.arriving > 0) {
         continue
       }
       const dx = enemy.x - x

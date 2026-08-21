@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { STEP_SECONDS, WORLD_HEIGHT, WORLD_WIDTH, World } from '../sim/world'
+import { ARRIVAL_SECONDS, STEP_SECONDS, WORLD_HEIGHT, WORLD_WIDTH, World } from '../sim/world'
 import { ENEMY_KINDS, WEAPONS } from '../data/content'
 import { ATLAS_KEY, FONT_KEY, buildAtlas, buildDamageFont } from '../view/atlas'
 import { consumeRestart, consumeUpgrade, drainShopCommands, publishRun } from '../runStore'
@@ -94,6 +94,23 @@ const BAR_TINTS = [0x5ce6a0, 0xffc74a, 0xf4436c]
  * rest, and costs exactly what it did before.
  */
 const CULL_MARGIN = 48
+
+/**
+ * The arrival telegraph.
+ *
+ * An enemy fades up over its arrival window while blinking, which is two
+ * signals doing different jobs: the fade says "something is forming here" and
+ * reads even in a crowd, and the blink says "not yet" -- a shape at a steady
+ * low alpha just looks like a distant enemy.
+ *
+ * The blink is a square wave rather than a sine because a sine spends most of
+ * its time in the middle, which is exactly where it stops looking like a
+ * blink.
+ */
+const ARRIVAL_BLINKS_PER_SECOND = 7
+/** How far down the blink pulls the fade, rather than to nothing: a shape that
+ *  vanishes outright is easy to miss between two frames. */
+const ARRIVAL_BLINK_FLOOR = 0.3
 
 /**
  * The arena.
@@ -479,6 +496,19 @@ export class ArenaScene extends Phaser.Scene {
       sprite.visible = true
       sprite.x = enemy.x
       sprite.y = enemy.y
+
+      /* Arriving: fading up and blinking. Compared before assigning because
+         alpha is the same value for all seven hundred of them almost all of
+         the time, and this loop is the busiest in the scene. */
+      let alpha = 1
+      if (enemy.arriving > 0) {
+        const done = 1 - enemy.arriving / ARRIVAL_SECONDS
+        const lit = Math.floor(enemy.arriving * ARRIVAL_BLINKS_PER_SECOND * 2) % 2 === 0
+        alpha = done * (lit ? 1 : ARRIVAL_BLINK_FLOOR)
+      }
+      if (sprite.alpha !== alpha) {
+        sprite.alpha = alpha
+      }
 
       const track = this.barTracks[i]
       const fill = this.barFills[i]
