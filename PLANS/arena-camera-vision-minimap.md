@@ -42,6 +42,19 @@ outside, and a minimap shows what the viewport no longer can.
   - The recycling was checked by holding D for a full crossing with it
     disabled: the pool sits at 661-700 with four enemies near the player.
     With it, 697 drains to 52.
+- **Step 2 done** (`1211c66`). The arrival state, and `scripts/verify.mjs` —
+  `npm run verify` — which pauses the scene and steps the simulation by hand so
+  a rule about 0.6 seconds is not established by watching a frame rate. Seven
+  checks, each confirmed to fail with the guard it covers removed.
+  - The spawn ring **moved inside the window**, 780px to 280-340px. At 780 it
+    sat past the 734px corner of the view, so the telegraph happened where
+    nobody could see it and the enemy still walked in from off screen exactly
+    as before. The warning existed only in the simulation.
+  - Three of the checks passed for the wrong reason first: auto-fire never
+    shoots at an arriving enemy so nothing tested whether a bullet could land;
+    a killed enemy's pool slot was reused by a fresh spawn with the same kind
+    and full health, which read as "it survived"; and the grid assertion ran
+    after the enemy was already dead.
 - **Correction to a number quoted below**: the 0.45ms simulation step is not
   reproducible, and neither is the 0.999ms the harness first recorded. Spread
   on this machine is about ±0.4ms, so only interleaved A/B in one sitting
