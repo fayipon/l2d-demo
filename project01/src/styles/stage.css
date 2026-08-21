@@ -1,0 +1,161 @@
+/*
+ * The shell every screen is drawn into: a fixed 16:9 stage letterboxed into
+ * whatever the viewport is. Sizing uses container query units against the
+ * stage, so a whole screen scales as one piece instead of needing breakpoints.
+ *
+ * Anything here is shared by more than one screen. Screen-specific rules live
+ * in that screen's own stylesheet.
+ */
+.stage-root {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #05020a;
+  overflow: hidden;
+}
+
+.stage-frame {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  overflow: hidden;
+  container-type: size;
+  font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  color: #fff;
+}
+
+.stage-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  /* The stage is painted before the image decodes; matching the artwork's
+     darkest tone keeps that first frame from flashing a lighter panel. */
+  background: #0a0308;
+}
+
+.live2d-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.live2d-error {
+  position: absolute;
+  left: 4cqw;
+  bottom: 6cqh;
+  max-width: 40cqw;
+  padding: 2cqh;
+  border-radius: 1cqh;
+  background: rgba(180, 30, 60, 0.85);
+  font-size: 2.2cqh;
+}
+
+/* The HUD covers the stage so it can be positioned freely, which would
+   otherwise swallow taps meant for the model underneath -- hence the
+   pointer-events dance: the layer is transparent to input, its buttons are
+   not. */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Screens fade in so a route change reads as a transition rather than a
+     flash of new furniture. */
+  animation: hud-in 0.28s ease both;
+}
+
+.hud button {
+  pointer-events: auto;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background-color: transparent;
+}
+
+.hud svg {
+  width: 1em;
+  height: 1em;
+}
+
+@keyframes hud-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.4cqh);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud {
+    animation: none;
+  }
+}
+
+/* ---------- shared panel look ---------- */
+/* Near-black glass with a hairline edge -- the mock has no coloured chrome
+   anywhere except the menu diamonds and the START frame. */
+.panel {
+  background: rgba(8, 6, 12, 0.82);
+  border: 0.22cqh solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0.5cqh 1.6cqh rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(0.6cqh);
+}
+
+/* ---------- mute ---------- */
+/* Not in the mock, but the character is voiced, so the toggle stays -- kept
+   small and dark so it reads as chrome rather than part of the layout. */
+.round-btn {
+  position: absolute;
+  right: 1.4cqw;
+  bottom: 3cqh;
+  width: 6cqh;
+  height: 6cqh;
+  border-radius: 50%;
+  font-size: 3cqh;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.round-btn:hover {
+  color: #fff;
+}
+
+/* ---------- speech bubble ---------- */
+/* Sits in the open space to the upper right of the character's head; the tail
+   hangs off the bottom left so it points back at her. */
+.speech-bubble {
+  position: absolute;
+  left: 36cqw;
+  top: 15cqh;
+  max-width: 21cqw;
+  padding: 1.6cqh 1.8cqw;
+  border-radius: 2.4cqh;
+  background: rgba(255, 255, 255, 0.94);
+  color: #200a16;
+  font-size: 2.4cqh;
+  font-weight: 700;
+  text-align: left;
+  box-shadow: 0 0.6cqh 2cqh rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(1.2cqh) scale(0.96);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+}
+
+.speech-bubble.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  left: 2cqw;
+  bottom: -1.6cqh;
+  border-width: 1.8cqh 1.4cqh 0 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.94) transparent transparent transparent;
+}

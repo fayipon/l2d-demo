@@ -18,6 +18,14 @@ export type IconName =
   | 'soundOn'
   | 'soundOff'
   | 'pencil'
+  | 'back'
+  | 'star'
+  | 'chat'
+  | 'face'
+  | 'lock'
+  | 'moon'
+  | 'burst'
+  | 'shield'
 
 const PATHS: Record<IconName, ReactElement> = {
   book: (
@@ -98,6 +106,46 @@ const PATHS: Record<IconName, ReactElement> = {
     </>
   ),
   pencil: <path d="m4.8 19.2 3.5-.8 10-10a1.9 1.9 0 0 0-2.7-2.7l-10 10-.8 3.5Z" />,
+  back: <path d="M14.6 5.4 8 12l6.6 6.6" />,
+  lock: (
+    <>
+      <rect x="5" y="10.4" width="14" height="9.4" rx="1.8" />
+      <path d="M8.2 10.4V7.8a3.8 3.8 0 0 1 7.6 0v2.6" />
+    </>
+  ),
+  moon: <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4Z" />,
+  burst: (
+    <>
+      <path d="m12 2.8 2.3 5.1 5.1 2.3-5.1 2.3-2.3 5.1-2.3-5.1L4.6 10.2l5.1-2.3L12 2.8Z" />
+      <path d="M18.4 16.6l.9 2 2 .9-2 .9-.9 2-.9-2-2-.9 2-.9.9-2Z" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3.2 19 5.8v5.6c0 4-2.8 7.5-7 9.4-4.2-1.9-7-5.4-7-9.4V5.8l7-2.6Z" />
+      <path d="m9 12 2.2 2.2L15.4 10" />
+    </>
+  ),
+  star: (
+    <path
+      d="m12 3.6 2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 17l-5.3 2.8 1.1-5.9L3.5 9.8l5.9-.8L12 3.6Z"
+      fill="currentColor"
+      stroke="none"
+    />
+  ),
+  chat: (
+    <>
+      <path d="M20.4 12.6c0 3.7-3.8 6.6-8.4 6.6-1 0-2-.1-2.9-.4L4.2 20.4l1.3-3.7c-1.3-1.2-2-2.7-2-4.4 0-3.7 3.8-6.7 8.5-6.7s8.4 3 8.4 6.7Z" />
+      <path d="M8.6 12.4h.1M12 12.4h.1M15.4 12.4h.1" />
+    </>
+  ),
+  face: (
+    <>
+      <circle cx="12" cy="12" r="8.4" />
+      <path d="M9 10.2h.1M15 10.2h.1" />
+      <path d="M8.8 14.4a4 4 0 0 0 6.4 0" />
+    </>
+  ),
 }
 
 interface IconProps {

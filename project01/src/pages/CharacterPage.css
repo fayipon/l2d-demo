@@ -1,0 +1,454 @@
+/*
+ * Character screen. The stage shell, the mute button and the speech bubble come
+ * from styles/stage.css; everything here is specific to this screen.
+ *
+ * Layout across the 16:9 frame: roster strip pinned left, model in the middle,
+ * detail panel right, expression strip and TALK along the bottom.
+ */
+
+/* ---------- back ---------- */
+.back-btn {
+  position: absolute;
+  top: 2.6cqh;
+  left: 1.4cqw;
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  padding: 1cqh 1.4cqw 1cqh 1cqw;
+  border-radius: 4cqh;
+  font-size: 2.2cqh;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  transition: background-color 0.15s ease;
+}
+
+.back-btn:hover {
+  background-color: rgba(40, 30, 48, 0.9);
+  color: #fff;
+}
+
+.back-btn svg {
+  font-size: 2.6cqh;
+}
+
+/* ---------- roster ---------- */
+.roster {
+  position: absolute;
+  top: 13cqh;
+  left: 1.4cqw;
+  width: 9.5cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 1cqh;
+}
+
+.roster-title {
+  font-size: 1.8cqh;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 0.2cqh 0.6cqh rgba(0, 0, 0, 0.9);
+}
+
+.roster-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3cqh;
+  padding: 1.2cqh 0.4cqw;
+  border-radius: 1.2cqh;
+  color: rgba(255, 255, 255, 0.85);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.roster-slot:hover {
+  transform: translateX(0.4cqw);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+
+.roster-slot.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 2cqh color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.roster-portrait {
+  display: grid;
+  place-items: center;
+  width: 5.4cqh;
+  height: 5.4cqh;
+  border-radius: 50%;
+  font-size: 3cqh;
+  color: var(--accent);
+  border: 0.2cqh solid color-mix(in srgb, var(--accent) 60%, transparent);
+  background: radial-gradient(100% 100% at 50% 0%, color-mix(in srgb, var(--accent) 22%, #07030b), #07030b 80%);
+}
+
+.roster-name {
+  font-size: 1.7cqh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.roster-lv {
+  font-size: 1.4cqh;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ---------- detail panel ---------- */
+.char-panel {
+  position: absolute;
+  top: 2.6cqh;
+  right: 1.4cqw;
+  bottom: 2.6cqh;
+  width: 33cqw;
+  padding: 2.2cqh 1.8cqw;
+  border-radius: 1.6cqh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4cqh;
+  /* The panel sits over the painted castle, so it leans darker than the home
+     screen's chrome to keep small text legible. */
+  background: rgba(6, 4, 10, 0.88);
+  pointer-events: auto;
+}
+
+.char-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8cqh;
+}
+
+.char-rarity {
+  display: flex;
+  gap: 0.4cqw;
+  color: #ffc74a;
+  font-size: 2.4cqh;
+}
+
+.char-name {
+  margin: 0;
+  font-size: 5cqh;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
+.char-title {
+  margin: 0;
+  font-size: 2.2cqh;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+.char-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8cqw;
+}
+
+.char-chip {
+  padding: 0.5cqh 0.9cqw;
+  border-radius: 3cqh;
+  border: 0.18cqh solid rgba(255, 255, 255, 0.22);
+  font-size: 1.7cqh;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.char-chip-element {
+  border-color: rgba(160, 92, 255, 0.6);
+  color: #c8aaff;
+}
+
+/* ---------- tabs ---------- */
+.tab-row {
+  display: flex;
+  gap: 0.6cqw;
+  border-bottom: 0.18cqh solid rgba(255, 255, 255, 0.14);
+}
+
+.tab {
+  padding: 0.9cqh 1.4cqw;
+  font-size: 2cqh;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+  border-bottom: 0.3cqh solid transparent;
+  /* The underline sits on the row's own border, so it must overhang by exactly
+     that border width or the active tab appears to float above the line. */
+  margin-bottom: -0.18cqh;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tab.is-active {
+  color: #fff;
+  border-bottom-color: var(--accent);
+}
+
+/* Long skill text can outrun the panel; scroll the body rather than let the
+   panel grow past the stage. */
+.tab-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+/* ---------- stats ---------- */
+/* Each stat is a dt/dd pair plus a bar. The grid keeps label, number and bar
+   aligned across rows without wrapping the definition list in extra elements. */
+.char-stats {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1cqh;
+}
+
+.char-stat {
+  display: grid;
+  grid-template-columns: 6cqw 1fr;
+  align-items: baseline;
+  column-gap: 1cqw;
+  row-gap: 0.4cqh;
+  font-size: 2cqh;
+}
+
+.char-stat dt {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.char-stat dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.char-stat-bar {
+  grid-column: 1 / -1;
+  height: 0.9cqh;
+  border-radius: 1cqh;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.char-stat-fill {
+  height: 100%;
+  border-radius: 1cqh;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #fff));
+  box-shadow: 0 0 0.9cqh color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.char-bio {
+  margin: 1.6cqh 0 0;
+  font-size: 1.9cqh;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.78);
+  border-top: 0.18cqh solid rgba(255, 255, 255, 0.14);
+  padding-top: 1.2cqh;
+}
+
+/* ---------- skills ---------- */
+.skill-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2cqh;
+}
+
+.skill {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9cqw;
+  padding: 1.2cqh 1cqw;
+  border-radius: 1.2cqh;
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.16cqh solid rgba(255, 255, 255, 0.1);
+}
+
+.skill-icon {
+  display: grid;
+  place-items: center;
+  width: 6cqh;
+  height: 6cqh;
+  border-radius: 1cqh;
+  font-size: 3.2cqh;
+  border: 0.2cqh solid var(--skill-tone);
+  color: var(--skill-tone);
+  background: radial-gradient(120% 120% at 50% 10%, var(--skill-deep), #07030b 85%);
+  box-shadow: inset 0 0 1.6cqh rgba(0, 0, 0, 0.5);
+}
+
+.skill-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4cqh;
+  min-width: 0;
+}
+
+.skill-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6cqw;
+  flex-wrap: wrap;
+}
+
+.skill-name {
+  font-size: 2.2cqh;
+  font-weight: 700;
+}
+
+.skill-kind {
+  padding: 0.25cqh 0.7cqw;
+  border-radius: 2cqh;
+  font-size: 1.5cqh;
+  font-weight: 700;
+  color: var(--skill-tone);
+  border: 0.16cqh solid var(--skill-tone);
+}
+
+.skill-lv {
+  margin-left: auto;
+  font-size: 1.6cqh;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.skill-desc {
+  margin: 0;
+  font-size: 1.75cqh;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.skill-cd {
+  font-size: 1.5cqh;
+  color: #ffc74a;
+}
+
+/* One variable pair per skill class, set on whichever element carries the tone
+   so both the badge and the icon tile pick it up. */
+.tone-normal {
+  --skill-tone: #d8d3e4;
+  --skill-deep: #241f30;
+}
+
+.tone-skill {
+  --skill-tone: #a05cff;
+  --skill-deep: #200c46;
+}
+
+.tone-burst {
+  --skill-tone: #ff2b3d;
+  --skill-deep: #4a0313;
+}
+
+.tone-passive {
+  --skill-tone: #24e07d;
+  --skill-deep: #032a1a;
+}
+
+/* ---------- bottom actions ---------- */
+.char-actions {
+  position: absolute;
+  left: 12.5cqw;
+  right: 36cqw;
+  bottom: 4cqh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.2cqh;
+}
+
+/* Expression labels can be words rather than indices, so buttons size to their
+   text and wrap -- a fixed-width row would run under the detail panel. */
+.expr-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5cqw 0.4cqw;
+}
+
+.expr-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5cqw;
+  margin-right: 0.3cqw;
+  font-size: 1.9cqh;
+  color: rgba(255, 255, 255, 0.72);
+  text-shadow: 0 0.2cqh 0.6cqh rgba(0, 0, 0, 0.9);
+}
+
+.expr-label svg {
+  font-size: 2.4cqh;
+}
+
+.expr-btn {
+  min-width: 4.8cqh;
+  height: 4.8cqh;
+  padding: 0 0.7cqw;
+  border-radius: 1cqh;
+  font-size: 1.7cqh;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.75);
+  transition: color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.expr-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.expr-btn.is-active {
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 1.6cqh color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* ---------- talk ---------- */
+.talk-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.7cqw;
+  padding: 1.3cqh 1.6cqw;
+  border-radius: 1cqh;
+  border: 0.24cqh solid rgba(255, 60, 160, 0.9);
+  background: linear-gradient(180deg, rgba(70, 6, 38, 0.55), rgba(16, 2, 12, 0.65));
+  box-shadow:
+    0 0 2cqh rgba(255, 45, 150, 0.45),
+    inset 0 0 2.4cqh rgba(255, 45, 150, 0.22);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.talk-btn:hover {
+  transform: translateY(-0.4cqh);
+  box-shadow:
+    0 0 3.4cqh rgba(255, 45, 150, 0.7),
+    inset 0 0 3cqh rgba(255, 45, 150, 0.35);
+}
+
+.talk-btn svg {
+  font-size: 2.8cqh;
+}
+
+.talk-en {
+  font-size: 2.4cqh;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 1.6cqh rgba(255, 45, 160, 0.9);
+}
+
+.talk-sub {
+  font-size: 1.7cqh;
+  color: #ffdcef;
+  letter-spacing: 0.16em;
+}
