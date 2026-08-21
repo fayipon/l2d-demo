@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "assets:optimize": "node scripts/optimize-assets.mjs",
     "models:fetch": "node scripts/fetch-models.mjs",
+    "shot": "node scripts/screenshot.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "oxlint": "^1.75.0",
+    "puppeteer-core": "^25.8.0",
     "sharp": "^0.35.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
