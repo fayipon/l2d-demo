@@ -6,20 +6,24 @@
 
 /* ---------- diamond menu ---------- */
 /*
- * A tile is a square of side 15cqw rotated 45deg, so its half-diagonal is
- * 15 / sqrt(2) = 10.61cqw. Neighbouring tiles share an edge when their centres
- * differ by exactly the half-diagonal in both axes; adding 1.2cqw on top opens
- * a uniform 1.7cqw gap between the parallel edges.
+ * A tile is a square of side 13.5cqw rotated 45deg, so its half-diagonal is
+ * 13.5 / sqrt(2) = 9.546cqw. Neighbouring tiles share an edge when their
+ * centres differ by exactly the half-diagonal in both axes; adding 1.08cqw on
+ * top opens a uniform 1.53cqw gap between the parallel edges.
  *
  * `left` is a percentage of stage width and `top` of stage height, and the
  * stage is 16:9 -- so the same physical distance is 1.7778x larger measured in
- * cqh. Every vertical step below is therefore (10.61 + 1.2) * 16 / 9 = 20.99.
+ * cqh. Every vertical step below is therefore 10.626 * 16 / 9 = 18.891.
  * Getting that conversion wrong is what made the tiles look skewed before.
+ *
+ * Positions are derived from the cluster's own centre (73.5%, 51.5%) rather
+ * than from one corner tile, so resizing it keeps it where it is instead of
+ * walking it across the screen.
  */
 .menu-cluster {
   position: absolute;
   inset: 0;
-  --tile-side: 15cqw;
+  --tile-side: 13.5cqw;
 }
 
 /*
@@ -142,18 +146,18 @@ time               «ü©w©R¥O°õ¦檺®ɶ¡¡C
 }
 
 .tile-icon {
-  font-size: 6cqh;
+  font-size: 5.4cqh;
   stroke-width: 1.4;
 }
 
 .tile-en {
-  font-size: 3.4cqh;
+  font-size: 3.1cqh;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
 .tile-sub {
-  font-size: 1.9cqh;
+  font-size: 1.75cqh;
   color: var(--tone-text);
 }
 
@@ -180,7 +184,7 @@ time               «ü©w©R¥O°õ¦檺®ɶ¡¡C
 /* STORY sits one row above the midpoint of the other two. */
 .tile-story {
   left: 73.5%;
-  top: 41%;
+  top: 42.05%;
   --tone: #7f2ce4;
   --tone-hot: #f3c2ff;
   --tone-deep: #2a0a58;
@@ -190,8 +194,8 @@ time               «ü©w©R¥O°õ¦檺®ɶ¡¡C
 }
 
 .tile-character {
-  left: 61.69%;
-  top: 61.99%;
+  left: 62.874%;
+  top: 60.95%;
   --tone: #f4436c;
   --tone-hot: #ffd8e2;
   --tone-deep: #520616;
@@ -201,8 +205,8 @@ time               «ü©w©R¥O°õ¦檺®ɶ¡¡C
 }
 
 .tile-achievement {
-  left: 85.31%;
-  top: 61.99%;
+  left: 84.126%;
+  top: 60.95%;
   --tone: #0ddca6;
   --tone-hot: #c8fff2;
   --tone-deep: #04382a;
