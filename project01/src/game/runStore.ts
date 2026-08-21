@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
-import type { UpgradeId } from './data/content'
+import type { PlayerStats, UpgradeId } from './data/content'
+import { BASE_STATS } from './data/content'
 import type { RunStatus } from './sim/world'
 
 /**
@@ -34,9 +35,9 @@ export interface RunSnapshot {
    *  choice overlay is up. */
   pendingLevels: number
   offers: UpgradeId[]
-  damage: number
-  attackSpeed: number
-  bonusCount: number
+  /** A copy, not the live block -- the HUD compares snapshots by identity and
+   *  would never see a stat that was mutated in place. */
+  stats: PlayerStats
 }
 
 const EMPTY: RunSnapshot = {
@@ -54,9 +55,7 @@ const EMPTY: RunSnapshot = {
   fps: 0,
   pendingLevels: 0,
   offers: [],
-  damage: 1,
-  attackSpeed: 1,
-  bonusCount: 0,
+  stats: { ...BASE_STATS },
 }
 
 let snapshot: RunSnapshot = EMPTY

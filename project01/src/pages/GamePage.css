@@ -331,30 +331,70 @@
 }
 
 /* ---------- run stats ---------- */
-/* Sits above the vitals: what the upgrades have actually bought, so a pick
-   reads as a change rather than as a card that vanished. */
+/*
+ * What the run has bought so far. Only stats that have moved appear, so the
+ * strip starts empty and grows into a record of the build -- thirteen rows of
+ * x1.00 would say nothing at all.
+ *
+ * Colour is by group, not by stat: three tones are told apart at a glance,
+ * thirteen are just noise.
+ */
 .stat-strip {
   position: absolute;
   left: 1.2rem;
   bottom: 6.4rem;
   display: flex;
-  gap: 0.4rem;
+  flex-wrap: wrap-reverse;
+  align-content: flex-end;
+  gap: 0.3rem;
+  width: min(30rem, 42vw);
 }
 
 .stat {
-  padding: 0.3rem 0.6rem;
-  border-radius: 0.35rem;
-  background: rgba(8, 6, 12, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.24rem 0.5rem;
+  border-radius: 0.3rem;
+  background: rgba(8, 6, 12, 0.75);
+  border: 1px solid var(--group-edge);
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.5);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .stat b {
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--group-hot);
+}
+
+.stat-icon {
+  font-size: 0.9rem;
+  color: var(--group-hot);
+}
+
+/* ---------- groups ---------- */
+.group-offence {
+  --group-edge: rgba(244, 67, 108, 0.45);
+  --group-hot: #ff7a9c;
+  --group-top: rgba(56, 10, 26, 0.95);
+  --group-glow: rgba(244, 67, 108, 0.28);
+}
+
+.group-defence {
+  --group-edge: rgba(79, 230, 192, 0.45);
+  --group-hot: #6ff0d0;
+  --group-top: rgba(6, 44, 38, 0.95);
+  --group-glow: rgba(79, 230, 192, 0.28);
+}
+
+.group-utility {
+  --group-edge: rgba(79, 195, 255, 0.45);
+  --group-hot: #7bd2ff;
+  --group-top: rgba(10, 34, 58, 0.95);
+  --group-glow: rgba(79, 195, 255, 0.28);
 }
 
 /* ---------- level up ---------- */
@@ -401,8 +441,11 @@
   color: rgba(255, 255, 255, 0.65);
 }
 
+/* Stretched, so a card whose description wraps to two lines does not stand
+   taller than the others and knock the row out of alignment. */
 .levelup-cards {
   display: flex;
+  align-items: stretch;
   gap: 1rem;
 }
 
@@ -413,41 +456,18 @@
   flex-direction: column;
   align-items: center;
   gap: 0.45rem;
-  padding: 1.8rem 1rem 1.4rem;
+  padding: 1.8rem 1rem 1.2rem;
   border-radius: 0.6rem;
-  border: 1px solid var(--card-edge);
-  background: linear-gradient(180deg, var(--card-top), rgba(8, 4, 12, 0.95));
-  box-shadow: 0 0 1.4rem var(--card-glow);
+  border: 1px solid var(--group-edge);
+  background: linear-gradient(180deg, var(--group-top), rgba(8, 4, 12, 0.95));
+  box-shadow: 0 0 1.4rem var(--group-glow);
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
 
 .upgrade-card:hover {
   transform: translateY(-0.3rem);
-  border-color: var(--card-hot);
-  box-shadow: 0 0 2.6rem var(--card-glow);
-}
-
-/* One tone per upgrade, so the cards are told apart by colour before the text
-   is read -- they sit in the same three slots every level. */
-.upgrade-card.tone-count {
-  --card-edge: rgba(79, 195, 255, 0.55);
-  --card-hot: #4fc3ff;
-  --card-top: rgba(10, 34, 58, 0.95);
-  --card-glow: rgba(79, 195, 255, 0.28);
-}
-
-.upgrade-card.tone-attackSpeed {
-  --card-edge: rgba(79, 230, 192, 0.55);
-  --card-hot: #4fe6c0;
-  --card-top: rgba(6, 44, 38, 0.95);
-  --card-glow: rgba(79, 230, 192, 0.28);
-}
-
-.upgrade-card.tone-damage {
-  --card-edge: rgba(244, 67, 108, 0.55);
-  --card-hot: #f4436c;
-  --card-top: rgba(56, 10, 26, 0.95);
-  --card-glow: rgba(244, 67, 108, 0.28);
+  border-color: var(--group-hot);
+  box-shadow: 0 0 2.6rem var(--group-glow);
 }
 
 .upgrade-key {
@@ -467,8 +487,8 @@
 
 .upgrade-icon {
   font-size: 2.4rem;
-  color: var(--card-hot);
-  filter: drop-shadow(0 0 0.7rem var(--card-glow));
+  color: var(--group-hot);
+  filter: drop-shadow(0 0 0.7rem var(--group-glow));
 }
 
 .upgrade-label {
@@ -480,7 +500,7 @@
 .upgrade-effect {
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--card-hot);
+  color: var(--group-hot);
   font-variant-numeric: tabular-nums;
 }
 
@@ -489,4 +509,17 @@
   line-height: 1.5;
   text-align: center;
   color: rgba(255, 255, 255, 0.6);
+}
+
+.upgrade-current {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  width: 100%;
+  /* Separated from the description above it by the auto margin, so it always
+     sits on the foot of the card. */
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
 }

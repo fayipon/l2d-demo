@@ -19,7 +19,13 @@ const PUBLISH_MS = 66
 
 const STEP_MS = STEP_SECONDS * 1000
 const PLAYER_TINT = 0xffe8f2
+/** A dodged hit tints the player instead of hurting them, which is the only
+ *  way to tell a dodge from a miss. */
+const DODGE_TINT = 0x4fe6ff
 const FLASH_TINT = 0xffffff
+/** Crits flash gold rather than white, so a big hit is visible in a crowd
+ *  without a damage-number pool. */
+const CRIT_TINT = 0xffd166
 const PICKUP_TINT = 0x4fc3ff
 
 /**
@@ -227,7 +233,12 @@ export class ArenaScene extends Phaser.Scene {
 
       // The atlas shapes are white, so a hit flash is simply the absence of a
       // tint -- no second texture and no fill mode needed.
-      const tint = enemy.flash > 0 ? FLASH_TINT : ENEMY_KINDS[enemy.kind].tint
+      const tint =
+        enemy.flash > 0
+          ? enemy.flashCrit
+            ? CRIT_TINT
+            : FLASH_TINT
+          : ENEMY_KINDS[enemy.kind].tint
       if (this.enemyTints[i] !== tint) {
         this.enemyTints[i] = tint
         sprite.setTint(tint)
@@ -263,6 +274,7 @@ export class ArenaScene extends Phaser.Scene {
     const player = world.player
     this.playerSprite.x = player.x
     this.playerSprite.y = player.y
+    this.playerSprite.setTint(player.dodgeFlash > 0 ? DODGE_TINT : PLAYER_TINT)
     // Blinks through the invulnerability window, which is the only signal that
     // a second hit did not just fail to register.
     this.playerSprite.visible = player.invuln <= 0 || Math.floor(player.invuln * 20) % 2 === 0
@@ -302,7 +314,7 @@ export class ArenaScene extends Phaser.Scene {
       wave: world.wave,
       timeLeft: Math.max(0, world.status === 'break' ? world.breakTimeLeft : world.waveTimeLeft),
       hp: player.hp,
-      maxHp: player.maxHp,
+      maxHp: player.stats.maxHp,
       level: player.level,
       xp: player.xp,
       xpToLevel: player.xpToLevel,
@@ -312,9 +324,7 @@ export class ArenaScene extends Phaser.Scene {
       fps: Math.round(this.game.loop.actualFps),
       pendingLevels: world.pendingLevels,
       offers: world.offers,
-      damage: player.stats.damage,
-      attackSpeed: player.stats.attackSpeed,
-      bonusCount: player.stats.bonusCount,
+      stats: { ...player.stats },
     })
   }
 

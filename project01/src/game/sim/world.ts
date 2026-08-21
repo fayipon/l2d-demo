@@ -1,10 +1,15 @@
 import { Pool, type Pooled } from './pool'
 import { SpatialGrid } from './grid'
 import {
+  BASE_LOOT_RANGE,
+  BASE_MOVE_SPEED,
+  BASE_STATS,
+  DODGE_CAP,
   ENEMY_KINDS,
   SPREAD_PER_EXTRA_SHOT,
-  UPGRADE_STEP,
   WEAPONS,
+  armourReduction,
+  getUpgrade,
   healthScale,
   pickEnemyKind,
   rollUpgradeOffers,
@@ -12,8 +17,11 @@ import {
   speedScale,
   waveDuration,
   xpForLevel,
+  type PlayerStats,
   type UpgradeId,
 } from '../data/content'
+
+export type { PlayerStats }
 
 /**
  * The arena simulation.
@@ -49,7 +57,6 @@ const SPAWN_MARGIN = 46
 const BREAK_SECONDS = 3
 
 const PLAYER_INVULN = 0.55
-const PICKUP_MAGNET = 108
 const CAPACITY = { enemies: 700, projectiles: 500, pickups: 600 }
 
 export type RunStatus = 'fighting' | 'break' | 'dead'
@@ -67,6 +74,8 @@ export interface Enemy extends Pooled {
   mass: number
   /** Counts down; while above zero the sprite is drawn white. */
   flash: number
+  /** Whether the current flash is a crit, which the scene draws differently. */
+  flashCrit: boolean
   kind: number
 }
 
@@ -102,30 +111,15 @@ export interface WeaponSlot {
   cooldown: number
 }
 
-/**
- * Multipliers the weapons are read through.
- *
- * Kept apart from the weapons themselves so that a weapon is a fixed
- * description and a run is what happens to it -- which is also what lets one
- * upgrade affect every slot without naming any of them.
- */
-export interface PlayerStats {
-  /** Multiplies weapon damage. */
-  damage: number
-  /** Divides weapon cooldown. */
-  attackSpeed: number
-  /** Extra projectiles per volley, on top of the weapon's own count. */
-  bonusCount: number
-}
-
 export interface PlayerState {
   x: number
   y: number
   radius: number
+  /** Live health. Its ceiling is stats.maxHp, and nothing else. */
   hp: number
-  maxHp: number
-  speed: number
   invuln: number
+  /** Counts down after a dodge, purely so the player can see one happen. */
+  dodgeFlash: number
   materials: number
   level: number
   xp: number
@@ -195,6 +189,7 @@ export class World {
       drop: 0,
       mass: 1,
       flash: 0,
+      flashCrit: false,
       kind: 0,
     }))
 
@@ -229,10 +224,9 @@ export class World {
       x: ARENA_WIDTH / 2,
       y: ARENA_HEIGHT / 2,
       radius: 15,
-      hp: 100,
-      maxHp: 100,
-      speed: 232,
+      hp: BASE_STATS.maxHp,
       invuln: 0,
+      dodgeFlash: 0,
       materials: 0,
       level: 1,
       xp: 0,
@@ -241,7 +235,7 @@ export class World {
         { kind: 0, cooldown: 0 },
         { kind: 1, cooldown: 0.5 },
       ],
-      stats: { damage: 1, attackSpeed: 1, bonusCount: 0 },
+      stats: { ...BASE_STATS },
     }
   }
 
@@ -288,19 +282,16 @@ export class World {
     const player = this.player
     player.x = ARENA_WIDTH / 2
     player.y = ARENA_HEIGHT / 2
-    player.maxHp = 100
-    player.hp = 100
-    player.speed = 232
+    Object.assign(player.stats, BASE_STATS)
+    player.hp = player.stats.maxHp
     player.invuln = 0
+    player.dodgeFlash = 0
     player.materials = 0
     player.level = 1
     player.xp = 0
     player.xpToLevel = xpForLevel(1)
     player.weapons[0].cooldown = 0
     player.weapons[1].cooldown = 0.5
-    player.stats.damage = 1
-    player.stats.attackSpeed = 1
-    player.stats.bonusCount = 0
 
     this.status = 'fighting'
     this.wave = 1
@@ -329,33 +320,52 @@ export class World {
       return
     }
 
-    const stats = this.player.stats
-    switch (id) {
-      case 'count':
-        stats.bonusCount += UPGRADE_STEP.count
-        break
-      case 'attackSpeed':
-        stats.attackSpeed += UPGRADE_STEP.attackSpeed
-        break
-      case 'damage':
-        stats.damage += UPGRADE_STEP.damage
-        break
+    const upgrade = getUpgrade(id)
+    if (!upgrade) {
+      return
+    }
+
+    const player = this.player
+    const stats = player.stats
+
+    // Every upgrade is the same operation on a different field, which is the
+    // whole reason the stats are one flat block rather than named properties
+    // scattered across the player.
+    stats[id] += upgrade.step
+    if (upgrade.cap !== undefined) {
+      stats[id] = Math.min(stats[id], upgrade.cap)
+    }
+
+    // Raising the ceiling has to raise the water with it, or taking it at low
+    // health is nearly worthless -- which is not what the card says.
+    if (id === 'maxHp') {
+      player.hp = Math.min(stats.maxHp, player.hp + upgrade.step)
     }
 
     this.pendingLevels -= 1
     // Rolled fresh for the next level in the queue, so two levels taken back
     // to back are two separate decisions rather than one repeated.
-    this.offers = this.pendingLevels > 0 ? rollUpgradeOffers() : []
+    this.offers = this.pendingLevels > 0 ? rollUpgradeOffers(stats, this.random) : []
   }
 
   /* ---------- player ---------- */
 
   private stepPlayer(input: InputState, dt: number): void {
     const player = this.player
-    player.x = clamp(player.x + input.x * player.speed * dt, player.radius, ARENA_WIDTH - player.radius)
-    player.y = clamp(player.y + input.y * player.speed * dt, player.radius, ARENA_HEIGHT - player.radius)
+    const stats = player.stats
+    const speed = BASE_MOVE_SPEED * stats.moveSpeed
+
+    player.x = clamp(player.x + input.x * speed * dt, player.radius, ARENA_WIDTH - player.radius)
+    player.y = clamp(player.y + input.y * speed * dt, player.radius, ARENA_HEIGHT - player.radius)
+
     if (player.invuln > 0) {
       player.invuln -= dt
+    }
+    if (player.dodgeFlash > 0) {
+      player.dodgeFlash -= dt
+    }
+    if (stats.regen > 0 && player.hp < stats.maxHp) {
+      player.hp = Math.min(stats.maxHp, player.hp + stats.regen * dt)
     }
   }
 
@@ -426,6 +436,7 @@ export class World {
     enemy.drop = kind.drop
     enemy.mass = kind.mass
     enemy.flash = 0
+    enemy.flashCrit = false
   }
 
   /** A point just outside the arena, anywhere on its perimeter. */
@@ -549,6 +560,7 @@ export class World {
 
   private stepContactDamage(): void {
     const player = this.player
+    const stats = player.stats
     if (player.invuln > 0) {
       return
     }
@@ -568,9 +580,20 @@ export class World {
 
       // One hit per window whatever the crowd size. Per-enemy cooldowns are
       // more faithful, but with a hundred bodies touching at once they add up
-      // to instant death and there is no armour system here yet to pay for it.
-      player.hp -= enemy.contactDamage
+      // to instant death faster than any amount of armour could pay for.
       player.invuln = PLAYER_INVULN
+
+      /*
+       * A dodge takes the invulnerability window too. Without it, dodging the
+       * enemy in front simply hands the hit to the one behind, and in a crowd
+       * the stat would be worth almost nothing at any value.
+       */
+      if (stats.dodge > 0 && this.random() < Math.min(stats.dodge, DODGE_CAP)) {
+        player.dodgeFlash = 0.22
+        return
+      }
+
+      player.hp -= enemy.contactDamage * (1 - armourReduction(stats.armour))
       this.shake += 6
       if (player.hp <= 0) {
         player.hp = 0
@@ -602,7 +625,7 @@ export class World {
         continue
       }
       const weapon = WEAPONS[slot.kind]
-      if (target.distance > weapon.range) {
+      if (target.distance > weapon.range * player.stats.range) {
         continue
       }
       this.fire(slot.kind, Math.atan2(target.y - player.y, target.x - player.x))
@@ -669,7 +692,14 @@ export class World {
       shot.damage = damage
       shot.knockback = weapon.knockback
       shot.pierce = weapon.pierce
-      shot.life = weapon.life
+      /*
+       * Lifetime scales with range as well as the firing gate above. Range
+       * only decides whether a weapon shoots; how far a shot actually travels
+       * is speed x life. The shredder covers 300px and fires at 240, so
+       * raising range on its own would send it after targets its bullets
+       * expire before reaching.
+       */
+      shot.life = weapon.life * stats.range
       shot.lastHit = -1
       shot.kind = kindIndex
     }
@@ -730,8 +760,23 @@ export class World {
   }
 
   private hit(enemy: Enemy, shot: Projectile): void {
-    enemy.hp -= shot.damage
-    enemy.flash = 0.07
+    const player = this.player
+    const stats = player.stats
+
+    /*
+     * Crit is rolled per hit rather than per volley, so a piercing shot can
+     * crit on its second target and not its first. Rolling once at fire time
+     * would make a lucky volley uniformly lucky, which shows a bigger number
+     * far less often for the same average.
+     */
+    const crit = stats.critChance > 0 && this.random() < stats.critChance
+    enemy.hp -= crit ? shot.damage * stats.critDamage : shot.damage
+    enemy.flash = crit ? 0.12 : 0.07
+    enemy.flashCrit = crit
+
+    if (stats.lifesteal > 0 && player.hp < stats.maxHp) {
+      player.hp = Math.min(stats.maxHp, player.hp + stats.lifesteal)
+    }
 
     // Positional knockback rather than velocity: enemies here have no velocity
     // of their own -- they walk straight at the player every step -- so a
@@ -777,6 +822,7 @@ export class World {
 
   private stepPickups(dt: number): void {
     const player = this.player
+    const magnet = BASE_LOOT_RANGE * player.stats.lootRange
     const items = this.pickups.items
     // Everything here is measured against one point, so there is nothing for a
     // broadphase to do -- one pass over the pool is the whole job.
@@ -797,10 +843,10 @@ export class World {
         continue
       }
 
-      if (drop.age > 0.18 && distance < PICKUP_MAGNET) {
+      if (drop.age > 0.18 && distance < magnet) {
         // Pulls harder the closer it gets, so a drop that is nearly home snaps
         // in rather than trailing the player around.
-        const pull = 520 * (1 - distance / PICKUP_MAGNET) + 160
+        const pull = 520 * (1 - distance / magnet) + 160
         drop.vx += (dx / distance) * pull * dt
         drop.vy += (dy / distance) * pull * dt
       } else {
@@ -826,7 +872,7 @@ export class World {
       player.xpToLevel = xpForLevel(player.level)
       this.pendingLevels += 1
       if (this.offers.length === 0) {
-        this.offers = rollUpgradeOffers()
+        this.offers = rollUpgradeOffers(player.stats, this.random)
       }
     }
   }

@@ -36,6 +36,11 @@ export type IconName =
   | 'person'
   | 'check'
   | 'sparkle'
+  | 'heart'
+  | 'droplet'
+  | 'bolt'
+  | 'crosshair'
+  | 'scatter'
 
 const PATHS: Record<IconName, ReactElement> = {
   book: (
@@ -200,6 +205,45 @@ const PATHS: Record<IconName, ReactElement> = {
       stroke="none"
       d="M12 1.6c.8 6 4.4 9.6 10.4 10.4-6 .8-9.6 4.4-10.4 10.4-.8-6-4.4-9.6-10.4-10.4C7.6 11.2 11.2 7.6 12 1.6Z"
     />
+  ),
+  /* The arena's stat glyphs. Solid, because they are read at a glance on an
+     upgrade card rather than studied. */
+  heart: (
+    <path
+      fill="currentColor"
+      stroke="none"
+      d="M12 20.8C6.4 16.8 3.2 13.4 3.2 9.6a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7c0 3.8-3.2 7.2-8.8 11.2Z"
+    />
+  ),
+  droplet: (
+    <path
+      fill="currentColor"
+      stroke="none"
+      d="M12 2.6c3.6 4.4 5.6 7.4 5.6 10a5.6 5.6 0 0 1-11.2 0c0-2.6 2-5.6 5.6-10Z"
+    />
+  ),
+  bolt: (
+    <path
+      fill="currentColor"
+      stroke="none"
+      d="M13.6 2 5.8 13.4h4.5L9.2 22l8.8-11.8h-5.2L13.6 2Z"
+    />
+  ),
+  crosshair: (
+    <>
+      <circle cx="12" cy="12" r="7.2" />
+      <path d="M12 1.8v3.8M12 18.4v3.8M1.8 12h3.8M18.4 12h3.8" />
+      <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  /* Three shots leaving one muzzle -- the projectile-count upgrade. */
+  scatter: (
+    <>
+      <path d="M12 21.6 8.2 15.6M12 21.6V14.6M12 21.6l3.8-6" strokeWidth={1.6} />
+      <circle cx="7.5" cy="13.4" r="2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12.2" r="2" fill="currentColor" stroke="none" />
+      <circle cx="16.5" cy="13.4" r="2" fill="currentColor" stroke="none" />
+    </>
   ),
   moon: <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4Z" />,
   burst: (

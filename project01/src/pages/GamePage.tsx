@@ -3,16 +3,71 @@ import { useNavigate } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
 import { Icon, type IconName } from '../components/icons'
 import { requestRestart, requestUpgrade, useRunSnapshot } from '../game/runStore'
-import { UPGRADES, type UpgradeId } from '../game/data/content'
+import {
+  BASE_STATS,
+  getUpgrade,
+  type PlayerStats,
+  type UpgradeId,
+} from '../game/data/content'
 import './GamePage.css'
 
-/* The data file stays free of view concerns, so the glyph for each upgrade is
+/* The data file stays free of view concerns, so the glyph for each stat is
    chosen here rather than stored beside its numbers. */
-const UPGRADE_ICON: Record<UpgradeId, IconName> = {
-  count: 'burst',
-  attackSpeed: 'sigil',
+const STAT_ICON: Record<UpgradeId, IconName> = {
+  maxHp: 'heart',
+  regen: 'sparkle',
+  lifesteal: 'droplet',
+  armour: 'shield',
+  dodge: 'sigil',
   damage: 'swords',
+  critChance: 'star',
+  critDamage: 'burst',
+  attackSpeed: 'bolt',
+  bonusCount: 'scatter',
+  range: 'crosshair',
+  moveSpeed: 'compass',
+  lootRange: 'gem',
 }
+
+/**
+ * How each stat reads on the strip.
+ *
+ * A multiplier wants "x1.30", a percentage wants "30%", a flat value wants the
+ * number. Deriving that from the value alone is guesswork -- 0.3 could be any
+ * of the three -- so it is declared.
+ */
+const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
+  maxHp: (v) => String(Math.round(v)),
+  regen: (v) => `${v.toFixed(1)}/s`,
+  lifesteal: (v) => v.toFixed(1),
+  armour: (v) => String(Math.round(v)),
+  dodge: (v) => `${Math.round(v * 100)}%`,
+  damage: (v) => `×${v.toFixed(2)}`,
+  critChance: (v) => `${Math.round(v * 100)}%`,
+  critDamage: (v) => `×${v.toFixed(2)}`,
+  attackSpeed: (v) => `×${v.toFixed(2)}`,
+  bonusCount: (v) => `+${v}`,
+  range: (v) => `×${v.toFixed(2)}`,
+  moveSpeed: (v) => `×${v.toFixed(2)}`,
+  lootRange: (v) => `×${v.toFixed(2)}`,
+}
+
+/** Order on the strip, which is the order they are grouped on the cards. */
+const STAT_ORDER: UpgradeId[] = [
+  'damage',
+  'attackSpeed',
+  'bonusCount',
+  'critChance',
+  'critDamage',
+  'maxHp',
+  'regen',
+  'lifesteal',
+  'armour',
+  'dodge',
+  'range',
+  'moveSpeed',
+  'lootRange',
+]
 
 /**
  * The battle route. No StageShell and no Live2D: this screen is Phaser plus a
@@ -22,9 +77,8 @@ const UPGRADE_ICON: Record<UpgradeId, IconName> = {
  * The HUD is DOM rather than drawn in the scene, on the rule that Phaser owns
  * the arena and React owns everything that is not it. None of this is
  * performance-sensitive, all of it wants the panel and bar styles the rest of
- * the app already has, and the upgrade and shop screens that come next are
- * pure UI -- there is nothing to gain by rebuilding that vocabulary inside a
- * canvas.
+ * the app already has, and the shop screen that comes next is pure UI -- there
+ * is nothing to gain by rebuilding that vocabulary inside a canvas.
  *
  * What the HUD must never do is own the run. It reads a snapshot the scene
  * pushes into runStore; a component that held the state would re-render
@@ -50,8 +104,7 @@ export function GamePage() {
       return
     }
     const onKey = (event: KeyboardEvent) => {
-      const slot = Number(event.key) - 1
-      const id = run.offers[slot]
+      const id = run.offers[Number(event.key) - 1]
       if (id) {
         requestUpgrade(id)
       }
@@ -59,6 +112,15 @@ export function GamePage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [choosing, run.offers])
+
+  /*
+   * Only what the run has actually changed. Thirteen stats at their starting
+   * values is a wall of x1.00 that says nothing; a strip that grows as picks
+   * are made is a record of the build.
+   */
+  const earned = STAT_ORDER.filter(
+    (id) => run.stats[id] !== BASE_STATS[id as keyof PlayerStats],
+  )
 
   return (
     <div className="game-root">
@@ -95,7 +157,7 @@ export function GamePage() {
               <i className="vital-fill is-hp" style={{ width: `${hpPercent}%` }} />
             </span>
             <span className="vital-count">
-              {Math.max(0, Math.ceil(run.hp))} / {run.maxHp}
+              {Math.max(0, Math.ceil(run.hp))} / {Math.round(run.maxHp)}
             </span>
           </div>
 
@@ -129,18 +191,21 @@ export function GamePage() {
           </div>
         </div>
 
-        {/* ---------- stats ---------- */}
-        <div className="stat-strip">
-          <span className="stat">
-            <b>×{run.damage.toFixed(2)}</b> 攻擊
-          </span>
-          <span className="stat">
-            <b>×{run.attackSpeed.toFixed(2)}</b> 射速
-          </span>
-          <span className="stat">
-            <b>+{run.bonusCount}</b> 彈數
-          </span>
-        </div>
+        {/* ---------- earned stats ---------- */}
+        {earned.length > 0 ? (
+          <div className="stat-strip">
+            {earned.map((id) => {
+              const upgrade = getUpgrade(id)
+              return (
+                <span key={id} className={`stat group-${upgrade?.group ?? 'utility'}`}>
+                  <Icon name={STAT_ICON[id]} className="stat-icon" />
+                  <b>{STAT_FORMAT[id](run.stats[id])}</b>
+                  {upgrade?.label}
+                </span>
+              )
+            })}
+          </div>
+        ) : null}
 
         {/* ---------- level up ---------- */}
         {choosing ? (
@@ -153,7 +218,7 @@ export function GamePage() {
 
             <div className="levelup-cards">
               {run.offers.map((id, index) => {
-                const upgrade = UPGRADES.find((entry) => entry.id === id)
+                const upgrade = getUpgrade(id)
                 if (!upgrade) {
                   return null
                 }
@@ -161,14 +226,19 @@ export function GamePage() {
                   <button
                     type="button"
                     key={id}
-                    className={`upgrade-card tone-${id}`}
+                    className={`upgrade-card group-${upgrade.group}`}
                     onClick={() => requestUpgrade(id)}
                   >
                     <kbd className="upgrade-key">{index + 1}</kbd>
-                    <Icon name={UPGRADE_ICON[id]} className="upgrade-icon" />
+                    <Icon name={STAT_ICON[id]} className="upgrade-icon" />
                     <span className="upgrade-label">{upgrade.label}</span>
                     <span className="upgrade-effect">{upgrade.effect}</span>
                     <span className="upgrade-detail">{upgrade.detail}</span>
+                    {/* Where it stands now, so a pick is a change to something
+                        rather than a number in isolation. */}
+                    <span className="upgrade-current">
+                      目前 {STAT_FORMAT[id](run.stats[id])}
+                    </span>
                   </button>
                 )
               })}
