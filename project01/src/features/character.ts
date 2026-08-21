@@ -51,6 +51,7 @@ export interface CharacterSkill {
 export interface Character {
   id: string
   name: string
+  /** Class. The roster and the detail panel both show this one value. */
   title: string
   rarity: number
   level: number

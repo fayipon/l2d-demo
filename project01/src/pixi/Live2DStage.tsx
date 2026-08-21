@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { Application } from 'pixi.js'
 import { Live2DModel, MotionPreloadStrategy } from 'pixi-live2d-display-advanced/cubism4'
 import { haruHome, type Live2DModelConfig } from './live2dConfig'
+import { capturePortrait, headBoxFrom, type Box } from './portrait'
 
 export interface Live2DStageHandle {
   /** Play a random voiced tap motion. Returns the caption for the speech bubble. */
@@ -17,11 +18,13 @@ interface Live2DStageProps {
    * model itself), and with null once it finishes.
    */
   onLine?: (caption: string | null) => void
+  /** Fires once with a square data URL cropped to the model’s head. */
+  onPortrait?: (dataUrl: string) => void
   onReady?: () => void
 }
 
 export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(function Live2DStage(
-  { config = haruHome, muted = false, onLine, onReady },
+  { config = haruHome, muted = false, onLine, onPortrait, onReady },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null)
@@ -34,11 +37,13 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
   const mutedRef = useRef(muted)
   const onLineRef = useRef(onLine)
   const onReadyRef = useRef(onReady)
+  const onPortraitRef = useRef(onPortrait)
 
   useEffect(() => {
     mutedRef.current = muted
     onLineRef.current = onLine
     onReadyRef.current = onReady
+    onPortraitRef.current = onPortrait
   })
 
   const speakRef = useRef<() => string | null>(() => null)
@@ -85,7 +90,7 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
      * differs from model to model. Measuring the drawables makes one set of
      * framing numbers mean the same thing for every model.
      */
-    let artBounds: { x: number; y: number; width: number; height: number } | null = null
+    let artBounds: Box | null = null
 
     /**
      * Opacity below which a drawable is treated as not on screen.
@@ -137,7 +142,39 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
       if (!Number.isFinite(minX) || !Number.isFinite(minY) || !(maxX > minX) || !(maxY > minY)) {
         return null
       }
-      return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+      const art = { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+
+      // Second pass over the top slice only, which is where the head is. Doing
+      // it here rather than in a separate walk keeps the vertex mapping in one
+      // place -- getting that mapping subtly different in two functions is an
+      // easy way to produce a portrait cropped off the face.
+      const sliceBottom = art.y + art.height * 0.18
+      let headMinX = Infinity
+      let headMaxX = -Infinity
+      for (let i = 0; i < core.getDrawableCount(); i++) {
+        if (requireVisible) {
+          if (!core.getDrawableDynamicFlagIsVisible(i) || core.getDrawableOpacity(i) < MIN_OPACITY) {
+            continue
+          }
+        }
+        const vertices = core.getDrawableVertices(i)
+        for (let v = 0; v < vertices.length; v += 2) {
+          const y = -vertices[v + 1] * ppu + originalHeight / 2
+          if (y > sliceBottom) {
+            continue
+          }
+          const x = vertices[v] * ppu + originalWidth / 2
+          if (x < headMinX) headMinX = x
+          if (x > headMaxX) headMaxX = x
+        }
+      }
+
+      const head =
+        Number.isFinite(headMinX) && headMaxX > headMinX
+          ? headBoxFrom(art, { min: headMinX, max: headMaxX })
+          : null
+
+      return { art, head }
     }
 
     /**
@@ -164,8 +201,21 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
         return
       }
       app.ticker.remove(measureWhenPosed)
-      artBounds = bounds
+      artBounds = bounds.art
       layout()
+
+      // Taken from the posed model rather than the rest pose, and only once --
+      // the roster wants a stable thumbnail, not one that blinks with the idle
+      // animation.
+      if (bounds.head && onPortraitRef.current) {
+        const portrait = capturePortrait(app, model, bounds.head)
+        if (portrait) {
+          onPortraitRef.current(portrait)
+        }
+        // Extraction moves the model to capture it and puts it back; re-run
+        // layout so a rounding difference cannot leave it a pixel off.
+        layout()
+      }
     }
 
     const layout = () => {
@@ -282,7 +332,7 @@ export const Live2DStage = forwardRef<Live2DStageHandle, Live2DStageProps>(funct
         // and let the ticker refine it to visible-only once a frame has run.
         // Measuring only on the ticker would leave the first paint mis-framed,
         // and on a backgrounded tab rAF never fires, so it could stay that way.
-        artBounds = measureArt(loaded, false)
+        artBounds = measureArt(loaded, false)?.art ?? null
         app.ticker.add(measureWhenPosed)
         layout()
         onReadyRef.current?.()

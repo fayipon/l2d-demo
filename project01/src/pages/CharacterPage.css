@@ -32,66 +32,111 @@
 }
 
 /* ---------- roster ---------- */
+/*
+ * A row per character: portrait, then name over class over level, then the
+ * class sigil. Laid out as a grid so the three columns line up down the list
+ * however long a name or class happens to be.
+ */
 .roster {
   position: absolute;
-  top: 13cqh;
+  top: 12cqh;
   left: 1.4cqw;
-  width: 9.5cqw;
+  width: 19cqw;
+  padding: 1.4cqh 0.8cqw;
+  border-radius: 1.4cqh;
   display: flex;
   flex-direction: column;
-  gap: 1cqh;
+  gap: 0.9cqh;
+  background: rgba(6, 4, 10, 0.82);
 }
 
 .roster-title {
-  font-size: 1.8cqh;
-  font-weight: 700;
-  letter-spacing: 0.24em;
-  color: rgba(255, 255, 255, 0.6);
-  text-shadow: 0 0.2cqh 0.6cqh rgba(0, 0, 0, 0.9);
+  padding-left: 0.5cqw;
+  border-left: 0.3cqw solid #ff2b3d;
+  font-size: 1.7cqh;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #ff6b7d;
 }
 
 .roster-slot {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.3cqh;
-  padding: 1.2cqh 0.4cqw;
-  border-radius: 1.2cqh;
-  color: rgba(255, 255, 255, 0.85);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  gap: 0.7cqw;
+  padding: 0.8cqh 0.7cqw;
+  border-radius: 1cqh;
+  border: 0.18cqh solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 .roster-slot:hover {
-  transform: translateX(0.4cqw);
-  border-color: rgba(255, 255, 255, 0.42);
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .roster-slot.is-selected {
   border-color: var(--accent);
-  box-shadow: 0 0 2cqh color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 1.8cqh color-mix(in srgb, var(--accent) 45%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
+/* The portrait is a live capture of the model, so it arrives only after that
+   model has been on screen; the fallback keeps the row the same size. */
 .roster-portrait {
   display: grid;
   place-items: center;
-  width: 5.4cqh;
-  height: 5.4cqh;
-  border-radius: 50%;
-  font-size: 3cqh;
-  color: var(--accent);
-  border: 0.2cqh solid color-mix(in srgb, var(--accent) 60%, transparent);
+  overflow: hidden;
+  width: 6.4cqh;
+  height: 6.4cqh;
+  border-radius: 0.8cqh;
+  border: 0.18cqh solid color-mix(in srgb, var(--accent) 55%, transparent);
   background: radial-gradient(100% 100% at 50% 0%, color-mix(in srgb, var(--accent) 22%, #07030b), #07030b 80%);
 }
 
+.roster-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.roster-portrait-fallback {
+  font-size: 3cqh;
+  color: var(--accent);
+}
+
+.roster-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1cqh;
+  min-width: 0;
+}
+
 .roster-name {
-  font-size: 1.7cqh;
-  font-weight: 700;
+  font-size: 2cqh;
+  font-weight: 800;
   letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.roster-role {
+  font-size: 1.5cqh;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .roster-lv {
   font-size: 1.4cqh;
-  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.roster-sigil {
+  font-size: 3cqh;
+  color: var(--accent);
+  opacity: 0.85;
 }
 
 /* ---------- detail panel ---------- */
@@ -359,7 +404,7 @@
 /* ---------- bottom actions ---------- */
 .char-actions {
   position: absolute;
-  left: 12.5cqw;
+  left: 22cqw;
   right: 36cqw;
   bottom: 4cqh;
   display: flex;

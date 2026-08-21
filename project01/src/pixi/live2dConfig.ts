@@ -62,7 +62,7 @@ interface Framing {
  * Art top = y - heightRatio / 2, so both of these put it at 0.03.
  */
 const HOME_FRAMING: Framing = { heightRatio: 2, x: 0.3, y: 1.03 }
-const DETAIL_FRAMING: Framing = { heightRatio: 1.85, x: 0.4, y: 0.955 }
+const DETAIL_FRAMING: Framing = { heightRatio: 1.85, x: 0.43, y: 0.955 }
 
 /**
  * Per-model correction, in stage fractions, applied on top of a framing.

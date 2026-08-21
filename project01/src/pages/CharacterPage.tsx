@@ -5,6 +5,7 @@ import { StageShell } from '../components/StageShell'
 import { Icon } from '../components/icons'
 import { useSelectedCharacter } from '../app/selectedCharacterContext'
 import { ROSTER } from '../features/character'
+import { savePortrait, usePortraits } from '../features/portraits'
 import './CharacterPage.css'
 
 type PanelTab = 'stats' | 'skills'
@@ -19,6 +20,7 @@ export function CharacterPage() {
   const [tab, setTab] = useState<PanelTab>('stats')
   const [expression, setExpression] = useState(0)
   const [bubble, setBubble] = useState({ text: '', visible: false })
+  const portraits = usePortraits()
 
   const expressions = character.detail.expressions
 
@@ -44,6 +46,7 @@ export function CharacterPage() {
         ref={stageRef}
         config={character.detail}
         muted={muted}
+        onPortrait={(dataUrl) => savePortrait(character.id, dataUrl)}
         onLine={(caption) =>
           setBubble((prev) =>
             caption ? { text: caption, visible: true } : { ...prev, visible: false },
@@ -69,25 +72,36 @@ export function CharacterPage() {
         </button>
 
         {/* ---------- roster ---------- */}
-        <div className="roster" role="listbox" aria-label="角色選擇">
-          <span className="roster-title">角色</span>
+        <div className="roster panel" role="listbox" aria-label="角色選擇">
+          <span className="roster-title">CHARACTER</span>
           {ROSTER.map((entry) => {
             const selected = entry.id === character.id
+            const portrait = portraits[entry.id]
             return (
               <button
                 type="button"
                 key={entry.id}
                 role="option"
                 aria-selected={selected}
-                className={`roster-slot panel${selected ? ' is-selected' : ''}`}
+                className={`roster-slot${selected ? ' is-selected' : ''}`}
                 style={{ '--accent': entry.accent } as CSSProperties}
                 onClick={() => selectCharacter(entry.id)}
               >
                 <span className="roster-portrait">
-                  <Icon name="sword" />
+                  {portrait ? (
+                    <img src={portrait} alt="" />
+                  ) : (
+                    // Until this character's model has been on screen once,
+                    // there is no capture to show.
+                    <Icon name="sword" className="roster-portrait-fallback" />
+                  )}
                 </span>
-                <span className="roster-name">{entry.name}</span>
-                <span className="roster-lv">Lv.{entry.level}</span>
+                <span className="roster-text">
+                  <span className="roster-name">{entry.name}</span>
+                  <span className="roster-role">{entry.title}</span>
+                  <span className="roster-lv">LV. {entry.level}</span>
+                </span>
+                <Icon name="sigil" className="roster-sigil" />
               </button>
             )
           })}

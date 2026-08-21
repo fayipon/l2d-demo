@@ -26,6 +26,7 @@ export type IconName =
   | 'moon'
   | 'burst'
   | 'shield'
+  | 'sigil'
 
 const PATHS: Record<IconName, ReactElement> = {
   book: (
@@ -111,6 +112,14 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <rect x="5" y="10.4" width="14" height="9.4" rx="1.8" />
       <path d="M8.2 10.4V7.8a3.8 3.8 0 0 1 7.6 0v2.6" />
+    </>
+  ),
+  sigil: (
+    <>
+      <circle cx="12" cy="12" r="8.2" />
+      <circle cx="12" cy="12" r="3.4" />
+      <path d="M12 1.6v6.2M12 16.2v6.2M1.6 12h6.2M16.2 12h6.2" />
+      <path d="m6.2 6.2 3.1 3.1M14.7 14.7l3.1 3.1M17.8 6.2l-3.1 3.1M9.3 14.7l-3.1 3.1" />
     </>
   ),
   moon: <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4Z" />,
