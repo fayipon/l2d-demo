@@ -10,7 +10,8 @@
     "assets:optimize": "node scripts/optimize-assets.mjs",
     "models:fetch": "node scripts/fetch-models.mjs",
     "shot": "node scripts/screenshot.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bench": "node scripts/bench.mjs"
   },
   "dependencies": {
     "@pixi/sound": "^5.2.3",
