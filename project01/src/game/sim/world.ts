@@ -734,7 +734,9 @@ export class World {
     // A weapon with no spread of its own would stack every extra shot on the
     // same line, so the fan widens with each one it did not ask for.
     const spread = weapon.spread + extra * SPREAD_PER_EXTRA_SHOT
-    const damage = weapon.damage * stats.damage
+    // Flat attack power first, then the percentage -- so a damage upgrade
+    // scales what levelling has already added instead of ignoring it.
+    const damage = (weapon.damage + stats.attackPower) * stats.damage
 
     const first = angle - spread / 2
     const gap = count > 1 ? spread / (count - 1) : 0
@@ -977,7 +979,7 @@ export class World {
       return
     }
     const player = this.player
-    player.xp += amount
+    player.xp += amount * player.stats.xpGain
 
     while (player.xp >= player.xpToLevel) {
       player.xp -= player.xpToLevel
@@ -989,7 +991,7 @@ export class World {
       // a ceiling raised over an empty tank is not a reward.
       player.stats.maxHp += LEVEL_BONUS.maxHp
       player.hp = Math.min(player.stats.maxHp, player.hp + LEVEL_BONUS.maxHp)
-      player.stats.damage += LEVEL_BONUS.damage
+      player.stats.attackPower += LEVEL_BONUS.attackPower
 
       this.pendingLevels += 1
       if (this.offers.length === 0) {

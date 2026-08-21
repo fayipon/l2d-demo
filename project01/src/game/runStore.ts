@@ -24,6 +24,7 @@ export interface RunSnapshot {
   hp: number
   maxHp: number
   level: number
+  /** Fractional once the experience multiplier is above 1; the HUD floors it. */
   xp: number
   xpToLevel: number
   coins: number

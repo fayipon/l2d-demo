@@ -226,6 +226,16 @@ export function pickEnemyKind(wave: number, roll: number): number {
  * identity of the whole block.
  */
 export interface PlayerStats {
+  /**
+   * Flat damage every weapon gains, added to its own before any multiplier.
+   *
+   * Separate from `damage` on purpose: this is attack power in the ordinary
+   * sense -- a number the weapon carries into the fight -- while `damage` is a
+   * percentage on top of it. Order is (weapon + attackPower) * damage, so a
+   * percentage upgrade scales what levelling has already added rather than
+   * ignoring it.
+   */
+  attackPower: number
   /** Flat. Also the ceiling live hp is clamped to. */
   maxHp: number
   /** HP per second. */
@@ -252,9 +262,19 @@ export interface PlayerStats {
   moveSpeed: number
   /** Multiplies the pickup magnet radius. */
   lootRange: number
+  /**
+   * Multiplies all experience, from both kills and coins.
+   *
+   * The one stat that compounds: it buys levels, and levels buy every other
+   * stat. Taken early it is worth more than anything else on the card; taken
+   * late it is nearly worthless, which is a real decision rather than a number
+   * to add up.
+   */
+  xpGain: number
 }
 
 export const BASE_STATS: Readonly<PlayerStats> = {
+  attackPower: 0,
   maxHp: 100,
   regen: 0,
   lifesteal: 0,
@@ -270,6 +290,7 @@ export const BASE_STATS: Readonly<PlayerStats> = {
   range: 1,
   moveSpeed: 1,
   lootRange: 1,
+  xpGain: 1,
 }
 
 export const BASE_MOVE_SPEED = 232
@@ -311,10 +332,33 @@ export type UpgradeId = keyof PlayerStats
 /** Grouping. All it decides is the card's colour. */
 export type UpgradeGroup = 'offence' | 'defence' | 'utility'
 
+/**
+ * Name and grouping for every stat, including the ones no card offers.
+ *
+ * Kept apart from UPGRADES because attack power is granted by levelling and
+ * never drawn, and it still has to be labelled on the HUD -- a stat that only
+ * has a name when a card exists for it is a stat the player cannot read.
+ */
+export const STAT_INFO: Record<UpgradeId, { label: string; group: UpgradeGroup }> = {
+  attackPower: { label: '基礎攻擊', group: 'offence' },
+  damage: { label: '攻擊力', group: 'offence' },
+  attackSpeed: { label: '攻擊速度', group: 'offence' },
+  bonusCount: { label: '彈數', group: 'offence' },
+  critChance: { label: '暴擊率', group: 'offence' },
+  critDamage: { label: '暴擊傷害', group: 'offence' },
+  maxHp: { label: '生命上限', group: 'defence' },
+  regen: { label: '生命回復', group: 'defence' },
+  lifesteal: { label: '吸血', group: 'defence' },
+  armour: { label: '護甲', group: 'defence' },
+  dodge: { label: '閃避', group: 'defence' },
+  range: { label: '射程', group: 'utility' },
+  moveSpeed: { label: '移動速度', group: 'utility' },
+  lootRange: { label: '拾取範圍', group: 'utility' },
+  xpGain: { label: '經驗加成', group: 'utility' },
+}
+
 export interface Upgrade {
   id: UpgradeId
-  group: UpgradeGroup
-  label: string
   /** Added to the stat on each pick. */
   step: number
   /** Shown on the card. Written out rather than derived, because "+15%",
@@ -331,8 +375,6 @@ export const UPGRADES: Upgrade[] = [
   /* --- offence --- */
   {
     id: 'damage',
-    group: 'offence',
-    label: '攻擊力',
     step: 0.15,
     effect: '+15%',
     detail: '所有武器的傷害提升。',
@@ -340,8 +382,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'attackSpeed',
-    group: 'offence',
-    label: '攻擊速度',
     step: 0.15,
     effect: '+15%',
     detail: '所有武器的冷卻時間縮短。',
@@ -349,8 +389,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'bonusCount',
-    group: 'offence',
-    label: '彈數',
     step: 1,
     effect: '+1 發',
     detail: '每次射擊多一發，並自動散開。',
@@ -359,8 +397,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'critChance',
-    group: 'offence',
-    label: '暴擊率',
     step: 0.06,
     effect: '+6%',
     detail: '命中時觸發暴擊的機率。',
@@ -368,8 +404,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'critDamage',
-    group: 'offence',
-    label: '暴擊傷害',
     step: 0.25,
     effect: '+25%',
     detail: '暴擊時的傷害倍率。',
@@ -379,8 +413,6 @@ export const UPGRADES: Upgrade[] = [
   /* --- defence --- */
   {
     id: 'maxHp',
-    group: 'defence',
-    label: '生命上限',
     step: 20,
     effect: '+20',
     detail: '上限提高，並立刻回復等量生命。',
@@ -388,8 +420,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'regen',
-    group: 'defence',
-    label: '生命回復',
     step: 0.6,
     effect: '+0.6 /秒',
     detail: '持續回復生命。',
@@ -397,8 +427,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'lifesteal',
-    group: 'defence',
-    label: '吸血',
     step: 0.4,
     effect: '+0.4 /命中',
     detail: '每次命中回復生命。',
@@ -406,8 +434,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'armour',
-    group: 'defence',
-    label: '護甲',
     step: 6,
     effect: '+6',
     detail: '減少受到的傷害，效果遞減。',
@@ -415,8 +441,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'dodge',
-    group: 'defence',
-    label: '閃避',
     step: 0.06,
     effect: '+6%',
     detail: '機率完全免疫一次傷害。',
@@ -427,8 +451,6 @@ export const UPGRADES: Upgrade[] = [
   /* --- utility --- */
   {
     id: 'range',
-    group: 'utility',
-    label: '射程',
     step: 0.12,
     effect: '+12%',
     detail: '武器射程與子彈飛行距離。',
@@ -436,8 +458,6 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'moveSpeed',
-    group: 'utility',
-    label: '移動速度',
     step: 0.08,
     effect: '+8%',
     detail: '移動更快。',
@@ -445,12 +465,19 @@ export const UPGRADES: Upgrade[] = [
   },
   {
     id: 'lootRange',
-    group: 'utility',
-    label: '拾取範圍',
     step: 0.25,
     effect: '+25%',
-    detail: '材料從更遠的地方被吸過來。',
+    detail: '金幣從更遠的地方被吸過來。',
     weight: 6,
+  },
+  {
+    id: 'xpGain',
+    step: 0.2,
+    effect: '+20%',
+    detail: '擊殺與金幣獲得的經驗都提升。',
+    // Rare, because compounding into every other stat is the strongest thing
+    // an upgrade can do -- and the earlier it is drawn the stronger it gets.
+    weight: 5,
   },
 ]
 
@@ -474,8 +501,17 @@ export function getUpgrade(id: UpgradeId): Upgrade | undefined {
 export const LEVEL_BONUS = {
   /** Flat, and healed by the same amount. */
   maxHp: 4,
-  /** Added to the damage multiplier, the same way the card adds to it. */
-  damage: 0.04,
+  /**
+   * Flat attack power.
+   *
+   * This was a +4% multiplier, which at level 20 was worth +4.8 damage to the
+   * pistol -- real, but invisible next to a weapon's own number. Flat is the
+   * readable form: at level 20 it is +8, so the pistol goes from 6 to 14 and
+   * the figure on the strip means something on its own.
+   *
+   * Slightly above what the multiplier gave, deliberately. Tune here.
+   */
+  attackPower: 0.4,
 } as const
 
 /** How many cards a level offers. */

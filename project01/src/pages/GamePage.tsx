@@ -5,6 +5,7 @@ import { Icon, type IconName } from '../components/icons'
 import { requestRestart, requestUpgrade, useRunSnapshot } from '../game/runStore'
 import {
   BASE_STATS,
+  STAT_INFO,
   getUpgrade,
   type PlayerStats,
   type UpgradeId,
@@ -14,6 +15,7 @@ import './GamePage.css'
 /* The data file stays free of view concerns, so the glyph for each stat is
    chosen here rather than stored beside its numbers. */
 const STAT_ICON: Record<UpgradeId, IconName> = {
+  attackPower: 'sword',
   maxHp: 'heart',
   regen: 'sparkle',
   lifesteal: 'droplet',
@@ -26,7 +28,8 @@ const STAT_ICON: Record<UpgradeId, IconName> = {
   bonusCount: 'scatter',
   range: 'crosshair',
   moveSpeed: 'compass',
-  lootRange: 'gem',
+  lootRange: 'coin',
+  xpGain: 'exp',
 }
 
 /**
@@ -37,6 +40,7 @@ const STAT_ICON: Record<UpgradeId, IconName> = {
  * of the three -- so it is declared.
  */
 const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
+  attackPower: (v) => `+${v.toFixed(1)}`,
   maxHp: (v) => String(Math.round(v)),
   regen: (v) => `${v.toFixed(1)}/s`,
   lifesteal: (v) => v.toFixed(1),
@@ -50,10 +54,12 @@ const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
   range: (v) => `×${v.toFixed(2)}`,
   moveSpeed: (v) => `×${v.toFixed(2)}`,
   lootRange: (v) => `×${v.toFixed(2)}`,
+  xpGain: (v) => `×${v.toFixed(2)}`,
 }
 
 /** Order on the strip, which is the order they are grouped on the cards. */
 const STAT_ORDER: UpgradeId[] = [
+  'attackPower',
   'damage',
   'attackSpeed',
   'bonusCount',
@@ -67,6 +73,7 @@ const STAT_ORDER: UpgradeId[] = [
   'range',
   'moveSpeed',
   'lootRange',
+  'xpGain',
 ]
 
 /**
@@ -177,7 +184,7 @@ export function GamePage() {
               <i className="vital-fill is-xp" style={{ width: `${xpPercent}%` }} />
             </span>
             <span className="vital-count">
-              {run.xp} / {run.xpToLevel}
+              {Math.floor(run.xp)} / {run.xpToLevel}
             </span>
           </div>
         </div>
@@ -200,16 +207,13 @@ export function GamePage() {
         {/* ---------- earned stats ---------- */}
         {earned.length > 0 ? (
           <div className="stat-strip">
-            {earned.map((id) => {
-              const upgrade = getUpgrade(id)
-              return (
-                <span key={id} className={`stat group-${upgrade?.group ?? 'utility'}`}>
-                  <Icon name={STAT_ICON[id]} className="stat-icon" />
-                  <b>{STAT_FORMAT[id](run.stats[id])}</b>
-                  {upgrade?.label}
-                </span>
-              )
-            })}
+            {earned.map((id) => (
+              <span key={id} className={`stat group-${STAT_INFO[id].group}`}>
+                <Icon name={STAT_ICON[id]} className="stat-icon" />
+                <b>{STAT_FORMAT[id](run.stats[id])}</b>
+                {STAT_INFO[id].label}
+              </span>
+            ))}
           </div>
         ) : null}
 
@@ -232,12 +236,12 @@ export function GamePage() {
                   <button
                     type="button"
                     key={id}
-                    className={`upgrade-card group-${upgrade.group}`}
+                    className={`upgrade-card group-${STAT_INFO[id].group}`}
                     onClick={() => requestUpgrade(id)}
                   >
                     <kbd className="upgrade-key">{index + 1}</kbd>
                     <Icon name={STAT_ICON[id]} className="upgrade-icon" />
-                    <span className="upgrade-label">{upgrade.label}</span>
+                    <span className="upgrade-label">{STAT_INFO[id].label}</span>
                     <span className="upgrade-effect">{upgrade.effect}</span>
                     <span className="upgrade-detail">{upgrade.detail}</span>
                     {/* Where it stands now, so a pick is a change to something
