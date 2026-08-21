@@ -5,11 +5,32 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>l2d-demo</title>
+
     <!--
-      Cubism Core is not published on npm and must be loaded before any Live2D
-      model is created; the library reads it off window.Live2DCubismCore.
+      The model textures are the largest thing on the page and the last thing
+      requested: nothing asks for them until the bundle has booted, React has
+      mounted, and Haru.model3.json has been fetched and parsed. Preloading
+      starts them here instead, in parallel with the bundle.
+
+      `as="image"` is what makes this safe -- Pixi loads textures through an
+      <img> element, so the preload matches the real request and is reused
+      rather than downloaded twice.
     -->
-    <script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+    <link rel="preload" as="image" href="/live2d/haru/Haru.2048/texture_00.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/live2d/haru/Haru.2048/texture_01.webp" fetchpriority="high" />
+
+    <!--
+      Cubism Core is not published on npm and must be defined before any Live2D
+      model is created; the library reads it off window.Live2DCubismCore. It is
+      served from here rather than cubism.live2d.com so it costs no extra DNS
+      and TLS handshake, and so an outage there cannot leave the page without a
+      character. The file is the SDK's "Redistributable Code".
+
+      `defer` keeps it from blocking the parser. Deferred classic scripts run in
+      document order before module scripts, so the core is always ready by the
+      time main.tsx executes.
+    -->
+    <script defer src="/live2d/live2dcubismcore.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
