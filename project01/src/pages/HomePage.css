@@ -22,25 +22,97 @@
   --tile-side: 15cqw;
 }
 
+/*
+ * rotate(45deg) sends the element's top-left corner straight up, so AT ©R¥O¤w¹L®ɡC½Чאּ¨ϥÎ schtasks.exe¡C
+
+µL®Īº©R¥O¡C
+
+AT ©R¥O±Ʃw¬Y¨ǩR¥O©ε{¦¡¦b¬Y­ӯS©wªº¤é´Á©M®ɶ¡¡A¦b¹q¸£¤W°õ¦æ¡C
+°õ¦æ AT ©R¥O¤§«e¥²¶·¥ý±ҰÊ Schedule ªA°ȡC
+
+AT [\computername] [ [id] [/DELETE] | /DELETE [/YES]]
+AT [\computername] time [/INTERACTIVE]
+    [ /EVERY:date[,...] | /NEXT:date[,...]] "command"
+
+\computername     «ü©w»·ºݹq¸£¡C¦pªG¬ٲ¤³o­ӰѼơA©R¥O·|³Q±Ʃw¦b¥»¾÷¹q¸£
+                   ¤W°õ¦æ¡C
+id                 «ü©wµ¹±Ʃw®ɵ{©R¥OªºÃѧO½X¡C
+/delete            §R°£¬Y­Ӥw±Ƶ{ªº©R¥O¡C¦pªG¬ٲ¤ id¡A·|§R°£¹q¸£¤W©Ҧ³¤w
+                   ±Ƶ{ªº©R¥O¡C
+/yes               ¥Ωó¨ú®ø©Ҧ³¤w±Ƶ{ªº¤u§@¡A¥B¤£·Q¦b°õ¦æ¨ú®ø®ÉÅã¥ܽT»{
+                   °T®§¨ϥΡC
+time               «ü©w©R¥O°õ¦檺®ɶ¡¡C
+/interactive       ¤¹³¤u§@»P¤u§@°õ¦æ®ɤwµn¤J¤§¨ϥΪ̪º®ୱ¤¬°ʡC
+/every:date[,...]  «ü©w¦b¨C¶g©ΨC¤몺¬Y¤é (©άY´X¤é) °õ¦æ©R¥O¡C¦pªG¬ٲ¤
+                   date¡A«h¹w³]¬°¦b¨C¤몺¥»¤é°õ¦æ¡C
+/next:date[,...]   «ü©w¦b¤U¤@¦¸ªº«ü©w¤é´Á (¨Ҧp¡A¤U¶g¤T) ®ɡA°õ¦æ©R¥O¡C
+                   ¦pªG¬ٲ¤ date¡A«h¹w³]¬°¦b¨C¤몺¥»¤é°õ¦æ¡C
+"command"          ­n°õ¦檺 Windows NT ©R¥O©Χ妸ÀɡC
+ * on the fill is the diamond's top vertex -- where the mock puts what little
+ * colour the interior has. Below that it goes to near-black: the mock's tiles
+ * are dark enough to read white text over the painting, and the earlier flat
+ * navy/maroon fills made them look like plastic counters.
+ */
 .tile {
   position: absolute;
   width: var(--tile-side);
   aspect-ratio: 1;
   transform: translate(-50%, -50%) rotate(45deg);
   border-radius: 0.8cqh;
-  border: 0.32cqh solid var(--tone);
-  background: radial-gradient(115% 115% at 50% 8%, var(--tone-deep), #07030b 88%);
+  background: radial-gradient(52% 52% at 0% 0%, var(--tone-deep) 0%, #040110 78%);
   box-shadow:
-    0 0 2.4cqh var(--tone-glow),
-    inset 0 0 3cqh rgba(0, 0, 0, 0.55);
+    0 0 0.9cqh var(--tone-glow),
+    0 0 3.4cqh var(--tone-glow),
+    inset 0 0 3.4cqh var(--tone-inner);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+/*
+ * The edge, as a masked conic gradient rather than a border.
+ *
+ * A border can only be one colour, and the mock's is not: measured round a
+ * tile it runs near-white at the four vertices and settles into saturated tone
+ * across the middle of each side, which is what makes it read as a bent neon
+ * tube instead of a drawn outline. The tile is a rotated square, so its
+ * vertices are the square's corners -- 45/135/225/315deg round the conic.
+ */
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 0.32cqh;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    var(--tone) 38deg,
+    var(--tone-hot) 45deg,
+    var(--tone) 52deg,
+    var(--tone) 128deg,
+    var(--tone-hot) 135deg,
+    var(--tone) 142deg,
+    var(--tone) 218deg,
+    var(--tone-hot) 225deg,
+    var(--tone) 232deg,
+    var(--tone) 308deg,
+    var(--tone-hot) 315deg,
+    var(--tone) 322deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }
 
 .tile:hover {
   transform: translate(-50%, -50%) rotate(45deg) scale(1.04);
   box-shadow:
-    0 0 4cqh var(--tone-glow),
-    inset 0 0 3cqh rgba(0, 0, 0, 0.4);
+    0 0 4.4cqh var(--tone-glow),
+    inset 0 0 4.4cqh var(--tone-inner);
 }
 
 /* STORY and EXPLORE have nowhere to go yet. Dimming them is honest about that
@@ -53,8 +125,8 @@
 .tile:disabled:hover {
   transform: translate(-50%, -50%) rotate(45deg);
   box-shadow:
-    0 0 2.4cqh var(--tone-glow),
-    inset 0 0 3cqh rgba(0, 0, 0, 0.55);
+    0 0 2.6cqh var(--tone-glow),
+    inset 0 0 3.4cqh var(--tone-inner);
 }
 
 .tile-inner {
@@ -109,27 +181,33 @@
 .tile-story {
   left: 73.5%;
   top: 41%;
-  --tone: #a05cff;
-  --tone-deep: #180a3a;
-  --tone-glow: rgba(160, 92, 255, 0.55);
+  --tone: #7f2ce4;
+  --tone-hot: #f3c2ff;
+  --tone-deep: #2a0a58;
+  --tone-glow: rgba(150, 70, 255, 0.5);
+  --tone-inner: rgba(120, 50, 220, 0.28);
   --tone-text: #c8aaff;
 }
 
 .tile-character {
   left: 61.69%;
   top: 61.99%;
-  --tone: #ff2b3d;
-  --tone-deep: #4a0313;
-  --tone-glow: rgba(255, 43, 61, 0.5);
+  --tone: #f4436c;
+  --tone-hot: #ffd8e2;
+  --tone-deep: #520616;
+  --tone-glow: rgba(255, 60, 100, 0.45);
+  --tone-inner: rgba(230, 45, 85, 0.26);
   --tone-text: rgba(255, 255, 255, 0.92);
 }
 
 .tile-achievement {
   left: 85.31%;
   top: 61.99%;
-  --tone: #24e07d;
-  --tone-deep: #032a1a;
-  --tone-glow: rgba(36, 224, 125, 0.45);
+  --tone: #0ddca6;
+  --tone-hot: #c8fff2;
+  --tone-deep: #04382a;
+  --tone-glow: rgba(20, 220, 165, 0.42);
+  --tone-inner: rgba(15, 210, 155, 0.24);
   --tone-text: #4cf1a0;
 }
 
@@ -148,7 +226,7 @@
   gap: 1cqh;
   border-radius: 0.4cqh;
   border: 0.28cqh solid rgba(255, 60, 160, 0.95);
-  background: linear-gradient(180deg, rgba(70, 6, 38, 0.5), rgba(16, 2, 12, 0.6));
+  background: linear-gradient(180deg, rgba(52, 5, 28, 0.93), rgba(11, 1, 8, 0.95));
   box-shadow:
     0 0 3cqh rgba(255, 45, 150, 0.55),
     inset 0 0 4cqh rgba(255, 45, 150, 0.28);
@@ -220,4 +298,94 @@
   width: 5cqw;
   height: 0.16cqh;
   background: linear-gradient(90deg, transparent, rgba(255, 90, 175, 0.9), transparent);
+}
+
+/* ---------- START: drifting shards ---------- */
+/*
+ * The mock's frame has a pixel fringe dissolving off its inside edges. Static
+ * it is just texture; drifting and fading it is the one thing on this screen
+ * that moves, which is most of what makes the button feel like a button.
+ *
+ * Clipped to the frame's inner rectangle so a shard never crosses the neon
+ * rule, and laid out behind the text -- the layer is first in the button, and
+ * neither it nor the text is positioned, so DOM order settles it.
+ */
+.start-shards {
+  position: absolute;
+  inset: 1cqh 0.7cqw;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 0.3cqh;
+}
+
+.shard {
+  position: absolute;
+  display: block;
+  /* Square, unrounded, and never rotated: it is meant to read as a pixel that
+     came off the frame, not as a spark. */
+  background: #ff4fb0;
+  box-shadow: 0 0 0.7cqh rgba(255, 70, 170, 0.75);
+  opacity: 0;
+  animation-name: shard-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* A minority run pale, which is what keeps the field from reading as one flat
+   colour of confetti. */
+.shard.is-hot {
+  background: #ffe2f4;
+  box-shadow: 0 0 0.9cqh rgba(255, 160, 220, 0.9);
+}
+
+@keyframes shard-drift {
+  0% {
+    transform: translateY(0.9cqh) scale(0.65);
+    opacity: 0;
+  }
+  30%,
+  68% {
+    opacity: var(--peak, 0.7);
+  }
+  100% {
+    transform: translateY(-1.8cqh) scale(1.05);
+    opacity: 0;
+  }
+}
+
+/* Still there, still a fringe -- just not moving. */
+@media (prefers-reduced-motion: reduce) {
+  .shard {
+    animation: none;
+    opacity: var(--peak, 0.7);
+  }
+}
+
+/* ---------- START: rule arrowheads ---------- */
+/* The mock tips each rule beside 任務開始 with a triangle pointing inwards at
+   the text. */
+.start-rule {
+  position: relative;
+}
+
+.start-rule::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  border-style: solid;
+  border-color: transparent;
+}
+
+.start-rule:first-child::after {
+  right: -0.5cqh;
+  transform: translateY(-50%);
+  border-width: 0.5cqh 0 0.5cqh 0.7cqh;
+  border-left-color: rgba(255, 110, 185, 0.9);
+}
+
+.start-rule:last-child::after {
+  left: -0.5cqh;
+  transform: translateY(-50%);
+  border-width: 0.5cqh 0.7cqh 0.5cqh 0;
+  border-right-color: rgba(255, 110, 185, 0.9);
 }

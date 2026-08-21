@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Live2DStage, type Live2DStageHandle } from '../pixi/Live2DStage'
 import { StageShell } from '../components/StageShell'
@@ -23,6 +23,54 @@ const MENU_TILES: MenuTile[] = [
   { id: 'character', en: 'CHARACTER', sub: '角色', icon: 'sword', tone: 'character', to: '/character' },
   { id: 'achievement', en: 'ACHIEVEMENT', sub: '成就', icon: 'trophy', tone: 'achievement', to: '/achievements' },
 ]
+
+/**
+ * The pixel shards that dissolve off the inside edges of the START frame.
+ *
+ * The mock draws them as a static fringe; here they drift and fade, which is
+ * what the button was missing -- everything else on this screen is lit and
+ * still, so one thing that moves is what makes it read as a game rather than
+ * as a picture of one.
+ *
+ * Built once at module scope from a seeded generator. `Math.random()` while
+ * rendering would deal a new field on every keystroke of state, so the shards
+ * would jump the moment anything else on the screen changed.
+ */
+interface Shard {
+  /** Percentages within the frame. */
+  x: number
+  y: number
+  /** Side in cqh. */
+  size: number
+  delay: number
+  duration: number
+  peak: number
+  hot: boolean
+}
+
+const SHARDS: Shard[] = (() => {
+  let seed = 0x5f3a91
+  const rand = () => {
+    // Numerical Recipes LCG -- any stable generator does, this one is short.
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+    return seed / 0x100000000
+  }
+  return Array.from({ length: 36 }, (_, i) => {
+    const right = i % 2 === 1
+    // Clustered against the left and right edges, thinning towards the middle,
+    // so the text keeps a clear field.
+    const inset = rand() ** 2 * 17
+    return {
+      x: right ? 100 - inset : inset,
+      y: 3 + rand() * 94,
+      size: 0.5 + rand() * 1.1,
+      delay: -rand() * 5,
+      duration: 3 + rand() * 3,
+      peak: 0.25 + rand() * 0.6,
+      hot: rand() > 0.72,
+    }
+  })
+})()
 
 export function HomePage() {
   const stageRef = useRef<Live2DStageHandle>(null)
@@ -104,6 +152,25 @@ export function HomePage() {
         </nav>
 
         <button type="button" className="start-btn" onClick={() => navigate('/battle')}>
+          <span className="start-shards" aria-hidden="true">
+            {SHARDS.map((shard, i) => (
+              <i
+                key={i}
+                className={`shard${shard.hot ? ' is-hot' : ''}`}
+                style={
+                  {
+                    left: `${shard.x}%`,
+                    top: `${shard.y}%`,
+                    width: `${shard.size}cqh`,
+                    height: `${shard.size}cqh`,
+                    animationDelay: `${shard.delay}s`,
+                    animationDuration: `${shard.duration}s`,
+                    '--peak': shard.peak,
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </span>
           <span className="start-en">START</span>
           <span className="start-sub">
             <i className="start-rule" />
