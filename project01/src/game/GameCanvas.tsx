@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 import { ArenaScene, ARENA_HEIGHT, ARENA_WIDTH } from './scenes/ArenaScene'
+import { resetRun } from './runStore'
 
 /**
  * Owns one Phaser.Game for as long as it is mounted.
@@ -44,6 +45,16 @@ export function GameCanvas() {
       scene: [ArenaScene],
     })
 
+    if (import.meta.env.DEV) {
+      /*
+       * Dev-only handle on the running game, so the arena can be poked at from
+       * the console or a headless browser -- jumping to a late wave to see what
+       * six hundred enemies do to the frame time is not something you can wait
+       * out by playing. Stripped from the production bundle by the guard.
+       */
+      ;(window as unknown as { __arena?: Phaser.Game }).__arena = game
+    }
+
     return () => {
       // true removes the canvas from the DOM. This matters more than it looks:
       // browsers cap how many live WebGL contexts a page may hold, so routing
@@ -56,6 +67,9 @@ export function GameCanvas() {
       // reference, not by clearing the parent -- but it is why you briefly see
       // two canvases in the inspector in development.
       game.destroy(true, false)
+      // Otherwise the last run's numbers flash back up on the next visit,
+      // before the new scene has published anything.
+      resetRun()
     }
   }, [])
 

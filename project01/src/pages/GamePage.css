@@ -89,3 +89,243 @@
   font-size: 1rem;
   letter-spacing: 0.2em;
 }
+
+/* ---------- HUD ---------- */
+/*
+ * Sized in rem, not the lobby's cq units: this screen has no container-query
+ * stage, and the HUD hugs the viewport rather than the letterboxed arena --
+ * which is what you want, since the arena's own edges are where the action is.
+ */
+.game-overlay {
+  --hud-panel: rgba(8, 6, 12, 0.78);
+  --hud-edge: rgba(255, 255, 255, 0.14);
+  --rose: #f4436c;
+}
+
+/* ---------- wave ---------- */
+.wave-readout {
+  position: absolute;
+  top: 1.1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.wave-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.wave-timer {
+  font-size: 2.6rem;
+  font-weight: 300;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 1.4rem rgba(244, 67, 108, 0.6);
+}
+
+.wave-timer.is-break {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #4fe6c0;
+  text-shadow: 0 0 1.2rem rgba(79, 230, 192, 0.6);
+}
+
+/* ---------- vitals ---------- */
+.vitals {
+  position: absolute;
+  left: 1.2rem;
+  bottom: 1.2rem;
+  width: min(26rem, 34vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.5rem;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-edge);
+  backdrop-filter: blur(4px);
+}
+
+.vital-row {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.vital-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.vital-bar {
+  height: 0.62rem;
+  border-radius: 1rem;
+  background: #1c1c1e;
+  overflow: hidden;
+}
+
+.vital-bar.is-thin {
+  height: 0.36rem;
+}
+
+.vital-fill {
+  display: block;
+  height: 100%;
+  border-radius: 1rem;
+  /* The scene publishes at about 15Hz, so without this the bars step. Kept
+     short enough that a hit still reads as instant. */
+  transition: width 0.09s linear;
+}
+
+.vital-fill.is-hp {
+  background: linear-gradient(90deg, #ff6f8f, var(--rose));
+  box-shadow: 0 0 0.5rem rgba(244, 67, 108, 0.6);
+}
+
+.vital-fill.is-xp {
+  background: linear-gradient(90deg, #8f6bff, #4fc3ff);
+  box-shadow: 0 0 0.5rem rgba(110, 150, 255, 0.55);
+}
+
+.vital-count {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* ---------- counters ---------- */
+.counters {
+  position: absolute;
+  right: 1.2rem;
+  bottom: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.5rem;
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-edge);
+  backdrop-filter: blur(4px);
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.counter-icon {
+  font-size: 1.15rem;
+}
+
+.counter-icon.is-kills {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.counter.is-diagnostic {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- death ---------- */
+.game-over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  background: rgba(6, 2, 10, 0.72);
+  /* The only part of the overlay that takes the whole screen back, because
+     nothing underneath it is playable any more. */
+  pointer-events: auto;
+  animation: game-over-in 0.25s ease both;
+}
+
+@keyframes game-over-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.game-over-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 4rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--rose);
+  text-shadow: 0 0 2.4rem rgba(244, 67, 108, 0.55);
+}
+
+.game-over-line {
+  margin: 0;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.game-over-line b {
+  font-size: 1.3rem;
+  color: #fff;
+}
+
+.game-over-btn {
+  margin-top: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1.6rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--rose);
+  background: linear-gradient(180deg, #3d1020, #4b1327);
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  box-shadow: 0 0 1.4rem rgba(244, 67, 108, 0.35);
+  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.game-over-btn:hover {
+  background: linear-gradient(180deg, #55162c, #631a36);
+  box-shadow: 0 0 2.2rem rgba(244, 67, 108, 0.6);
+}
+
+.game-over-btn kbd {
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.game-hint {
+  position: absolute;
+  top: 1.4rem;
+  right: 1.2rem;
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.42);
+}
