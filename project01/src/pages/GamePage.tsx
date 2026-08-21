@@ -2,6 +2,7 @@ import { useEffect, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
 import { Icon, type IconName } from '../components/icons'
+import { Emblem, type EmblemTone } from '../components/Emblem'
 import {
   requestBuy,
   requestLeaveShop,
@@ -20,6 +21,7 @@ import {
 } from '../game/data/content'
 import { SHOP_ITEMS } from '../game/data/shop'
 import { useSelectedCharacter } from '../app/selectedCharacterContext'
+import { usePortraits } from '../features/portraits'
 import { recordRun, useLastReward } from '../features/profile'
 import { loadoutFor } from '../game/data/loadouts'
 import './GamePage.css'
@@ -27,8 +29,52 @@ import './GamePage.css'
 /** Roman numerals for weapon tiers -- short, and unmistakably a rank. */
 const TIER_MARK = ['', 'I', 'II', 'III', 'IV']
 
+/**
+ * The wave the objectives panel counts towards.
+ *
+ * A milestone, not a win condition: nothing happens at twenty, the run simply
+ * carries on and the row stays full. Worth having anyway -- "12" alone is a
+ * number, "12 / 20" is a position.
+ */
+const WAVE_MILESTONE = 20
+
+/** mm:ss. A wave is under a minute, but the mock's clock has two fields and a
+ *  bare "31" reads as a score rather than as time running out. */
+const clock = (seconds: number) => {
+  const whole = Math.max(0, Math.ceil(seconds))
+  return `${String(Math.floor(whole / 60)).padStart(2, '0')}:${String(whole % 60).padStart(2, '0')}`
+}
+
 /* The weapon tints are stored as numbers for Phaser; CSS wants the string. */
 const hexOf = (tint: number) => `#${tint.toString(16).padStart(6, '0')}`
+
+/**
+ * Rarity, which is not stored anywhere and does not need to be.
+ *
+ * The mock's cards carry a rank, and the data already ranks everything twice
+ * over: an upgrade's draw weight is exactly how ordinary it is, an item's list
+ * price is what it is worth, and a weapon's tier is its rank outright. Reading
+ * rarity off those keeps one source of truth -- tune a weight and the card
+ * label follows -- where a hand-written table would drift the first time a
+ * number moved.
+ */
+const RARITY_LABEL: Record<EmblemTone, string> = {
+  common: '普通',
+  rare: '稀有',
+  epic: '進階',
+  legend: '傳說',
+}
+
+/** Rarer draws are rarer cards. Weights in the pool run 3 to 10. */
+const rarityOfWeight = (weight: number): EmblemTone =>
+  weight >= 10 ? 'common' : weight >= 8 ? 'rare' : weight >= 6 ? 'epic' : 'legend'
+
+/** The list price, not the wave-scaled one: what the shop charges climbs with
+ *  the wave, and a card that changed rank as the run went on would be lying. */
+const rarityOfPrice = (price: number): EmblemTone =>
+  price < 25 ? 'common' : price < 32 ? 'rare' : price < 40 ? 'epic' : 'legend'
+
+const RARITY_BY_TIER: EmblemTone[] = ['common', 'common', 'rare', 'epic', 'legend']
 
 /* The data file stays free of view concerns, so the glyph for each stat is
    chosen here rather than stored beside its numbers. */
@@ -50,6 +96,13 @@ const STAT_ICON: Record<UpgradeId, IconName> = {
   vision: 'eye',
   xpGain: 'exp',
 }
+
+/* An item's glyph is the glyph of the first stat it moves, so a new shop entry
+   gets a sensible medallion for free and there is no second table to forget to
+   update. Ordering is the literal's own, which is the order the detail string
+   lists them in. */
+const glyphForItem = (mods: Partial<PlayerStats>): IconName =>
+  STAT_ICON[Object.keys(mods)[0] as UpgradeId] ?? 'sigil'
 
 /**
  * How each stat reads on the strip.
@@ -93,6 +146,7 @@ const STAT_ORDER: UpgradeId[] = [
   'range',
   'moveSpeed',
   'lootRange',
+  'vision',
   'xpGain',
 ]
 
@@ -117,6 +171,8 @@ export function GamePage() {
   // The lobby's selected character decides what the run opens with.
   const { character } = useSelectedCharacter()
   const loadout = loadoutFor(character.id)
+  const portraits = usePortraits()
+  const portrait = portraits[character.id]
   const lastReward = useLastReward()
   // Only ever shown on the panel that is up because this run ended, so a
   // reward banked before a restart cannot reappear.
@@ -183,19 +239,61 @@ export function GamePage() {
       <GameCanvas loadout={loadout} />
 
       <div className="game-overlay">
-        {/* Top-left: the way out, and the purse. Coins are what the shop will
-            spend, so they belong where the eye starts rather than tucked in
-            with the diagnostics. */}
-        <div className="game-topleft">
-          <button type="button" className="back-btn panel" onClick={() => navigate('/')}>
-            <Icon name="back" />
-            <span>返回大廳</span>
-          </button>
+        {/* ---------- who is fighting ---------- */}
+        {/*
+          The mock leads with the character: portrait, name, level, then the
+          two bars. That is the right call for a run that opens from a roster
+          -- the arena is drawn from primitives, so without this the screen
+          never says who any of it is about.
 
-          <div className="coin-purse">
-            <Icon name="coin" className="coin-icon" />
-            <span className="coin-value">{run.coins}</span>
+          The portrait is the one captured from the Live2D model in the lobby,
+          which means a player who came straight here may not have one yet.
+          Hence the fallback rather than a broken frame.
+        */}
+        <div className="pilot">
+          <span className="pilot-face">
+            {portrait ? (
+              <img src={portrait} alt="" />
+            ) : (
+              <Icon name="person" className="pilot-face-fallback" />
+            )}
+          </span>
+
+          <div className="pilot-body">
+            <p className="pilot-name">
+              {character.name}
+              <Icon name="sigil" className="pilot-sigil" />
+            </p>
+            <p className="pilot-level">LV.{run.level}</p>
+
+            {/* Widths move in 66ms steps because that is how often the scene
+                publishes; the transition is what makes them look continuous. */}
+            <span className="pilot-bar is-hp">
+              <i className="pilot-fill" style={{ width: `${hpPercent}%` }} />
+              <b className="pilot-bar-count">
+                {Math.max(0, Math.ceil(run.hp))} / {Math.round(run.maxHp)}
+              </b>
+            </span>
+
+            <p className="pilot-xp-label">
+              EXP {Math.floor(run.xp).toLocaleString()} / {run.xpToLevel.toLocaleString()}
+            </p>
+            <span className="pilot-bar is-xp">
+              <i className="pilot-fill" style={{ width: `${xpPercent}%` }} />
+            </span>
           </div>
+        </div>
+
+        {/* Under the panel, as in the mock. Coins are what the shop will spend,
+            so they belong where the eye starts rather than tucked in with the
+            diagnostics. The account's balance is deliberately not here: the
+            shop spends what this run earned, and showing a five-figure lobby
+            total beside it would read as money you could use. */}
+        <div className="purse">
+          <span className="purse-row">
+            <Icon name="coin" className="purse-icon is-coin" />
+            <b>{run.coins}</b>
+          </span>
         </div>
 
         {/* ---------- wave ---------- */}
@@ -215,34 +313,40 @@ export function GamePage() {
           ) : (
             <>
               <span className="wave-label">WAVE {run.wave}</span>
-              <span className="wave-timer">{Math.ceil(run.timeLeft)}</span>
+              <span className="wave-timer">{clock(run.timeLeft)}</span>
             </>
           )}
         </div>
 
-        {/* ---------- vitals ---------- */}
-        <div className="vitals">
-          <div className="vital-row">
-            <span className="vital-tag">HP</span>
-            <span className="vital-bar">
-              {/* Widths move in 66ms steps because that is how often the scene
-                  publishes; the transition is what makes them look continuous. */}
-              <i className="vital-fill is-hp" style={{ width: `${hpPercent}%` }} />
-            </span>
-            <span className="vital-count">
-              {Math.max(0, Math.ceil(run.hp))} / {Math.round(run.maxHp)}
-            </span>
-          </div>
-
-          <div className="vital-row">
-            <span className="vital-tag">LV {run.level}</span>
-            <span className="vital-bar is-thin">
-              <i className="vital-fill is-xp" style={{ width: `${xpPercent}%` }} />
-            </span>
-            <span className="vital-count">
-              {Math.floor(run.xp)} / {run.xpToLevel}
-            </span>
-          </div>
+        {/* ---------- what the run is for ---------- */}
+        {/*
+          Three numbers the run already keeps, rather than an objective system
+          it does not have. Twenty waves is a milestone to aim at, not a win
+          condition -- nothing happens there, and the row simply fills up and
+          stays full, which is honest about what it is.
+        */}
+        <div className="goals">
+          <p className="goals-title">任務目標</p>
+          <ul className="goals-list">
+            <li className="goal">
+              <span className="goal-name">存活 {WAVE_MILESTONE} 波</span>
+              <span className="goal-count">
+                {Math.min(run.wave, WAVE_MILESTONE)} / {WAVE_MILESTONE}
+              </span>
+              <i
+                className="goal-track"
+                style={{ '--fill': `${Math.min(100, (run.wave / WAVE_MILESTONE) * 100)}%` } as CSSProperties}
+              />
+            </li>
+            <li className="goal">
+              <span className="goal-name">累計擊殺</span>
+              <span className="goal-count">{run.kills}</span>
+            </li>
+            <li className="goal">
+              <span className="goal-name">本場金幣</span>
+              <span className="goal-count">{run.coins}</span>
+            </li>
+          </ul>
         </div>
 
         {/* ---------- the rack ---------- */}
@@ -291,35 +395,53 @@ export function GamePage() {
         {/* ---------- level up ---------- */}
         {choosing ? (
           <div className="levelup">
-            <p className="levelup-title">LEVEL {run.level}</p>
-            <p className="levelup-sub">
-              選擇一項強化
-              {run.pendingLevels > 1 ? ` · 還有 ${run.pendingLevels - 1} 次` : ''}
-            </p>
+            <header className="screen-head">
+              <p className="screen-eyebrow">LEVEL {run.level}</p>
+              <h2 className="screen-title">升級選擇</h2>
+              <p className="screen-sub">
+                選擇一項強化
+                {run.pendingLevels > 1 ? ` · 還有 ${run.pendingLevels - 1} 次` : ''}
+              </p>
+            </header>
 
-            <div className="levelup-cards">
+            <div className="card-row">
               {run.offers.map((id, index) => {
                 const upgrade = getUpgrade(id)
                 if (!upgrade) {
                   return null
                 }
+                const tone = rarityOfWeight(upgrade.weight)
+                const group = STAT_INFO[id].group
                 return (
                   <button
                     type="button"
                     key={id}
-                    className={`upgrade-card group-${STAT_INFO[id].group}`}
+                    className={`card tone-${tone} group-${group}`}
                     onClick={() => requestUpgrade(id)}
                   >
-                    <kbd className="upgrade-key">{index + 1}</kbd>
-                    <Icon name={STAT_ICON[id]} className="upgrade-icon" />
-                    <span className="upgrade-label">{STAT_INFO[id].label}</span>
-                    <span className="upgrade-effect">{upgrade.effect}</span>
-                    <span className="upgrade-detail">{upgrade.detail}</span>
+                    <kbd className="card-key">{index + 1}</kbd>
+                    <span className="card-name">{STAT_INFO[id].label}</span>
+                    <span className="card-rarity">{RARITY_LABEL[tone]}</span>
+                    {/* The medallion the achievements screen uses. The mock has
+                        painted item art here; this is the same trick that stood
+                        in for it there, and a real illustration replaces the
+                        component without touching the card around it. */}
+                    <Emblem
+                      className="card-art"
+                      frame={group === 'defence' ? 'shield' : 'ring'}
+                      glyph={STAT_ICON[id]}
+                      tone={tone}
+                    />
+                    <span className="card-detail">{upgrade.detail}</span>
+                    <span className="card-stats">
+                      <span className="card-stat">
+                        <span className="card-stat-name">{STAT_INFO[id].label}</span>
+                        <b className="card-stat-value">{upgrade.effect}</b>
+                      </span>
+                    </span>
                     {/* Where it stands now, so a pick is a change to something
                         rather than a number in isolation. */}
-                    <span className="upgrade-current">
-                      目前 {STAT_FORMAT[id](run.stats[id])}
-                    </span>
+                    <span className="card-plate">目前 {STAT_FORMAT[id](run.stats[id])}</span>
                   </button>
                 )
               })}
@@ -330,51 +452,80 @@ export function GamePage() {
         {/* ---------- shop ---------- */}
         {run.status === 'shop' ? (
           <div className="shop">
-            <header className="shop-head">
-              <p className="shop-title">補給</p>
-              <p className="shop-sub">
-                第 {run.wave} 波結束 · 持有 <b>{run.coins}</b> 金幣
+            <header className="screen-head">
+              <p className="screen-eyebrow">WAVE {run.wave} CLEAR</p>
+              <h2 className="screen-title">補給</h2>
+              <p className="screen-sub">
+                持有 <b>{run.coins}</b> 金幣
               </p>
             </header>
 
-            <div className="shop-cards">
+            {/* Above the shelf, as in the mock: rerolling is something you do
+                to the shelf, so it belongs next to it rather than filed with
+                the button that leaves. */}
+            <button
+              type="button"
+              className="shop-reroll"
+              onClick={requestReroll}
+              disabled={run.coins < run.rerollPrice}
+            >
+              <Icon name="sparkle" />
+              重骰貨架
+              <span className="card-price">
+                <Icon name="coin" className="card-coin" />
+                {run.rerollPrice}
+              </span>
+            </button>
+
+            <div className="card-row">
               {run.shop.map((offer, slot) => {
                 const affordable = run.coins >= offer.price
                 if (offer.sort === 'weapon') {
                   const weapon = WEAPONS[offer.index]
+                  const tone = RARITY_BY_TIER[offer.tier] ?? 'common'
                   return (
                     <button
                       type="button"
                       key={`w${slot}-${offer.index}-${offer.tier}`}
-                      className={`shop-card is-weapon${affordable ? '' : ' is-broke'}`}
+                      className={`card is-weapon tone-${tone}${affordable ? '' : ' is-broke'}`}
                       style={{ '--weapon-tint': hexOf(weapon.tint) } as CSSProperties}
                       onClick={() => requestBuy(slot)}
                       disabled={!affordable}
                     >
-                      <span className="shop-kind">武器 {TIER_MARK[offer.tier]}</span>
-                      <span className="shop-label">{weapon.label}</span>
-                      <span className="shop-detail">{weapon.detail}</span>
-                      <span className="shop-price">
-                        <Icon name="coin" className="shop-coin" />
+                      <span className="card-name">{weapon.label}</span>
+                      <span className="card-rarity">
+                        武器 {TIER_MARK[offer.tier]} · {RARITY_LABEL[tone]}
+                      </span>
+                      <Emblem className="card-art" frame="ring" glyph="swords" tone={tone} />
+                      <span className="card-detail">{weapon.detail}</span>
+                      <span className="card-plate">
+                        <Icon name="coin" className="card-coin" />
                         {offer.price}
                       </span>
                     </button>
                   )
                 }
                 const item = SHOP_ITEMS[offer.index]
+                const tone = rarityOfPrice(item.price)
                 return (
                   <button
                     type="button"
                     key={`i${slot}-${item.id}`}
-                    className={`shop-card${affordable ? '' : ' is-broke'}`}
+                    className={`card tone-${tone}${affordable ? '' : ' is-broke'}`}
                     onClick={() => requestBuy(slot)}
                     disabled={!affordable}
                   >
-                    <span className="shop-kind">道具</span>
-                    <span className="shop-label">{item.label}</span>
-                    <span className="shop-detail">{item.detail}</span>
-                    <span className="shop-price">
-                      <Icon name="coin" className="shop-coin" />
+                    <span className="card-name">{item.label}</span>
+                    <span className="card-rarity">道具 · {RARITY_LABEL[tone]}</span>
+                    <Emblem
+                      className="card-art"
+                      frame="shield"
+                      glyph={glyphForItem(item.mods)}
+                      tone={tone}
+                    />
+                    <span className="card-detail">{item.detail}</span>
+                    <span className="card-plate">
+                      <Icon name="coin" className="card-coin" />
                       {offer.price}
                     </span>
                   </button>
@@ -385,19 +536,6 @@ export function GamePage() {
             </div>
 
             <footer className="shop-foot">
-              <button
-                type="button"
-                className="shop-reroll"
-                onClick={requestReroll}
-                disabled={run.coins < run.rerollPrice}
-              >
-                重骰
-                <span className="shop-price">
-                  <Icon name="coin" className="shop-coin" />
-                  {run.rerollPrice}
-                </span>
-              </button>
-
               <button type="button" className="shop-go" onClick={requestLeaveShop}>
                 前往第 {run.wave + 1} 波
               </button>
@@ -448,6 +586,14 @@ export function GamePage() {
           {loadout.trait ? `${loadout.trait} · ` : ''}
           WASD / 方向鍵 移動 · 武器自動開火
         </p>
+
+        {/* Bottom-left, out of the way. The top-left corner belongs to the
+            character panel now, and this is an escape hatch rather than
+            something the eye should land on first. */}
+        <button type="button" className="back-btn panel" onClick={() => navigate('/')}>
+          <Icon name="back" />
+          <span>返回大廳</span>
+        </button>
       </div>
     </div>
   )

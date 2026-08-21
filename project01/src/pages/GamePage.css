@@ -45,55 +45,185 @@
   height: 1em;
 }
 
-.game-topleft {
+/* ---------- the character panel ---------- */
+/*
+ * The mock leads with who is fighting: a framed portrait, the name, the level,
+ * then health and experience. It replaces the bare pair of bars that used to
+ * sit in the bottom-left corner -- same two numbers, but attached to somebody.
+ *
+ * Ornament is a corner treatment rather than a border image: two gradients
+ * clipped to the panel's corners give the mock's engraved-plate look without a
+ * PNG to load, scale and eventually replace.
+ */
+.pilot {
   position: absolute;
-  top: 1.2rem;
-  left: 1.2rem;
+  top: 1.1rem;
+  left: 1.1rem;
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: min(27rem, 32vw);
+  padding: 0.55rem 0.9rem 0.55rem 0.55rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(135deg, rgba(28, 8, 18, 0.92), rgba(8, 6, 12, 0.86));
+  border: 1px solid rgba(244, 67, 108, 0.28);
+  box-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.6),
+    inset 0 0 1.4rem rgba(244, 67, 108, 0.08);
+  backdrop-filter: blur(5px);
+}
+
+.pilot-face {
+  position: relative;
+  flex: 0 0 auto;
+  width: 4.4rem;
+  height: 4.4rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  background: radial-gradient(circle at 50% 30%, #34162a, #0b0510);
+  border: 1px solid rgba(255, 199, 74, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.75);
+}
+
+.pilot-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* The capture is a head crop on transparent, so it sits high in its box. */
+  object-position: 50% 40%;
+}
+
+/* No portrait yet: this one is only captured once the model has been shown in
+   the lobby, and a player can come straight here from a cold start. */
+.pilot-face-fallback {
+  font-size: 2.2rem;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.pilot-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.16rem;
+}
+
+.pilot-name {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
 }
 
-/* Laid out by the row above, not by the absolute position it carries for
-   screens that have no such row.
-
-   Three classes deep on purpose: the `.game-overlay .back-btn` rule below
-   scores the same (0,2,0) and is declared later, so at two classes this lost
-   the tie and the button stayed absolute -- inside a box the width of the coin
-   purse, which drew it one letter per line. */
-.game-overlay .game-topleft .back-btn {
-  position: static;
+.pilot-sigil {
+  font-size: 0.85rem;
+  color: rgba(244, 67, 108, 0.8);
 }
 
-.coin-purse {
+.pilot-level {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.pilot-bar {
+  position: relative;
+  display: block;
+  height: 0.85rem;
+  margin-top: 0.18rem;
+  border-radius: 0.15rem;
+  background: #17070f;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.pilot-bar.is-xp {
+  height: 0.5rem;
+}
+
+.pilot-fill {
+  display: block;
+  height: 100%;
+  /* The scene publishes at about 15Hz, so without this the bars step. Kept
+     short enough that a hit still reads as instant. */
+  transition: width 0.09s linear;
+}
+
+.pilot-bar.is-hp .pilot-fill {
+  background: linear-gradient(90deg, #b8213f, #ff6f8f);
+  box-shadow: 0 0 0.5rem rgba(244, 67, 108, 0.55);
+}
+
+.pilot-bar.is-xp .pilot-fill {
+  background: linear-gradient(90deg, #4a2bb8, #8f6bff);
+  box-shadow: 0 0 0.5rem rgba(110, 90, 255, 0.5);
+}
+
+/* Inside the bar as in the mock, which is what lets the panel carry two bars
+   and a label in the height one row of the old layout took. */
+.pilot-bar-count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.pilot-xp-label {
+  margin: 0.22rem 0 0;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ---------- the purse ---------- */
+.purse {
+  position: absolute;
+  top: 6.9rem;
+  left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.purse-row {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 2rem;
-  background: rgba(8, 6, 12, 0.82);
-  border: 1px solid rgba(255, 199, 74, 0.35);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-}
-
-.coin-icon {
-  font-size: 1.25rem;
-}
-
-.coin-value {
+  gap: 0.5rem;
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #ffd98a;
-  min-width: 2.2rem;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.purse-icon.is-coin {
+  font-size: 1.2rem;
 }
 
 /* This screen has no container-query stage, so the back button is sized in rem
    rather than the lobby's cq units. */
+/* top:auto matters. The lobby-wide back button rule sets a top, and an
+   absolutely positioned box with both a top and a bottom stretches to fill the
+   distance -- which drew this one as a 122x857 column down the left edge. */
 .game-overlay .back-btn {
   position: absolute;
-  top: 1.2rem;
+  top: auto;
+  bottom: 1.2rem;
   left: 1.2rem;
   display: flex;
   align-items: center;
@@ -158,7 +288,15 @@
   gap: 0.15rem;
 }
 
+/*
+ * The mock hangs a diamond flourish either side of the wave number. Drawn with
+ * pseudo-elements rather than characters in the markup: it is ornament, so it
+ * has no business in the accessibility tree or in a copied string.
+ */
 .wave-label {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.28em;
@@ -166,8 +304,27 @@
   color: rgba(255, 255, 255, 0.68);
 }
 
+.wave-label::before,
+.wave-label::after {
+  content: '';
+  width: 2.6rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(244, 67, 108, 0.75));
+  /* A diamond at the inner end of each rule, which is the mock's motif. */
+  box-shadow: 0 0 0 0 transparent;
+  position: relative;
+}
+
+.wave-label::before {
+  background: linear-gradient(90deg, transparent, rgba(244, 67, 108, 0.75));
+}
+
+.wave-label::after {
+  background: linear-gradient(270deg, transparent, rgba(244, 67, 108, 0.75));
+}
+
 .wave-timer {
-  font-size: 2.6rem;
+  font-size: 2.7rem;
   font-weight: 300;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -188,72 +345,6 @@
   letter-spacing: 0.1em;
   color: #4fe6c0;
   text-shadow: 0 0 1.2rem rgba(79, 230, 192, 0.6);
-}
-
-/* ---------- vitals ---------- */
-.vitals {
-  position: absolute;
-  left: 1.2rem;
-  bottom: 1.2rem;
-  width: min(26rem, 34vw);
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.7rem 0.9rem;
-  border-radius: 0.5rem;
-  background: var(--hud-panel);
-  border: 1px solid var(--hud-edge);
-  backdrop-filter: blur(4px);
-}
-
-.vital-row {
-  display: grid;
-  grid-template-columns: 3.2rem 1fr auto;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.vital-tag {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.vital-bar {
-  height: 0.62rem;
-  border-radius: 1rem;
-  background: #1c1c1e;
-  overflow: hidden;
-}
-
-.vital-bar.is-thin {
-  height: 0.36rem;
-}
-
-.vital-fill {
-  display: block;
-  height: 100%;
-  border-radius: 1rem;
-  /* The scene publishes at about 15Hz, so without this the bars step. Kept
-     short enough that a hit still reads as instant. */
-  transition: width 0.09s linear;
-}
-
-.vital-fill.is-hp {
-  background: linear-gradient(90deg, #ff6f8f, var(--rose));
-  box-shadow: 0 0 0.5rem rgba(244, 67, 108, 0.6);
-}
-
-.vital-fill.is-xp {
-  background: linear-gradient(90deg, #8f6bff, #4fc3ff);
-  box-shadow: 0 0 0.5rem rgba(110, 150, 255, 0.55);
-}
-
-.vital-count {
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.72);
 }
 
 /* ---------- counters ---------- */
@@ -476,120 +567,287 @@
   }
 }
 
-.levelup-title {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 2.6rem;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  background: linear-gradient(180deg, #fff2f7 0%, #ffc3d8 46%, #e0466f 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 1.4rem rgba(236, 80, 130, 0.5));
-}
-
-.levelup-sub {
-  margin: 0 0 1.4rem;
-  font-size: 0.9rem;
-  letter-spacing: 0.16em;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-/* Stretched, so a card whose description wraps to two lines does not stand
-   taller than the others and knock the row out of alignment. */
-.levelup-cards {
-  display: flex;
-  align-items: stretch;
-  gap: 1rem;
-}
-
-.upgrade-card {
-  position: relative;
-  width: 13rem;
+/* ---------- the head of a full-screen choice ---------- */
+/*
+ * Shared by the level-up and the shop, because the mock draws them as one
+ * screen with a different noun in the title. An eyebrow above, a display title,
+ * a line of context under it.
+ */
+.screen-head {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
-  padding: 1.8rem 1rem 1.2rem;
-  border-radius: 0.6rem;
-  border: 1px solid var(--group-edge);
-  background: linear-gradient(180deg, var(--group-top), rgba(8, 4, 12, 0.95));
-  box-shadow: 0 0 1.4rem var(--group-glow);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  gap: 0.2rem;
+  margin-bottom: 1.5rem;
 }
 
-.upgrade-card:hover {
-  transform: translateY(-0.3rem);
-  border-color: var(--group-hot);
-  box-shadow: 0 0 2.6rem var(--group-glow);
+.screen-eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: rgba(255, 255, 255, 0.5);
 }
 
-.upgrade-key {
+/* The mock's title is a display face with a metallic vertical ramp and a red
+   bloom under it. The gradient is clipped to the text rather than painted
+   behind it, which is what keeps the strokes readable at this weight. */
+.screen-title {
+  position: relative;
+  margin: 0.1rem 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  line-height: 1.1;
+  background: linear-gradient(180deg, #fff2f7 0%, #ffc3d8 44%, #d63659 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 1.6rem rgba(236, 80, 130, 0.45));
+}
+
+/* The flourishes either side. Pseudo-elements, so the ornament stays out of
+   the accessibility tree and out of anything copied from the page. */
+.screen-title::before,
+.screen-title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 5.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(214, 54, 89, 0.9));
+}
+
+.screen-title::before {
+  right: calc(100% + 1.6rem);
+}
+
+.screen-title::after {
+  left: calc(100% + 1.6rem);
+  background: linear-gradient(270deg, transparent, rgba(214, 54, 89, 0.9));
+}
+
+.screen-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.screen-sub b {
+  color: #ffd98a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- cards ---------- */
+/*
+ * One card for both screens. A level-up card and a shop card differ in what
+ * their bottom plate says -- where a stat stands now, or what it costs -- and
+ * in nothing else worth a second set of rules.
+ *
+ * Stretched, so a card whose description wraps to two lines does not stand
+ * taller than the others and knock the row out of alignment.
+ */
+.card-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 14.5rem;
+  padding: 1.1rem 1rem 0.9rem;
+  border-radius: 0.4rem;
+  text-align: center;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  background:
+    linear-gradient(180deg, var(--tone-top, rgba(30, 12, 22, 0.95)), rgba(8, 4, 12, 0.96));
+  border: 1px solid var(--tone-edge, rgba(255, 255, 255, 0.14));
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.55),
+    inset 0 0 2rem var(--tone-glow, transparent);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.card:not(:disabled):hover {
+  transform: translateY(-4px);
+  border-color: var(--tone-hot, #fff);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.6),
+    0 0 1.4rem var(--tone-glow, transparent),
+    inset 0 0 2rem var(--tone-glow, transparent);
+}
+
+/* Rarity, which colours the whole card rather than a corner badge: at a
+   glance across three cards the tone is what separates them, and a label alone
+   would have to be read. */
+.tone-common {
+  --tone-edge: rgba(190, 200, 215, 0.4);
+  --tone-hot: #cfd8e6;
+  --tone-top: rgba(24, 26, 32, 0.95);
+  --tone-glow: rgba(190, 200, 215, 0.12);
+}
+
+.tone-rare {
+  --tone-edge: rgba(79, 195, 255, 0.45);
+  --tone-hot: #7bd2ff;
+  --tone-top: rgba(10, 30, 52, 0.95);
+  --tone-glow: rgba(79, 195, 255, 0.16);
+}
+
+.tone-epic {
+  --tone-edge: rgba(178, 116, 255, 0.5);
+  --tone-hot: #c39bff;
+  --tone-top: rgba(30, 14, 52, 0.95);
+  --tone-glow: rgba(178, 116, 255, 0.18);
+}
+
+.tone-legend {
+  --tone-edge: rgba(255, 173, 74, 0.55);
+  --tone-hot: #ffc978;
+  --tone-top: rgba(48, 24, 6, 0.95);
+  --tone-glow: rgba(255, 173, 74, 0.2);
+}
+
+.card-key {
   position: absolute;
   top: 0.5rem;
-  left: 0.6rem;
-  width: 1.3rem;
-  height: 1.3rem;
-  display: grid;
-  place-items: center;
+  left: 0.5rem;
+  padding: 0.05rem 0.36rem;
   border-radius: 0.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.4);
   font-family: inherit;
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.66rem;
+  color: rgba(255, 255, 255, 0.5);
 }
 
-.upgrade-icon {
-  font-size: 2.4rem;
-  color: var(--group-hot);
-  filter: drop-shadow(0 0 0.7rem var(--group-glow));
-}
-
-.upgrade-label {
-  font-size: 1.15rem;
+.card-name {
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.06em;
+  color: var(--tone-hot, #fff);
 }
 
-.upgrade-effect {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--group-hot);
-  font-variant-numeric: tabular-nums;
+.card-rarity {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.45);
 }
 
-.upgrade-detail {
+/* The medallion, sized by font-size -- the component is 1em square. */
+.card-art {
+  font-size: 5.2rem;
+  margin: 0.5rem 0 0.55rem;
+}
+
+.card-detail {
   font-size: 0.78rem;
   line-height: 1.5;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.62);
 }
 
-.upgrade-current {
-  margin-top: auto;
-  padding-top: 0.5rem;
+.card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
   width: 100%;
-  /* Separated from the description above it by the auto margin, so it always
-     sits on the foot of the card. */
-  text-align: center;
+  margin-top: 0.7rem;
+  padding-top: 0.55rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.45);
+}
+
+.card-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.8rem;
+  font-size: 0.78rem;
+}
+
+.card-stat-name {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Green for a gain, as in the mock. Every card in the pool is a gain, so
+   there is no negative case to style here -- the trade items say what they
+   cost in their own description instead. */
+.card-stat-value {
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: #7ee0a8;
+}
+
+/* The plate along the bottom: a price on the shop, a current value on the
+   level-up. Pushed down by the margin so cards of different text lengths still
+   line their plates up. */
+.card-plate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: auto;
+  padding: 0.42rem 0;
+  border-radius: 0.25rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.card:not(.is-weapon) .card-plate .card-coin,
+.card.is-weapon .card-plate .card-coin {
+  color: #ffc74a;
+}
+
+.card-coin {
+  font-size: 1rem;
+}
+
+.card-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #ffd98a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Can't afford it. Kept legible rather than greyed to nothing: what it is and
+   what it costs is exactly what the player needs in order to decide to come
+   back for it. */
+.card.is-broke {
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 
 /* ---------- the rack ---------- */
 /*
- * Above the vitals, in slot order. Each chip is tinted with the weapon's own
+ * Above the stat strip, in slot order. Each chip is tinted with the weapon's own
  * projectile colour, so what is on the rack and what is flying about the
  * arena are recognisably the same thing.
  */
 .rack {
   position: absolute;
   left: 1.2rem;
-  bottom: 9.4rem;
+  bottom: 9.6rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
@@ -632,113 +890,13 @@
   animation: levelup-in 0.18s ease both;
 }
 
-.shop-head {
-  text-align: center;
-  margin-bottom: 0.6rem;
-}
-
-.shop-title {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
-  color: #ffd98a;
-  text-shadow: 0 0 1.6rem rgba(255, 199, 74, 0.4);
-}
-
-.shop-sub {
-  margin: 0.3rem 0 0;
-  font-size: 0.9rem;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.shop-sub b {
-  font-size: 1.15rem;
-  color: #ffd98a;
-  font-variant-numeric: tabular-nums;
-}
-
-.shop-cards {
-  display: flex;
-  align-items: stretch;
-  gap: 0.8rem;
-  min-height: 12rem;
-}
-
-.shop-card {
-  position: relative;
-  width: 12rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 1rem 0.9rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: linear-gradient(180deg, rgba(20, 16, 26, 0.95), rgba(8, 4, 12, 0.95));
-  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
-}
-
-/* A weapon card wears its projectile's colour; an item card stays neutral, so
-   the two sorts are told apart before either is read. */
-.shop-card.is-weapon {
+/* A weapon card keeps its projectile's colour on top of the rarity tone: the
+   tone says how good it is, the tint says what it shoots. */
+.card.is-weapon {
   border-color: color-mix(in srgb, var(--weapon-tint) 55%, transparent);
-  box-shadow: 0 0 1rem color-mix(in srgb, var(--weapon-tint) 22%, transparent);
-}
-
-.shop-card:not(:disabled):hover {
-  transform: translateY(-0.25rem);
-  border-color: #ffd98a;
-  box-shadow: 0 0 1.8rem rgba(255, 199, 74, 0.3);
-}
-
-/* Priced out rather than gone. Seeing what could not be afforded is what
-   makes the next reroll a decision. */
-.shop-card.is-broke {
-  opacity: 0.42;
-  cursor: default;
-}
-
-.shop-kind {
-  font-size: 0.66rem;
-  letter-spacing: 0.18em;
-  text-indent: 0.18em;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.shop-card.is-weapon .shop-kind {
-  color: var(--weapon-tint);
-}
-
-.shop-label {
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.shop-detail {
-  flex: 1;
-  font-size: 0.78rem;
-  line-height: 1.55;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.shop-price {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #ffd98a;
-  font-variant-numeric: tabular-nums;
-}
-
-.shop-coin {
-  font-size: 1.05rem;
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.55),
+    0 0 1rem color-mix(in srgb, var(--weapon-tint) 22%, transparent);
 }
 
 .shop-empty {
@@ -755,13 +913,17 @@
   margin-top: 1rem;
 }
 
+/* Above the shelf rather than beside the way out: rerolling is something you
+   do to what is on offer, so it sits with it. */
 .shop-reroll {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1.2rem;
-  border-radius: 0.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  margin-bottom: 1.2rem;
+  padding: 0.55rem 1.3rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(10, 6, 14, 0.8);
   font-size: 0.95rem;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.85);
@@ -853,4 +1015,112 @@
 
 .reward-icon {
   font-size: 1.2rem;
+}
+
+/* ---------- objectives ---------- */
+/*
+ * Three numbers the run already keeps. There is no objective system behind
+ * this and the panel does not pretend there is: twenty waves is a milestone to
+ * aim at, and the row simply fills and stays full past it.
+ *
+ * Sits on the right, under where the minimap will go, which is where the mock
+ * puts it.
+ */
+.goals {
+  position: absolute;
+  top: 1.4rem;
+  right: 1.2rem;
+  width: 15rem;
+  padding: 0.65rem 0.85rem 0.7rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(135deg, rgba(24, 10, 18, 0.9), rgba(8, 6, 12, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(5px);
+}
+
+.goals-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.goals-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+}
+
+.goal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.85rem;
+  font-size: 0.78rem;
+}
+
+/* The mock's small faceted marker at the start of each row. */
+.goal::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 0.36rem;
+  height: 0.36rem;
+  margin-top: -0.18rem;
+  transform: rotate(45deg);
+  background: rgba(244, 67, 108, 0.85);
+}
+
+.goal-name {
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.goal-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Only the row that has a target gets a track under it; the other two are
+   counts, and a bar under a number with nothing to reach would be decoration
+   pretending to be progress. */
+.goal-track {
+  grid-column: 1 / -1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.goal-track::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: var(--fill, 0%);
+  background: linear-gradient(90deg, #b8213f, #ff6f8f);
+  transition: width 0.2s ease;
+}
+
+/* Out of the way of the objectives panel, which now owns the top-right, and
+   of the diagnostics, which own the bottom-right. Bottom-centre is the only
+   edge nothing else claims. */
+.game-hint {
+  top: auto;
+  right: auto;
+  bottom: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 46rem;
+  text-align: center;
 }
