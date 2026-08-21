@@ -24,6 +24,29 @@ outside, and a minimap shows what the viewport no longer can.
    map has nothing on it to go and find, so more ground is distance rather
    than content. Revisit if map-placed objectives ever land.
 
+## Progress
+
+- **Step 0 done** (`24c96ab`). `scripts/bench.mjs`, run with `npm run bench`.
+  It found two things immediately: an unspent level freezes the simulation, so
+  a naive sample measures a still frame (21 steps in six seconds), and the
+  crowd dies as fast as it is made, so the load has to be held rather than set.
+- **Step 1 done** (`6c5e525`). World and window split, camera on the player,
+  off-camera sprites hidden, break loot credited, and — brought forward from
+  step 2 because the map is not playable without them — the spawn ring around
+  the player and the recycling of enemies left behind.
+  - 700 enemies spread across the world: **698 of 3258 objects rendered**, 224
+    health bars, 60fps, 0.00px drift. Packed into the window: 2038 rendered.
+  - Simulation step **1.35-2.23ms** against **1.87-2.25ms** on the old map,
+    three interleaved runs each. Six times the grid cells cost nothing
+    measurable.
+  - The recycling was checked by holding D for a full crossing with it
+    disabled: the pool sits at 661-700 with four enemies near the player.
+    With it, 697 drains to 52.
+- **Correction to a number quoted below**: the 0.45ms simulation step is not
+  reproducible, and neither is the 0.999ms the harness first recorded. Spread
+  on this machine is about ±0.4ms, so only interleaved A/B in one sitting
+  counts.
+
 ## Decisions I Need Confirmed Before Building
 
 These change the work materially, so they are called out rather than assumed.
@@ -155,6 +178,8 @@ can re-run. Without it the validation section is an intention.
   test against work that is otherwise done for every one of them.
 
 ### 2. Spawn inside the map, with a telegraph
+*Placement and recycling landed in step 1 — the map is unplayable without
+them. What is left here is the arrival state and where the ring sits.*
 - Enemy gains an arrival state: a countdown during which it **does not move,
   does not collide, cannot be hit, and cannot hurt the player**. Damageable
   during the telegraph and the spawn becomes a farm; harmful during it and the
