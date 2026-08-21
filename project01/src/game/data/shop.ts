@@ -49,6 +49,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   /* --- utility --- */
   { id: 'lightboots', label: '輕靴', detail: '移動速度 +10%', price: 20, mods: { moveSpeed: 0.1 } },
   { id: 'lodestone', label: '磁石', detail: '拾取範圍 +40%', price: 18, mods: { lootRange: 0.4 } },
+  { id: 'lantern', label: '提燈', detail: '視野 +25%', price: 24, mods: { vision: 0.25 } },
   { id: 'tome', label: '智慧之書', detail: '經驗加成 +25%', price: 42, mods: { xpGain: 0.25 } },
 
   /* --- trades --- */
@@ -79,6 +80,20 @@ export const SHOP_ITEMS: ShopItem[] = [
     detail: '吸血 +0.8/命中，攻擊速度 -10%',
     price: 38,
     mods: { lifesteal: 0.8, attackSpeed: -0.1 },
+  },
+  /*
+   * The one thing in the game that takes vision away, and the reason the stat
+   * can move downward at all: every card only ever adds, so without a trade
+   * like this "lower value, smaller visible area" would never happen to
+   * anybody. Priced as a bargain, because what it costs is not on the strip --
+   * you find out what 30% less sight is worth by playing the next wave in it.
+   */
+  {
+    id: 'bloodgoggles',
+    label: '血色鏡片',
+    detail: '攻擊力 +20%，視野 -30%',
+    price: 30,
+    mods: { damage: 0.2, vision: -0.3 },
   },
 ]
 

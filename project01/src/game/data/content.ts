@@ -380,6 +380,14 @@ export interface PlayerStats {
   /** Multiplies the pickup magnet radius. */
   lootRange: number
   /**
+   * Multiplies how far the player can see.
+   *
+   * Costs information, not reach: weapons fire past the dark and hit what is
+   * there. What it takes away is knowing what is coming, which is why it is
+   * worth trading away for something that shoots harder.
+   */
+  vision: number
+  /**
    * Multiplies all experience, from both kills and coins.
    *
    * The one stat that compounds: it buys levels, and levels buy every other
@@ -407,11 +415,33 @@ export const BASE_STATS: Readonly<PlayerStats> = {
   range: 1,
   moveSpeed: 1,
   lootRange: 1,
+  vision: 1,
   xpGain: 1,
 }
 
 export const BASE_MOVE_SPEED = 232
 export const BASE_LOOT_RANGE = 108
+
+/**
+ * How far the player sees at vision 1.0.
+ *
+ * A look-and-feel number rather than a balance one, because weapons are not
+ * capped by it: the window is 1280x720, so half its height is 360, half its
+ * width 640 and the corner 734. At 560 the dark reaches in at the corners and
+ * along the sides and the baseline feels like the game always did, with an
+ * atmosphere. Below that it takes ground the player can feel losing: 0.7 is
+ * 392, just past half the window's height, and 0.5 is 280, which is genuine
+ * blindness.
+ */
+export const BASE_VISION = 560
+
+/** How wide the edge of sight fades over, at vision 1.0. Scales with it, so
+ *  low vision gets a proportionally tighter edge rather than a softer one. */
+export const VISION_FADE = 0.22
+
+export function visionRadius(stats: PlayerStats): number {
+  return BASE_VISION * Math.max(0.15, stats.vision)
+}
 
 /**
  * Dodge has to be capped or it stacks to invulnerability.
@@ -471,6 +501,7 @@ export const STAT_INFO: Record<UpgradeId, { label: string; group: UpgradeGroup }
   range: { label: '射程', group: 'utility' },
   moveSpeed: { label: '移動速度', group: 'utility' },
   lootRange: { label: '拾取範圍', group: 'utility' },
+  vision: { label: '視野', group: 'utility' },
   xpGain: { label: '經驗加成', group: 'utility' },
 }
 
@@ -572,6 +603,17 @@ export const UPGRADES: Upgrade[] = [
     effect: '+12%',
     detail: '武器射程與子彈飛行距離。',
     weight: 7,
+  },
+  {
+    id: 'vision',
+    step: 0.15,
+    effect: '+15%',
+    detail: '看得更遠，來的東西更早出現。',
+    /* Rarer than the other utility cards. It buys information rather than a
+       number, so it is worth most to a run that has already traded some away
+       -- and a run that never did should not keep being offered it. */
+    weight: 5,
+    cap: 1.6,
   },
   {
     id: 'moveSpeed',

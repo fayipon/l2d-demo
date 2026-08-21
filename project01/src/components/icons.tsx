@@ -41,6 +41,7 @@ export type IconName =
   | 'bolt'
   | 'crosshair'
   | 'scatter'
+  | 'eye'
 
 const PATHS: Record<IconName, ReactElement> = {
   book: (
@@ -234,6 +235,14 @@ const PATHS: Record<IconName, ReactElement> = {
       <circle cx="12" cy="12" r="7.2" />
       <path d="M12 1.8v3.8M12 18.4v3.8M1.8 12h3.8M18.4 12h3.8" />
       <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
+    </>
+  ),
+  /* The vision stat. An iris rather than a lens: the shape has to still read
+     as an eye at sixteen pixels on the stat strip. */
+  eye: (
+    <>
+      <path d="M2.4 12S6.2 5.6 12 5.6 21.6 12 21.6 12 17.8 18.4 12 18.4 2.4 12 2.4 12Z" />
+      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
     </>
   ),
   /* Three shots leaving one muzzle -- the projectile-count upgrade. */

@@ -22,6 +22,7 @@ import {
   speedScale,
   tierDamageScale,
   tierRateScale,
+  visionRadius,
   waveDuration,
   xpForLevel,
   type PlayerStats,
@@ -82,27 +83,32 @@ const SPAWN_MARGIN = 46
 /**
  * The band around the player an enemy arrives in.
  *
- * Inside the window, deliberately, and that is the whole point of the arrival
- * state below: an enemy that materialises out of sight is not being announced,
- * it is just walking in from off screen the way it always did.
+ * Inside what the player can see, deliberately, and that is the whole point of
+ * the arrival state below: an enemy that materialises out of sight is not
+ * being announced, it is just walking in from off screen the way it always
+ * did.
  *
- * The largest circle that fits inside a 1280x720 window has a radius of 360,
- * and the far end is set short of that: at 355 an arrival directly above the
- * player lands five pixels from the top of the screen, half under the HUD.
- * Twenty pixels of clearance costs nothing and puts the whole ring in view.
+ * Two ceilings, and the lower one wins:
  *
- * The near end is set past the shortest weapon in the game (150) with room to
- * spare, so an arrival is something to shoot rather than something already
- * touching you.
+ * Sight. At vision 1.0 the lit radius is 560, and an arrival at 0.62 of it
+ * lands well inside the clear centre rather than in the fading band where it
+ * would be a smudge. Take vision away and the ring closes in with it, which is
+ * what makes low vision feel claustrophobic rather than merely dim -- things
+ * appear near you because that is as far as "near you" now reaches.
  *
- * The simulation has no business knowing the viewport, and it does not: what
- * it needs is "close enough that the player watches it happen", and the window
- * is only where the number came from. When vision becomes a stat this band
- * ties to the vision radius instead, which is the same idea with the number
- * made a variable.
+ * The window. The largest circle inside a 1280x720 view has a radius of 360,
+ * and 340 leaves twenty pixels of clearance so an arrival directly above the
+ * player is not half under the HUD.
+ *
+ * The floor is the shortest weapon in the game (150) with room to spare, so an
+ * arrival is always something to shoot rather than something already touching
+ * you, however blind the run has become.
  */
-const SPAWN_NEAR = 280
-const SPAWN_FAR = 340
+const SPAWN_SIGHT_FRACTION = 0.62
+const SPAWN_WINDOW_LIMIT = 340
+const SPAWN_FLOOR = 170
+/** How much nearer than the far edge the band's inner rim sits. */
+const SPAWN_BAND = 0.82
 
 /**
  * How long an enemy spends arriving.
@@ -821,9 +827,18 @@ export class World {
    */
   private spawnPoint(): { x: number; y: number } {
     const player = this.player
+    /* The floor is on the near rim, not the far one -- it is the nearest an
+       arrival may land, and applying it to the far edge would still let the
+       inner rim slide under it. */
+    const far = Math.max(
+      SPAWN_FLOOR / SPAWN_BAND,
+      Math.min(visionRadius(player.stats) * SPAWN_SIGHT_FRACTION, SPAWN_WINDOW_LIMIT),
+    )
+    const near = far * SPAWN_BAND
+
     for (let attempt = 0; attempt < 12; attempt++) {
       const angle = this.random() * Math.PI * 2
-      const distance = SPAWN_NEAR + this.random() * (SPAWN_FAR - SPAWN_NEAR)
+      const distance = near + this.random() * (far - near)
       const x = player.x + Math.cos(angle) * distance
       const y = player.y + Math.sin(angle) * distance
       if (
@@ -836,7 +851,7 @@ export class World {
       }
     }
     return {
-      x: clamp(player.x + SPAWN_FAR, SPAWN_MARGIN, WORLD_WIDTH - SPAWN_MARGIN),
+      x: clamp(player.x + far, SPAWN_MARGIN, WORLD_WIDTH - SPAWN_MARGIN),
       y: clamp(player.y, SPAWN_MARGIN, WORLD_HEIGHT - SPAWN_MARGIN),
     }
   }

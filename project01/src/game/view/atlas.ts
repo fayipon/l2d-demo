@@ -309,3 +309,76 @@ function polygon(
   }
   ctx.closePath()
 }
+
+/**
+ * The edge of sight.
+ *
+ * A screen-sized texture: clear out to the vision radius, fading to solid over
+ * a band, and solid black past it. Because the player is always dead centre it
+ * never moves, so this is one sprite with scrollFactor 0 drawn over everything
+ * else, and it costs one quad a frame however far the stat travels.
+ *
+ * Drawn over the arena rather than woven into it, which is what makes decision
+ * 6 free. Weapons fire past the dark and kill what is out there, and the two
+ * things that would otherwise give the position away for nothing -- the
+ * damage number over an unlit corpse, the health bar on something invisible --
+ * are under this by construction, because they are in the display list below
+ * it. Fading every sprite individually would have been a per-entity write in
+ * the busiest loop in the scene to arrive at the same picture.
+ *
+ * Rebuilt when the radius changes rather than scaled. Scaling one baked
+ * gradient would mean choosing between a clear centre big enough to be useful
+ * and an opaque margin wide enough to still cover the corners at low vision,
+ * and those pull in opposite directions. Vision moves perhaps a dozen times in
+ * a run, so redrawing a canvas then is not a cost worth designing around.
+ */
+export const VIGNETTE_KEY = 'arena-vignette'
+
+export function buildVignette(
+  scene: Phaser.Scene,
+  width: number,
+  height: number,
+  radius: number,
+  fade: number,
+): void {
+  // Replaced, not added to: the key has to keep pointing at one texture, and
+  // the old one's GPU memory is not worth leaking a dozen times a run.
+  if (scene.textures.exists(VIGNETTE_KEY)) {
+    scene.textures.remove(VIGNETTE_KEY)
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('no 2D context for the vignette')
+  }
+
+  const cx = width / 2
+  const cy = height / 2
+  const inner = Math.max(1, radius - fade)
+
+  /* The gradient only covers the band. Everything outside it is filled
+     separately, because a canvas gradient stops at its outer radius and leaves
+     the corners of a 16:9 rectangle untouched -- which is exactly where the
+     dark is most needed. */
+  const gradient = ctx.createRadialGradient(cx, cy, inner, cx, cy, radius)
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 0)')
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 1)')
+
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, width, height)
+  // Punch the lit circle back out, then lay the band into the hole it left.
+  ctx.globalCompositeOperation = 'destination-out'
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.fillStyle = gradient
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fill()
+
+  scene.textures.addCanvas(VIGNETTE_KEY, canvas)
+}

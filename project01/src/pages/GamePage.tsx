@@ -47,6 +47,7 @@ const STAT_ICON: Record<UpgradeId, IconName> = {
   range: 'crosshair',
   moveSpeed: 'compass',
   lootRange: 'coin',
+  vision: 'eye',
   xpGain: 'exp',
 }
 
@@ -72,6 +73,7 @@ const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
   range: (v) => `×${v.toFixed(2)}`,
   moveSpeed: (v) => `×${v.toFixed(2)}`,
   lootRange: (v) => `×${v.toFixed(2)}`,
+  vision: (v) => `×${v.toFixed(2)}`,
   xpGain: (v) => `×${v.toFixed(2)}`,
 }
 

@@ -1,7 +1,14 @@
 import Phaser from 'phaser'
 import { ARRIVAL_SECONDS, STEP_SECONDS, WORLD_HEIGHT, WORLD_WIDTH, World } from '../sim/world'
-import { ENEMY_KINDS, WEAPONS } from '../data/content'
-import { ATLAS_KEY, FONT_KEY, buildAtlas, buildDamageFont } from '../view/atlas'
+import { ENEMY_KINDS, VISION_FADE, WEAPONS, visionRadius } from '../data/content'
+import {
+  ATLAS_KEY,
+  FONT_KEY,
+  VIGNETTE_KEY,
+  buildAtlas,
+  buildDamageFont,
+  buildVignette,
+} from '../view/atlas'
 import { consumeRestart, consumeUpgrade, drainShopCommands, publishRun } from '../runStore'
 import { rerollPrice } from '../data/shop'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
@@ -144,6 +151,11 @@ export class ArenaScene extends Phaser.Scene {
   private barFills: Phaser.GameObjects.Sprite[] = []
   private barTints = new Int32Array(0)
 
+  private vignette!: Phaser.GameObjects.Image
+  /** The radius the vignette texture was baked at, so it is only redrawn when
+   *  the stat actually moves rather than every frame. */
+  private vignetteRadius = -1
+
   private numbers: {
     text: Phaser.GameObjects.BitmapText
     x: number
@@ -222,6 +234,15 @@ export class ArenaScene extends Phaser.Scene {
       return { text, x: 0, y: 0, vy: 0, life: 0 }
     })
     this.numberCursor = 0
+
+    /* Added after the damage numbers, which are themselves added last, so the
+       edge of sight covers every single thing the arena draws. That ordering
+       is the whole mechanism: a hit in the dark still happens and still kills,
+       and neither its number nor the victim's health bar leaks the position,
+       because both are underneath this. */
+    this.syncVignette()
+    this.vignette = this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, VIGNETTE_KEY)
+    this.vignette.setScrollFactor(0)
 
     const keyboard = this.requireKeyboard()
     this.keys = keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT') as Record<
@@ -419,13 +440,22 @@ export class ArenaScene extends Phaser.Scene {
     camera.scrollX = player.x - VIEW_WIDTH / 2
     camera.scrollY = player.y - VIEW_HEIGHT / 2
 
+    const sight = this.syncVignette()
+
     /* The rectangle worth drawing. Most of the crowd is off it now, which is
        new: nothing was ever off screen before, so every entity got a sprite
-       update and a place in the batch whether it could be seen or not. */
-    const cullLeft = camera.scrollX - CULL_MARGIN
-    const cullRight = camera.scrollX + VIEW_WIDTH + CULL_MARGIN
-    const cullTop = camera.scrollY - CULL_MARGIN
-    const cullBottom = camera.scrollY + VIEW_HEIGHT + CULL_MARGIN
+       update and a place in the batch whether it could be seen or not.
+
+       Bounded by sight as well as by the window, because past the edge of
+       sight the vignette is solid and a sprite there would be drawing under an
+       opaque quad. It stays a rectangle test rather than becoming a distance
+       one: the corners of that box are lit at the sides and dark at the
+       diagonals, and paying a square root per entity to shave the difference
+       would cost more than it saves. */
+    const cullLeft = Math.max(camera.scrollX, player.x - sight) - CULL_MARGIN
+    const cullRight = Math.min(camera.scrollX + VIEW_WIDTH, player.x + sight) + CULL_MARGIN
+    const cullTop = Math.max(camera.scrollY, player.y - sight) - CULL_MARGIN
+    const cullBottom = Math.min(camera.scrollY + VIEW_HEIGHT, player.y + sight) + CULL_MARGIN
 
     const pickups = world.pickups.items
     for (let i = 0; i < pickups.length; i++) {
@@ -576,6 +606,27 @@ export class ArenaScene extends Phaser.Scene {
     // Blinks through the invulnerability window, which is the only signal that
     // a second hit did not just fail to register.
     this.playerSprite.visible = player.invuln <= 0 || Math.floor(player.invuln * 20) % 2 === 0
+  }
+
+  /**
+   * Keeps the vignette matching the vision stat, and returns the radius.
+   *
+   * Called every frame and does nothing on almost all of them: the stat only
+   * moves when a card is taken or an item bought, perhaps a dozen times in a
+   * run, and redrawing a screen-sized canvas then is not a cost worth
+   * designing around. Rounded before the comparison so a stat that lands on
+   * 1.0000001 does not rebuild the texture forever.
+   */
+  private syncVignette(): number {
+    const radius = Math.round(visionRadius(this.world.player.stats))
+    if (radius !== this.vignetteRadius) {
+      this.vignetteRadius = radius
+      buildVignette(this, VIEW_WIDTH, VIEW_HEIGHT, radius, radius * VISION_FADE)
+      // The image holds a reference to the texture it was created with, so a
+      // rebuilt one has to be handed over explicitly.
+      this.vignette?.setTexture(VIGNETTE_KEY)
+    }
+    return radius
   }
 
   private makeSprites(count: number, frame: string, tint: number): Phaser.GameObjects.Sprite[] {
