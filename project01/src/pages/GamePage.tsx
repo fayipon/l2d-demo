@@ -1,8 +1,18 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
-import { Icon } from '../components/icons'
-import { requestRestart, useRunSnapshot } from '../game/runStore'
+import { Icon, type IconName } from '../components/icons'
+import { requestRestart, requestUpgrade, useRunSnapshot } from '../game/runStore'
+import { UPGRADES, type UpgradeId } from '../game/data/content'
 import './GamePage.css'
+
+/* The data file stays free of view concerns, so the glyph for each upgrade is
+   chosen here rather than stored beside its numbers. */
+const UPGRADE_ICON: Record<UpgradeId, IconName> = {
+  count: 'burst',
+  attackSpeed: 'sigil',
+  damage: 'swords',
+}
 
 /**
  * The battle route. No StageShell and no Live2D: this screen is Phaser plus a
@@ -26,6 +36,29 @@ export function GamePage() {
 
   const hpPercent = run.maxHp > 0 ? (run.hp / run.maxHp) * 100 : 0
   const xpPercent = run.xpToLevel > 0 ? (run.xp / run.xpToLevel) * 100 : 0
+  const choosing = run.pendingLevels > 0
+
+  /*
+   * 1/2/3 pick a card.
+   *
+   * On window rather than through Phaser: these keys are not registered with
+   * its keyboard plugin, and the choice belongs to the overlay anyway -- the
+   * arena is frozen while it is up.
+   */
+  useEffect(() => {
+    if (!choosing) {
+      return
+    }
+    const onKey = (event: KeyboardEvent) => {
+      const slot = Number(event.key) - 1
+      const id = run.offers[slot]
+      if (id) {
+        requestUpgrade(id)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [choosing, run.offers])
 
   return (
     <div className="game-root">
@@ -95,6 +128,53 @@ export function GamePage() {
             <span>{run.fps} FPS</span>
           </div>
         </div>
+
+        {/* ---------- stats ---------- */}
+        <div className="stat-strip">
+          <span className="stat">
+            <b>×{run.damage.toFixed(2)}</b> 攻擊
+          </span>
+          <span className="stat">
+            <b>×{run.attackSpeed.toFixed(2)}</b> 射速
+          </span>
+          <span className="stat">
+            <b>+{run.bonusCount}</b> 彈數
+          </span>
+        </div>
+
+        {/* ---------- level up ---------- */}
+        {choosing ? (
+          <div className="levelup">
+            <p className="levelup-title">LEVEL {run.level}</p>
+            <p className="levelup-sub">
+              選擇一項強化
+              {run.pendingLevels > 1 ? ` · 還有 ${run.pendingLevels - 1} 次` : ''}
+            </p>
+
+            <div className="levelup-cards">
+              {run.offers.map((id, index) => {
+                const upgrade = UPGRADES.find((entry) => entry.id === id)
+                if (!upgrade) {
+                  return null
+                }
+                return (
+                  <button
+                    type="button"
+                    key={id}
+                    className={`upgrade-card tone-${id}`}
+                    onClick={() => requestUpgrade(id)}
+                  >
+                    <kbd className="upgrade-key">{index + 1}</kbd>
+                    <Icon name={UPGRADE_ICON[id]} className="upgrade-icon" />
+                    <span className="upgrade-label">{upgrade.label}</span>
+                    <span className="upgrade-effect">{upgrade.effect}</span>
+                    <span className="upgrade-detail">{upgrade.detail}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {run.status === 'dead' ? (
           <div className="game-over">

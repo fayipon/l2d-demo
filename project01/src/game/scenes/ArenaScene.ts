@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { ARENA_HEIGHT, ARENA_WIDTH, STEP_SECONDS, World } from '../sim/world'
 import { ENEMY_KINDS, WEAPONS } from '../data/content'
 import { ATLAS_KEY, buildAtlas } from '../view/atlas'
-import { consumeRestart, publishRun } from '../runStore'
+import { consumeRestart, consumeUpgrade, publishRun } from '../runStore'
 
 export { ARENA_WIDTH, ARENA_HEIGHT }
 
@@ -53,6 +53,9 @@ export class ArenaScene extends Phaser.Scene {
 
   private accumulator = 0
   private publishTimer = 0
+  /** Last value published, so a change can force a snapshot out immediately
+   *  instead of waiting up to 66ms for the next scheduled one. */
+  private lastPending = 0
   /** Movement axis for the current frame. Not named `input`: Scene.input is
    *  Phaser's own plugin, and a field of that name would shadow it. */
   private readonly moveInput = { x: 0, y: 0 }
@@ -104,6 +107,11 @@ export class ArenaScene extends Phaser.Scene {
       this.accumulator = 0
     }
 
+    const chosen = consumeUpgrade()
+    if (chosen) {
+      world.applyUpgrade(chosen)
+    }
+
     this.readInput()
 
     /*
@@ -116,15 +124,25 @@ export class ArenaScene extends Phaser.Scene {
      * is dropped rather than carried -- carrying it makes the next frame
      * slower still and the game never recovers.
      */
-    this.accumulator += Math.min(delta, MAX_FRAME_MS)
-    let steps = 0
-    while (this.accumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
-      world.step(this.moveInput)
-      this.accumulator -= STEP_MS
-      steps += 1
-    }
-    if (steps === MAX_STEPS_PER_FRAME) {
+    if (world.pendingLevels > 0) {
+      /*
+       * Frozen while a level is unspent. The accumulator is held at zero
+       * rather than left to fill: carrying the paused seconds would spend them
+       * all at once the instant the choice is made, teleporting the crowd on
+       * top of the player.
+       */
       this.accumulator = 0
+    } else {
+      this.accumulator += Math.min(delta, MAX_FRAME_MS)
+      let steps = 0
+      while (this.accumulator >= STEP_MS && steps < MAX_STEPS_PER_FRAME) {
+        world.step(this.moveInput)
+        this.accumulator -= STEP_MS
+        steps += 1
+      }
+      if (steps === MAX_STEPS_PER_FRAME) {
+        this.accumulator = 0
+      }
     }
 
     if (world.shake > 0) {
@@ -134,9 +152,12 @@ export class ArenaScene extends Phaser.Scene {
 
     this.syncSprites()
 
+    // The overlay has to appear on the frame the level lands, not up to a
+    // publish interval later, so a change in the queue jumps the schedule.
     this.publishTimer += delta
-    if (this.publishTimer >= PUBLISH_MS) {
+    if (this.publishTimer >= PUBLISH_MS || world.pendingLevels !== this.lastPending) {
       this.publishTimer = 0
+      this.lastPending = world.pendingLevels
       this.publish()
     }
   }
@@ -289,6 +310,11 @@ export class ArenaScene extends Phaser.Scene {
       kills: world.kills,
       enemies: world.enemies.used,
       fps: Math.round(this.game.loop.actualFps),
+      pendingLevels: world.pendingLevels,
+      offers: world.offers,
+      damage: player.stats.damage,
+      attackSpeed: player.stats.attackSpeed,
+      bonusCount: player.stats.bonusCount,
     })
   }
 

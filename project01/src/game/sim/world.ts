@@ -2,13 +2,17 @@ import { Pool, type Pooled } from './pool'
 import { SpatialGrid } from './grid'
 import {
   ENEMY_KINDS,
+  SPREAD_PER_EXTRA_SHOT,
+  UPGRADE_STEP,
   WEAPONS,
   healthScale,
   pickEnemyKind,
+  rollUpgradeOffers,
   spawnInterval,
   speedScale,
   waveDuration,
   xpForLevel,
+  type UpgradeId,
 } from '../data/content'
 
 /**
@@ -98,6 +102,22 @@ export interface WeaponSlot {
   cooldown: number
 }
 
+/**
+ * Multipliers the weapons are read through.
+ *
+ * Kept apart from the weapons themselves so that a weapon is a fixed
+ * description and a run is what happens to it -- which is also what lets one
+ * upgrade affect every slot without naming any of them.
+ */
+export interface PlayerStats {
+  /** Multiplies weapon damage. */
+  damage: number
+  /** Divides weapon cooldown. */
+  attackSpeed: number
+  /** Extra projectiles per volley, on top of the weapon's own count. */
+  bonusCount: number
+}
+
 export interface PlayerState {
   x: number
   y: number
@@ -111,6 +131,7 @@ export interface PlayerState {
   xp: number
   xpToLevel: number
   weapons: WeaponSlot[]
+  stats: PlayerStats
 }
 
 export interface InputState {
@@ -130,6 +151,18 @@ export class World {
   waveTimeLeft = waveDuration(1)
   kills = 0
   elapsed = 0
+
+  /**
+   * Levels gained but not yet spent.
+   *
+   * The scene stops stepping while this is above zero, which is the whole
+   * pause mechanism -- there is no separate paused flag to keep in sync with
+   * anything. Levels queue rather than overwrite, because one fat pickup burst
+   * can cross two thresholds at once and the second choice must not be eaten.
+   */
+  pendingLevels = 0
+  /** What to offer for the level at the front of that queue. */
+  offers: UpgradeId[] = []
 
   /**
    * Shake the scene should apply, in pixels, accumulated since it last looked.
@@ -208,6 +241,7 @@ export class World {
         { kind: 0, cooldown: 0 },
         { kind: 1, cooldown: 0.5 },
       ],
+      stats: { damage: 1, attackSpeed: 1, bonusCount: 0 },
     }
   }
 
@@ -264,6 +298,9 @@ export class World {
     player.xpToLevel = xpForLevel(1)
     player.weapons[0].cooldown = 0
     player.weapons[1].cooldown = 0.5
+    player.stats.damage = 1
+    player.stats.attackSpeed = 1
+    player.stats.bonusCount = 0
 
     this.status = 'fighting'
     this.wave = 1
@@ -273,7 +310,42 @@ export class World {
     this.kills = 0
     this.elapsed = 0
     this.shake = 0
+    this.pendingLevels = 0
+    this.offers = []
     this.random = mulberry32(0x9e3779b9)
+  }
+
+  /* ---------- upgrades ---------- */
+
+  /**
+   * Spends the level at the front of the queue.
+   *
+   * Ignored when nothing is pending, because the command comes in from a
+   * button that React may still be showing for a frame after the choice was
+   * made -- a second click must not spend a level that was never earned.
+   */
+  applyUpgrade(id: UpgradeId): void {
+    if (this.pendingLevels <= 0) {
+      return
+    }
+
+    const stats = this.player.stats
+    switch (id) {
+      case 'count':
+        stats.bonusCount += UPGRADE_STEP.count
+        break
+      case 'attackSpeed':
+        stats.attackSpeed += UPGRADE_STEP.attackSpeed
+        break
+      case 'damage':
+        stats.damage += UPGRADE_STEP.damage
+        break
+    }
+
+    this.pendingLevels -= 1
+    // Rolled fresh for the next level in the queue, so two levels taken back
+    // to back are two separate decisions rather than one repeated.
+    this.offers = this.pendingLevels > 0 ? rollUpgradeOffers() : []
   }
 
   /* ---------- player ---------- */
@@ -534,7 +606,7 @@ export class World {
         continue
       }
       this.fire(slot.kind, Math.atan2(target.y - player.y, target.x - player.x))
-      slot.cooldown = weapon.cooldown
+      slot.cooldown = weapon.cooldown / player.stats.attackSpeed
     }
   }
 
@@ -560,24 +632,41 @@ export class World {
     return best ? { x: best.x, y: best.y, distance: Math.sqrt(bestSquared) } : null
   }
 
+  /**
+   * One volley.
+   *
+   * Everything the player's stats touch is applied here, at the moment the
+   * shot is created, and then baked into the projectile. A shot in flight is
+   * therefore unaffected by an upgrade taken while it is still travelling --
+   * which is both simpler and what you would want anyway.
+   */
   private fire(kindIndex: number, angle: number): void {
     const weapon = WEAPONS[kindIndex]
     const player = this.player
-    const first = angle - weapon.spread / 2
-    const gap = weapon.count > 1 ? weapon.spread / (weapon.count - 1) : 0
+    const stats = player.stats
 
-    for (let i = 0; i < weapon.count; i++) {
+    const count = weapon.count + stats.bonusCount
+    const extra = count - weapon.count
+    // A weapon with no spread of its own would stack every extra shot on the
+    // same line, so the fan widens with each one it did not ask for.
+    const spread = weapon.spread + extra * SPREAD_PER_EXTRA_SHOT
+    const damage = weapon.damage * stats.damage
+
+    const first = angle - spread / 2
+    const gap = count > 1 ? spread / (count - 1) : 0
+
+    for (let i = 0; i < count; i++) {
       const shot = this.projectiles.spawn()
       if (!shot) {
         return
       }
-      const theta = weapon.count > 1 ? first + gap * i : angle
+      const theta = count > 1 ? first + gap * i : angle
       shot.x = player.x
       shot.y = player.y
       shot.vx = Math.cos(theta) * weapon.projectileSpeed
       shot.vy = Math.sin(theta) * weapon.projectileSpeed
       shot.radius = weapon.projectileRadius
-      shot.damage = weapon.damage
+      shot.damage = damage
       shot.knockback = weapon.knockback
       shot.pierce = weapon.pierce
       shot.life = weapon.life
@@ -735,14 +824,10 @@ export class World {
       player.xp -= player.xpToLevel
       player.level += 1
       player.xpToLevel = xpForLevel(player.level)
-      /*
-       * Placeholder for the four-way upgrade choice. A level has to be worth
-       * something for the bar to mean anything while playing, so for now it
-       * hands out a flat bump. When the choice screen exists this is where it
-       * gets raised instead.
-       */
-      player.maxHp += 4
-      player.hp = Math.min(player.maxHp, player.hp + 4)
+      this.pendingLevels += 1
+      if (this.offers.length === 0) {
+        this.offers = rollUpgradeOffers()
+      }
     }
   }
 }

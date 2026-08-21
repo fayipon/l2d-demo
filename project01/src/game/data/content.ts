@@ -194,3 +194,70 @@ export function pickEnemyKind(wave: number, roll: number): number {
   }
   return 0
 }
+
+/* ---------- level-up upgrades ---------- */
+
+/**
+ * What a level is worth.
+ *
+ * Weapons are described above as base numbers; the player's stats multiply
+ * them at the moment of firing. That indirection is the point -- a weapon
+ * never has to know an upgrade exists, and an upgrade never has to know which
+ * weapons are equipped.
+ */
+export type UpgradeId = 'count' | 'attackSpeed' | 'damage'
+
+export interface Upgrade {
+  id: UpgradeId
+  label: string
+  detail: string
+  /** Rendered by the overlay; see GamePage for the id-to-glyph mapping. */
+  effect: string
+}
+
+export const UPGRADES: Upgrade[] = [
+  {
+    id: 'count',
+    label: '增加彈數',
+    detail: '每次射擊多一發，並自動散開。',
+    effect: '+1 發',
+  },
+  {
+    id: 'attackSpeed',
+    label: '增加射速',
+    detail: '所有武器的冷卻時間縮短。',
+    effect: '+15% 射速',
+  },
+  {
+    id: 'damage',
+    label: '增加攻擊力',
+    detail: '所有武器的傷害提升。',
+    effect: '+15% 傷害',
+  },
+]
+
+/** How much one pick of each moves the stat. */
+export const UPGRADE_STEP = {
+  count: 1,
+  attackSpeed: 0.15,
+  damage: 0.15,
+} as const
+
+/**
+ * Extra shots need somewhere to go: a weapon with no spread would stack them
+ * all on the same line and the upgrade would look like it did nothing. Each
+ * shot past the weapon's own count widens the fan by this much.
+ */
+export const SPREAD_PER_EXTRA_SHOT = 0.13
+
+/**
+ * The choices offered for one level.
+ *
+ * Every upgrade, every time, because there are only three -- which still makes
+ * a real decision (specialise or spread) without pretending to be a draw. When
+ * the pool grows this is where it becomes a weighted sample, and nothing that
+ * calls it has to change.
+ */
+export function rollUpgradeOffers(): UpgradeId[] {
+  return UPGRADES.map((upgrade) => upgrade.id)
+}

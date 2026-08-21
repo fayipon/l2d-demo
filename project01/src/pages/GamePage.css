@@ -329,3 +329,164 @@
   letter-spacing: 0.06em;
   color: rgba(255, 255, 255, 0.42);
 }
+
+/* ---------- run stats ---------- */
+/* Sits above the vitals: what the upgrades have actually bought, so a pick
+   reads as a change rather than as a card that vanished. */
+.stat-strip {
+  position: absolute;
+  left: 1.2rem;
+  bottom: 6.4rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.stat {
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.35rem;
+  background: rgba(8, 6, 12, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat b {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ---------- level up ---------- */
+.levelup {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: rgba(6, 2, 10, 0.82);
+  /* Takes input back for the whole screen: the arena is frozen behind it and
+     there is nothing under here to click through to. */
+  pointer-events: auto;
+  animation: levelup-in 0.16s ease both;
+}
+
+@keyframes levelup-in {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+
+.levelup-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  background: linear-gradient(180deg, #fff2f7 0%, #ffc3d8 46%, #e0466f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 1.4rem rgba(236, 80, 130, 0.5));
+}
+
+.levelup-sub {
+  margin: 0 0 1.4rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.levelup-cards {
+  display: flex;
+  gap: 1rem;
+}
+
+.upgrade-card {
+  position: relative;
+  width: 13rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1.8rem 1rem 1.4rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--card-edge);
+  background: linear-gradient(180deg, var(--card-top), rgba(8, 4, 12, 0.95));
+  box-shadow: 0 0 1.4rem var(--card-glow);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.upgrade-card:hover {
+  transform: translateY(-0.3rem);
+  border-color: var(--card-hot);
+  box-shadow: 0 0 2.6rem var(--card-glow);
+}
+
+/* One tone per upgrade, so the cards are told apart by colour before the text
+   is read -- they sit in the same three slots every level. */
+.upgrade-card.tone-count {
+  --card-edge: rgba(79, 195, 255, 0.55);
+  --card-hot: #4fc3ff;
+  --card-top: rgba(10, 34, 58, 0.95);
+  --card-glow: rgba(79, 195, 255, 0.28);
+}
+
+.upgrade-card.tone-attackSpeed {
+  --card-edge: rgba(79, 230, 192, 0.55);
+  --card-hot: #4fe6c0;
+  --card-top: rgba(6, 44, 38, 0.95);
+  --card-glow: rgba(79, 230, 192, 0.28);
+}
+
+.upgrade-card.tone-damage {
+  --card-edge: rgba(244, 67, 108, 0.55);
+  --card-hot: #f4436c;
+  --card-top: rgba(56, 10, 26, 0.95);
+  --card-glow: rgba(244, 67, 108, 0.28);
+}
+
+.upgrade-key {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.6rem;
+  width: 1.3rem;
+  height: 1.3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.upgrade-icon {
+  font-size: 2.4rem;
+  color: var(--card-hot);
+  filter: drop-shadow(0 0 0.7rem var(--card-glow));
+}
+
+.upgrade-label {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.upgrade-effect {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--card-hot);
+  font-variant-numeric: tabular-nums;
+}
+
+.upgrade-detail {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+}

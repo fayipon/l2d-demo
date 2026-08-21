@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import type { UpgradeId } from './data/content'
 import type { RunStatus } from './sim/world'
 
 /**
@@ -29,6 +30,13 @@ export interface RunSnapshot {
   /** Live entity counts, so a performance problem is visible rather than felt. */
   enemies: number
   fps: number
+  /** Levels earned and not yet spent. Above zero the arena is frozen and the
+   *  choice overlay is up. */
+  pendingLevels: number
+  offers: UpgradeId[]
+  damage: number
+  attackSpeed: number
+  bonusCount: number
 }
 
 const EMPTY: RunSnapshot = {
@@ -44,6 +52,11 @@ const EMPTY: RunSnapshot = {
   kills: 0,
   enemies: 0,
   fps: 0,
+  pendingLevels: 0,
+  offers: [],
+  damage: 1,
+  attackSpeed: 1,
+  bonusCount: 0,
 }
 
 let snapshot: RunSnapshot = EMPTY
@@ -82,6 +95,7 @@ export function useRunSnapshot(): RunSnapshot {
  * so it can never go stale and fire a restart later.
  */
 let restartRequested = false
+let upgradeRequested: UpgradeId | null = null
 
 export function requestRestart(): void {
   restartRequested = true
@@ -90,5 +104,15 @@ export function requestRestart(): void {
 export function consumeRestart(): boolean {
   const requested = restartRequested
   restartRequested = false
+  return requested
+}
+
+export function requestUpgrade(id: UpgradeId): void {
+  upgradeRequested = id
+}
+
+export function consumeUpgrade(): UpgradeId | null {
+  const requested = upgradeRequested
+  upgradeRequested = null
   return requested
 }
