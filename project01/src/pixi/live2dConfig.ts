@@ -10,7 +10,7 @@ export interface Live2DVoiceLine {
 }
 
 export interface Live2DModelConfig {
-  /** Path to the .model3.json, served from public/. */
+  /** Path to the .model3.json, served from public/ under the deployed base. */
   modelPath: string
   /** Model height as a fraction of stage height. >1 crops the model deliberately. */
   heightRatio: number
@@ -28,7 +28,7 @@ export interface Live2DModelConfig {
 }
 
 export const haruConfig: Live2DModelConfig = {
-  modelPath: '/live2d/haru/Haru.model3.json',
+  modelPath: `${import.meta.env.BASE_URL}live2d/haru/Haru.model3.json`,
   heightRatio: 2.25,
   anchor: { x: 0.5, y: 0.5 },
   position: { x: 0.3, y: 1.04 },
