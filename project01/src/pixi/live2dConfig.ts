@@ -59,9 +59,16 @@ interface Framing {
  * centred so its top edge lands just inside the stage, shows head and torso
  * cropped at the waist.
  *
- * Art top = y - heightRatio / 2, so both of these put it at 0.03.
+ * Art top = y - heightRatio / 2. The character screen puts it at 0.03, hard up
+ * against the top of the stage, because nothing is up there but the back
+ * button on the far left.
+ *
+ * The home screen starts lower, at 0.155. The player card runs to 0.1403 of
+ * stage height, and a head that begins above that reads as being behind the
+ * panel rather than under it -- so the framing clears the card by a hair and
+ * the model loses a little height to pay for it.
  */
-const HOME_FRAMING: Framing = { heightRatio: 2, x: 0.3, y: 1.03 }
+const HOME_FRAMING: Framing = { heightRatio: 1.82, x: 0.3, y: 1.065 }
 const DETAIL_FRAMING: Framing = { heightRatio: 1.85, x: 0.43, y: 0.955 }
 
 /**
