@@ -203,6 +203,13 @@ export function GamePage() {
               <span className="wave-label">WAVE {run.wave} CLEAR</span>
               <span className="wave-timer is-break">下一波 {Math.ceil(run.timeLeft)}</span>
             </>
+          ) : run.status === 'shop' ? (
+            /* The clock is genuinely stopped here, so showing a timer sitting
+               at zero reads as expired rather than as paused. */
+            <>
+              <span className="wave-label">WAVE {run.wave} CLEAR</span>
+              <span className="wave-timer is-paused">補給中 · 計時暫停</span>
+            </>
           ) : (
             <>
               <span className="wave-label">WAVE {run.wave}</span>

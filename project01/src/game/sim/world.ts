@@ -269,6 +269,13 @@ export class World {
   private readonly grid = new SpatialGrid(ARENA_WIDTH, ARENA_HEIGHT, CELL_SIZE)
   /** Reused across every query, so the broadphase never allocates. */
   private readonly neighbours: number[] = []
+  /**
+   * The nearest few enemies, for aiming a volley that has more shots than the
+   * weapon was written with. Preallocated and overwritten -- findTargets runs
+   * only when a weapon actually fires, but it still runs several times a
+   * second and has no business allocating.
+   */
+  private readonly targets = Array.from({ length: 16 }, () => ({ x: 0, y: 0, d2: 0 }))
   private random = mulberry32(0x9e3779b9)
   private readonly loadout: ArenaLoadout
 
@@ -936,56 +943,146 @@ export class World {
   /**
    * One volley.
    *
-   * Everything the player's stats touch is applied here, at the moment the
-   * shot is created, and then baked into the projectile. A shot in flight is
-   * therefore unaffected by an upgrade taken while it is still travelling --
-   * which is both simpler and what you would want anyway.
+   * Two parts, which behave differently on purpose:
+   *
+   * The weapon's own shots are its identity -- the shotgun sprays, the reaper
+   * throws a ring -- so they fan by the weapon's own spread about the primary
+   * target and nothing changes that.
+   *
+   * The shots the bonus-projectile stat adds are AIMED. Fanning them was the
+   * obvious thing and it was wrong: every extra shot widened the arc, so at
+   * four bonus projectiles a pistol sprayed thirty degrees and only the middle
+   * one could hit a distant enemy. Each extra shot now takes the next-nearest
+   * enemy of its own, which is what "auto-fire aims at the nearest target"
+   * should mean once there is more than one shot to aim.
+   *
+   * Everything the stats touch is applied here and baked into the projectile,
+   * so a shot in flight is unaffected by an upgrade taken while it travels.
    */
   private fire(slot: WeaponSlot, angle: number): void {
-    const kindIndex = slot.kind
-    const weapon = WEAPONS[kindIndex]
-    const player = this.player
-    const stats = player.stats
-
-    const count = weapon.count + stats.bonusCount
-    const extra = count - weapon.count
-    // A weapon with no spread of its own would stack every extra shot on the
-    // same line, so the fan widens with each one it did not ask for.
-    const spread = weapon.spread + extra * SPREAD_PER_EXTRA_SHOT
-    // Flat attack power first, then the percentage, then the weapon's own
-    // tier -- so an upgrade scales what levelling added and a merge scales the
-    // lot.
+    const weapon = WEAPONS[slot.kind]
+    const stats = this.player.stats
     const damage =
       (weapon.damage + stats.attackPower) * stats.damage * tierDamageScale(slot.tier)
+    const life = weapon.life * stats.range
 
-    const first = angle - spread / 2
-    const gap = count > 1 ? spread / (count - 1) : 0
+    /*
+     * A full-circle weapon divides by count, not by count - 1. Spacing a ring
+     * the way a fan is spaced puts the first and last shot on the same bearing
+     * -- the reaper was throwing eight blades in seven directions.
+     */
+    const ring = weapon.spread >= Math.PI * 2 - 0.01
+    const gap = ring
+      ? (Math.PI * 2) / weapon.count
+      : weapon.count > 1
+        ? weapon.spread / (weapon.count - 1)
+        : 0
+    const first = ring ? angle : angle - weapon.spread / 2
 
-    for (let i = 0; i < count; i++) {
-      const shot = this.projectiles.spawn()
-      if (!shot) {
+    for (let i = 0; i < weapon.count; i++) {
+      if (!this.spawnShot(slot, weapon.count > 1 ? first + gap * i : angle, damage, life)) {
         return
       }
-      const theta = count > 1 ? first + gap * i : angle
-      shot.x = player.x
-      shot.y = player.y
-      shot.vx = Math.cos(theta) * weapon.projectileSpeed
-      shot.vy = Math.sin(theta) * weapon.projectileSpeed
-      shot.radius = weapon.projectileRadius
-      shot.damage = damage
-      shot.knockback = weapon.knockback
-      shot.pierce = weapon.pierce
-      /*
-       * Lifetime scales with range as well as the firing gate above. Range
-       * only decides whether a weapon shoots; how far a shot actually travels
-       * is speed x life. The shredder covers 300px and fires at 240, so
-       * raising range on its own would send it after targets its bullets
-       * expire before reaching.
-       */
-      shot.life = weapon.life * stats.range
-      shot.lastHit = -1
-      shot.kind = kindIndex
     }
+
+    const extra = stats.bonusCount
+    if (extra <= 0) {
+      return
+    }
+
+    const player = this.player
+    // One more than needed: index 0 is the primary, already shot at above.
+    const found = this.findTargets(player.x, player.y, extra + 1, weapon.range * stats.range)
+
+    for (let i = 0; i < extra; i++) {
+      let theta: number
+      if (i + 1 < found) {
+        const other = this.targets[i + 1]
+        theta = Math.atan2(other.y - player.y, other.x - player.x)
+      } else {
+        // Fewer enemies than shots. The leftovers go either side of the
+        // primary, close enough that they still land on it at normal range.
+        const step = Math.ceil((i + 1 - Math.max(0, found - 1)) / 2)
+        theta = angle + (i % 2 === 0 ? 1 : -1) * SPREAD_PER_EXTRA_SHOT * step
+      }
+      if (!this.spawnShot(slot, theta, damage, life)) {
+        return
+      }
+    }
+  }
+
+  /** Returns false when the pool is empty, which stops the rest of a volley. */
+  private spawnShot(slot: WeaponSlot, theta: number, damage: number, life: number): boolean {
+    const shot = this.projectiles.spawn()
+    if (!shot) {
+      return false
+    }
+    const weapon = WEAPONS[slot.kind]
+    shot.x = this.player.x
+    shot.y = this.player.y
+    shot.vx = Math.cos(theta) * weapon.projectileSpeed
+    shot.vy = Math.sin(theta) * weapon.projectileSpeed
+    shot.radius = weapon.projectileRadius
+    shot.damage = damage
+    shot.knockback = weapon.knockback
+    shot.pierce = weapon.pierce
+    shot.life = life
+    shot.lastHit = -1
+    shot.kind = slot.kind
+    return true
+  }
+
+  /**
+   * Fills `targets` with the k nearest enemies inside a radius, closest first.
+   *
+   * An insertion sort into a fixed buffer rather than sorting the whole crowd:
+   * k is single digits and the crowd is hundreds, so this is one pass with a
+   * comparison against the worst kept candidate and almost nothing else.
+   */
+  private findTargets(x: number, y: number, k: number, maxRange: number): number {
+    const targets = this.targets
+    const limit = Math.min(k, targets.length)
+    const maxD2 = maxRange * maxRange
+    const items = this.enemies.items
+    let count = 0
+
+    for (let i = 0; i < items.length; i++) {
+      const enemy = items[i]
+      if (!enemy.active) {
+        continue
+      }
+      const dx = enemy.x - x
+      const dy = enemy.y - y
+      const d2 = dx * dx + dy * dy
+      if (d2 > maxD2) {
+        continue
+      }
+
+      let pos: number
+      if (count < limit) {
+        pos = count
+        count += 1
+      } else if (d2 < targets[limit - 1].d2) {
+        pos = limit - 1
+      } else {
+        continue
+      }
+
+      while (pos > 0 && targets[pos - 1].d2 > d2) {
+        const into = targets[pos]
+        const from = targets[pos - 1]
+        into.x = from.x
+        into.y = from.y
+        into.d2 = from.d2
+        pos -= 1
+      }
+      const slot = targets[pos]
+      slot.x = enemy.x
+      slot.y = enemy.y
+      slot.d2 = d2
+    }
+
+    return count
   }
 
   private stepProjectiles(dt: number): void {

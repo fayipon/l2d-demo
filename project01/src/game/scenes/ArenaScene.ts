@@ -221,6 +221,12 @@ export class ArenaScene extends Phaser.Scene {
 
     this.readInput()
 
+    /* Frozen means frozen. The simulation stops for both an unspent level and
+       an open shop, and so does everything drawn on real time rather than on
+       simulation time -- otherwise the damage numbers keep drifting upward
+       over a screen where nothing else moves. */
+    const frozen = world.pendingLevels > 0 || world.status === 'shop'
+
     /*
      * Fixed timestep. The renderer runs at whatever the display gives it; the
      * simulation always advances in equal 1/60 slices, with the remainder
@@ -231,7 +237,7 @@ export class ArenaScene extends Phaser.Scene {
      * is dropped rather than carried -- carrying it makes the next frame
      * slower still and the game never recovers.
      */
-    if (world.pendingLevels > 0 || world.status === 'shop') {
+    if (frozen) {
       /*
        * Frozen while a level is unspent or the shop is open. The accumulator
        * is held at zero rather than left to fill: carrying the paused seconds
@@ -253,7 +259,7 @@ export class ArenaScene extends Phaser.Scene {
     }
 
     this.drainHits()
-    this.stepNumbers(world.pendingLevels > 0 ? 0 : Math.min(delta, MAX_FRAME_MS) / 1000)
+    this.stepNumbers(frozen ? 0 : Math.min(delta, MAX_FRAME_MS) / 1000)
 
     if (world.shake > 0) {
       this.cameras.main.shake(140, Math.min(0.012, world.shake * 0.0009))
