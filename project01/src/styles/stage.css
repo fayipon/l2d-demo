@@ -124,13 +124,18 @@
 }
 
 /* ---------- speech bubble ---------- */
-/* Sits in the open space to the upper right of the character's head; the tail
-   hangs off the bottom left so it points back at her. */
+/*
+ * Where the open space is depends on the screen: each one frames the model at
+ * a different place and fills the rest with its own furniture. So the position
+ * is a variable the screen sets, defaulting to the home screen's, and the tail
+ * can be flipped to whichever side the character is on. Hardcoding one
+ * position is how it ended up over the character's face on the second screen.
+ */
 .speech-bubble {
   position: absolute;
-  left: 36cqw;
-  top: 15cqh;
-  max-width: 21cqw;
+  left: var(--bubble-x, 36cqw);
+  top: var(--bubble-y, 15cqh);
+  max-width: var(--bubble-width, 21cqw);
   padding: 1.6cqh 1.8cqw;
   border-radius: 2.4cqh;
   background: rgba(255, 255, 255, 0.94);
@@ -150,6 +155,7 @@
   transform: none;
 }
 
+/* Default tail: bottom left, for a bubble sitting to the character's right. */
 .speech-bubble::after {
   content: "";
   position: absolute;
@@ -158,4 +164,11 @@
   border-width: 1.8cqh 1.4cqh 0 0;
   border-style: solid;
   border-color: rgba(255, 255, 255, 0.94) transparent transparent transparent;
+}
+
+/* Mirrored, for a bubble sitting to the character's left. */
+.speech-bubble.tail-right::after {
+  left: auto;
+  right: 2cqw;
+  border-width: 1.8cqh 0 0 1.4cqh;
 }

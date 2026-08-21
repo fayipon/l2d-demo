@@ -6,6 +6,15 @@
  * detail panel right, expression strip and TALK along the bottom.
  */
 
+/* The model sits at 0.43 of stage width here rather than 0.30, so the shared
+   bubble position would land on her face. Park it in the gap between the
+   roster and the character, with the tail pointing right at her. */
+.char-hud {
+  --bubble-x: 21.5cqw;
+  --bubble-y: 17cqh;
+  --bubble-width: 18cqw;
+}
+
 /* ---------- back ---------- */
 .back-btn {
   position: absolute;

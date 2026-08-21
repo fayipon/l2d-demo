@@ -217,7 +217,10 @@ export function CharacterPage() {
         </div>
 
         {/* Tapping the model raises this too, same as on the home screen. */}
-        <div className={`speech-bubble${bubble.visible ? ' is-visible' : ''}`} aria-live="polite">
+        <div
+          className={`speech-bubble tail-right${bubble.visible ? ' is-visible' : ''}`}
+          aria-live="polite"
+        >
           {bubble.text}
         </div>
       </div>
