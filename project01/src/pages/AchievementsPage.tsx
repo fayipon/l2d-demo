@@ -4,11 +4,13 @@ import { StageShell } from '../components/StageShell'
 import { Emblem } from '../components/Emblem'
 import { Icon, type IconName } from '../components/icons'
 import { useSelectedCharacter } from '../app/selectedCharacterContext'
+import { formatCurrency, useProfile } from '../features/profile'
 import { usePortraits } from '../features/portraits'
 import {
   ACHIEVEMENTS,
   CATEGORIES,
   FEATURED_ID,
+  achievementProgress,
   achievementState,
   type Achievement,
   type AchievementCategoryId,
@@ -75,6 +77,7 @@ function RewardTile({ reward, portrait }: { reward: AchievementReward; portrait?
 export function AchievementsPage() {
   const navigate = useNavigate()
   const { character } = useSelectedCharacter()
+  const profile = useProfile()
   const portraits = usePortraits()
 
   const [categoryId, setCategoryId] = useState<AchievementCategoryId>('all')
@@ -87,13 +90,19 @@ export function AchievementsPage() {
      starting position. */
   const [claimed, setClaimed] = useState<ReadonlySet<string>>(() => new Set())
 
-  const stateOf = (entry: Achievement) => achievementState(entry, claimed.has(entry.id))
+  /* Progress and state are asked for together everywhere, and progress now
+     depends on the account, so both are derived in one place rather than at
+     each of the four call sites that used to read entry.progress directly. */
+  const progressOf = (entry: Achievement) => achievementProgress(entry, profile)
+  const stateOf = (entry: Achievement) =>
+    achievementState(entry, claimed.has(entry.id), progressOf(entry))
 
   const category = CATEGORIES.find((c) => c.id === categoryId) ?? CATEGORIES[0]
 
   const visible = useMemo(() => {
     const state = (entry: Achievement) =>
-      achievementState(entry, claimed.has(entry.id))
+      achievementState(entry, claimed.has(entry.id), achievementProgress(entry, profile))
+    const ratio = (entry: Achievement) => achievementProgress(entry, profile) / entry.goal
 
     const list = ACHIEVEMENTS.filter((entry) => {
       if (categoryId !== 'all' && entry.category !== categoryId) {
@@ -110,7 +119,7 @@ export function AchievementsPage() {
 
     return [...list].sort((a, b) => {
       if (sort === 'progress') {
-        return b.progress / b.goal - a.progress / a.goal
+        return ratio(b) - ratio(a)
       }
       if (sort === 'tier') {
         return TIER_RANK[a.tone] - TIER_RANK[b.tone]
@@ -118,9 +127,9 @@ export function AchievementsPage() {
       // 最新解鎖: what needs the player's attention first, then what is closest
       // to needing it, then the history.
       const byState = STATE_RANK[state(a)] - STATE_RANK[state(b)]
-      return byState !== 0 ? byState : b.progress / b.goal - a.progress / a.goal
+      return byState !== 0 ? byState : ratio(b) - ratio(a)
     })
-  }, [categoryId, tab, sort, claimed])
+  }, [categoryId, tab, sort, claimed, profile])
 
   const rows = expanded ? visible : visible.slice(0, PAGE_SIZE)
 
@@ -142,7 +151,12 @@ export function AchievementsPage() {
     setClaimed((prev) => {
       const next = new Set(prev)
       ACHIEVEMENTS.forEach((entry) => {
-        if (achievementState(entry, prev.has(entry.id)) === 'claimable') {
+        const state = achievementState(
+          entry,
+          prev.has(entry.id),
+          achievementProgress(entry, profile),
+        )
+        if (state === 'claimable') {
           next.add(entry.id)
         }
       })
@@ -165,12 +179,12 @@ export function AchievementsPage() {
           <div className="currency-row">
             <div className="currency-pill panel">
               <Icon name="coin" className="currency-icon" />
-              <span className="currency-value">99,999</span>
+              <span className="currency-value">{formatCurrency(profile.coins)}</span>
               <button type="button" className="plus" aria-label="增加金幣">+</button>
             </div>
             <div className="currency-pill panel">
               <Icon name="gem" className="currency-icon" />
-              <span className="currency-value">8,420</span>
+              <span className="currency-value">{formatCurrency(profile.gems)}</span>
               <button type="button" className="plus" aria-label="增加寶石">+</button>
             </div>
           </div>
@@ -266,7 +280,8 @@ export function AchievementsPage() {
           <div className="ach-rows">
             {rows.map((entry) => {
               const state = stateOf(entry)
-              const percent = Math.min(100, Math.round((entry.progress / entry.goal) * 100))
+              const progress = progressOf(entry)
+              const percent = Math.min(100, Math.round((progress / entry.goal) * 100))
               const isSelected = entry.id === selectedId
               return (
                 <div
@@ -299,7 +314,7 @@ export function AchievementsPage() {
                           <i className="ach-bar-fill" style={{ width: `${percent}%` }} />
                         </span>
                         <span className="ach-bar-text">
-                          {entry.progress} / {entry.goal}
+                          {Math.min(progress, entry.goal)} / {entry.goal}
                         </span>
                       </span>
                     </span>
@@ -374,13 +389,13 @@ export function AchievementsPage() {
               <div className="ach-feature-progress">
                 <span className="ach-feature-heading">進度</span>
                 <span className="ach-feature-count">
-                  {selected.progress} / {selected.goal}
+                  {Math.min(progressOf(selected), selected.goal)} / {selected.goal}
                 </span>
                 <span className="ach-bar">
                   <i
                     className="ach-bar-fill"
                     style={{
-                      width: `${Math.min(100, Math.round((selected.progress / selected.goal) * 100))}%`,
+                      width: `${Math.min(100, Math.round((progressOf(selected) / selected.goal) * 100))}%`,
                     }}
                   />
                 </span>

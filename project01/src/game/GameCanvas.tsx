@@ -2,6 +2,14 @@ import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 import { ArenaScene, ARENA_HEIGHT, ARENA_WIDTH } from './scenes/ArenaScene'
 import { resetRun } from './runStore'
+import { DEFAULT_LOADOUT, type ArenaLoadout } from './data/loadouts'
+
+interface GameCanvasProps {
+  /** The selected character's arena traits. Read once, at mount: a run does
+   *  not change character halfway through, and re-reading it would mean
+   *  re-creating the game. */
+  loadout?: ArenaLoadout
+}
 
 /**
  * Owns one Phaser.Game for as long as it is mounted.
@@ -17,8 +25,12 @@ import { resetRun } from './runStore'
  * belongs in the scene, not in React. React mounts this and gets out of the
  * way -- a re-render here would tear down the whole game.
  */
-export function GameCanvas() {
+export function GameCanvas({ loadout = DEFAULT_LOADOUT }: GameCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
+  /* Held in a ref so the effect below can stay keyed on nothing: a prop in the
+     dependency array would tear down and rebuild the whole game the first time
+     the parent re-rendered with a fresh object. */
+  const loadoutRef = useRef(loadout)
 
   useEffect(() => {
     const host = hostRef.current
@@ -42,7 +54,8 @@ export function GameCanvas() {
       // Sharp pixels when the canvas is scaled up, and no smoothing surprises
       // once there is pixel art in here.
       pixelArt: false,
-      scene: [ArenaScene],
+      // An instance, not the class, so the loadout can be handed to it.
+      scene: [new ArenaScene(loadoutRef.current)],
     })
 
     if (import.meta.env.DEV) {

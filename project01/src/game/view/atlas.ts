@@ -25,7 +25,10 @@ export const ATLAS_KEY = 'arena-atlas'
 
 const PADDING = 2
 const SHEET_WIDTH = 256
-const SHEET_HEIGHT = 64
+/* Two rows with room to spare. The packer wraps, and at 64 the last frame
+   cleared the bottom edge by eight pixels -- one more shape would have been
+   silently clipped rather than reported. */
+const SHEET_HEIGHT = 96
 
 /** Alpha of the inner fill. The rim stays opaque, which is what gives every
  *  entity a lit edge against the dark floor. */
@@ -81,6 +84,22 @@ const SHAPES: ShapeSpec[] = [
     width: 22,
     height: 22,
     draw: (ctx, w, h, inset) => polygon(ctx, w / 2, h / 2, w / 2 - inset, 4, 0),
+  },
+  {
+    name: 'pellet',
+    width: 10,
+    height: 10,
+    draw: (ctx, w, h, inset) => {
+      ctx.beginPath()
+      ctx.arc(w / 2, h / 2, w / 2 - inset, 0, Math.PI * 2)
+    },
+  },
+  {
+    name: 'beam',
+    width: 30,
+    height: 8,
+    draw: (ctx, w, h, inset) =>
+      roundedRect(ctx, inset, inset, w - inset * 2, h - inset * 2, (h - inset * 2) / 2),
   },
   {
     name: 'coin',

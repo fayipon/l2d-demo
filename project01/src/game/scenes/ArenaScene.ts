@@ -2,7 +2,9 @@ import Phaser from 'phaser'
 import { ARENA_HEIGHT, ARENA_WIDTH, STEP_SECONDS, World } from '../sim/world'
 import { ENEMY_KINDS, WEAPONS } from '../data/content'
 import { ATLAS_KEY, FONT_KEY, buildAtlas, buildDamageFont } from '../view/atlas'
-import { consumeRestart, consumeUpgrade, publishRun } from '../runStore'
+import { consumeRestart, consumeUpgrade, drainShopCommands, publishRun } from '../runStore'
+import { rerollPrice } from '../data/shop'
+import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
 
 export { ARENA_WIDTH, ARENA_HEIGHT }
 
@@ -112,15 +114,27 @@ export class ArenaScene extends Phaser.Scene {
 
   private accumulator = 0
   private publishTimer = 0
-  /** Last value published, so a change can force a snapshot out immediately
-   *  instead of waiting up to 66ms for the next scheduled one. */
+  /* Last values published. A change in either forces a snapshot out at once
+     rather than waiting up to 66ms -- an overlay that appears a frame late is
+     an overlay that appears after the click that should have opened it. */
   private lastPending = 0
+  private lastStatus = ''
   /** Movement axis for the current frame. Not named `input`: Scene.input is
    *  Phaser's own plugin, and a field of that name would shadow it. */
   private readonly moveInput = { x: 0, y: 0 }
 
-  constructor() {
+  /**
+   * The loadout is handed in rather than looked up, because the scene has no
+   * business knowing there is a lobby. GameCanvas builds it from whichever
+   * character is selected and passes an instance of this scene, which also
+   * sidesteps the question of when a scene started by Phaser could read data
+   * set after the game booted.
+   */
+  private readonly loadout: ArenaLoadout
+
+  constructor(loadout: ArenaLoadout = DEFAULT_LOADOUT) {
     super('arena')
+    this.loadout = loadout
   }
 
   create(): void {
@@ -130,7 +144,7 @@ export class ArenaScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#07030d')
     this.drawFloor()
 
-    this.world = new World()
+    this.world = new World(this.loadout)
 
     // Created in paint order: depth sorting is off, so the order they are
     // added is the order they are drawn. Drops go under the crowd, shots and
@@ -195,6 +209,16 @@ export class ArenaScene extends Phaser.Scene {
       world.applyUpgrade(chosen)
     }
 
+    for (const command of drainShopCommands()) {
+      if (command.sort === 'buy') {
+        world.buy(command.slot)
+      } else if (command.sort === 'reroll') {
+        world.reroll()
+      } else {
+        world.leaveShop()
+      }
+    }
+
     this.readInput()
 
     /*
@@ -207,12 +231,12 @@ export class ArenaScene extends Phaser.Scene {
      * is dropped rather than carried -- carrying it makes the next frame
      * slower still and the game never recovers.
      */
-    if (world.pendingLevels > 0) {
+    if (world.pendingLevels > 0 || world.status === 'shop') {
       /*
-       * Frozen while a level is unspent. The accumulator is held at zero
-       * rather than left to fill: carrying the paused seconds would spend them
-       * all at once the instant the choice is made, teleporting the crowd on
-       * top of the player.
+       * Frozen while a level is unspent or the shop is open. The accumulator
+       * is held at zero rather than left to fill: carrying the paused seconds
+       * would spend them all at once the moment play resumes, teleporting the
+       * crowd on top of the player.
        */
       this.accumulator = 0
     } else {
@@ -241,9 +265,14 @@ export class ArenaScene extends Phaser.Scene {
     // The overlay has to appear on the frame the level lands, not up to a
     // publish interval later, so a change in the queue jumps the schedule.
     this.publishTimer += delta
-    if (this.publishTimer >= PUBLISH_MS || world.pendingLevels !== this.lastPending) {
+    if (
+      this.publishTimer >= PUBLISH_MS ||
+      world.pendingLevels !== this.lastPending ||
+      world.status !== this.lastStatus
+    ) {
       this.publishTimer = 0
       this.lastPending = world.pendingLevels
+      this.lastStatus = world.status
       this.publish()
     }
   }
@@ -464,7 +493,10 @@ export class ArenaScene extends Phaser.Scene {
     publishRun({
       status: world.status,
       wave: world.wave,
-      timeLeft: Math.max(0, world.status === 'break' ? world.breakTimeLeft : world.waveTimeLeft),
+      timeLeft: Math.max(
+        0,
+        world.status === 'break' ? world.breakTimeLeft : world.waveTimeLeft,
+      ),
       hp: player.hp,
       maxHp: player.stats.maxHp,
       level: player.level,
@@ -472,11 +504,17 @@ export class ArenaScene extends Phaser.Scene {
       xpToLevel: player.xpToLevel,
       coins: player.coins,
       kills: world.kills,
+      hitsTaken: world.hitsTaken,
+      deaths: world.deaths,
       enemies: world.enemies.used,
       fps: Math.round(this.game.loop.actualFps),
       pendingLevels: world.pendingLevels,
       offers: world.offers,
       stats: { ...player.stats },
+      weapons: player.weapons.map((slot) => ({ kind: slot.kind, tier: slot.tier })),
+      items: [...world.ownedItems],
+      shop: world.shopOffers,
+      rerollPrice: rerollPrice(world.wave, world.rerolls),
     })
   }
 

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { PlayerStats, UpgradeId } from './data/content'
 import { BASE_STATS } from './data/content'
+import type { ShopOffer } from './data/shop'
 import type { RunStatus } from './sim/world'
 
 /**
@@ -29,6 +30,9 @@ export interface RunSnapshot {
   xpToLevel: number
   coins: number
   kills: number
+  hitsTaken: number
+  /** Increments once per finished run, so the lobby is paid exactly once. */
+  deaths: number
   /** Live entity counts, so a performance problem is visible rather than felt. */
   enemies: number
   fps: number
@@ -39,6 +43,13 @@ export interface RunSnapshot {
   /** A copy, not the live block -- the HUD compares snapshots by identity and
    *  would never see a stat that was mutated in place. */
   stats: PlayerStats
+  /** The rack, in slot order. Copies for the same reason as the stats. */
+  weapons: { kind: number; tier: number }[]
+  /** Item ids taken this run. */
+  items: string[]
+  /** Laid out only while the status is 'shop'. */
+  shop: ShopOffer[]
+  rerollPrice: number
 }
 
 const EMPTY: RunSnapshot = {
@@ -52,11 +63,17 @@ const EMPTY: RunSnapshot = {
   xpToLevel: 1,
   coins: 0,
   kills: 0,
+  hitsTaken: 0,
+  deaths: 0,
   enemies: 0,
   fps: 0,
   pendingLevels: 0,
   offers: [],
   stats: { ...BASE_STATS },
+  weapons: [],
+  items: [],
+  shop: [],
+  rerollPrice: 0,
 }
 
 let snapshot: RunSnapshot = EMPTY
@@ -96,6 +113,38 @@ export function useRunSnapshot(): RunSnapshot {
  */
 let restartRequested = false
 let upgradeRequested: UpgradeId | null = null
+
+/**
+ * Shop clicks, queued rather than latched.
+ *
+ * A single pending value would drop the second of two clicks landing in the
+ * same frame, and buying is the one action where losing an input costs the
+ * player money they cannot see leave.
+ */
+type ShopCommand = { sort: 'buy'; slot: number } | { sort: 'reroll' } | { sort: 'leave' }
+const shopQueue: ShopCommand[] = []
+
+export function requestBuy(slot: number): void {
+  shopQueue.push({ sort: 'buy', slot })
+}
+
+export function requestReroll(): void {
+  shopQueue.push({ sort: 'reroll' })
+}
+
+export function requestLeaveShop(): void {
+  shopQueue.push({ sort: 'leave' })
+}
+
+export function drainShopCommands(): ShopCommand[] {
+  if (shopQueue.length === 0) {
+    return EMPTY_COMMANDS
+  }
+  return shopQueue.splice(0, shopQueue.length)
+}
+
+/** Shared, so the common case of nothing queued allocates nothing. */
+const EMPTY_COMMANDS: ShopCommand[] = []
 
 export function requestRestart(): void {
   restartRequested = true

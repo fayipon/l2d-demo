@@ -1,16 +1,34 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
 import { Icon, type IconName } from '../components/icons'
-import { requestRestart, requestUpgrade, useRunSnapshot } from '../game/runStore'
+import {
+  requestBuy,
+  requestLeaveShop,
+  requestReroll,
+  requestRestart,
+  requestUpgrade,
+  useRunSnapshot,
+} from '../game/runStore'
 import {
   BASE_STATS,
   STAT_INFO,
+  WEAPONS,
   getUpgrade,
   type PlayerStats,
   type UpgradeId,
 } from '../game/data/content'
+import { SHOP_ITEMS } from '../game/data/shop'
+import { useSelectedCharacter } from '../app/selectedCharacterContext'
+import { recordRun, useLastReward } from '../features/profile'
+import { loadoutFor } from '../game/data/loadouts'
 import './GamePage.css'
+
+/** Roman numerals for weapon tiers -- short, and unmistakably a rank. */
+const TIER_MARK = ['', 'I', 'II', 'III', 'IV']
+
+/* The weapon tints are stored as numbers for Phaser; CSS wants the string. */
+const hexOf = (tint: number) => `#${tint.toString(16).padStart(6, '0')}`
 
 /* The data file stays free of view concerns, so the glyph for each stat is
    chosen here rather than stored beside its numbers. */
@@ -94,6 +112,35 @@ const STAT_ORDER: UpgradeId[] = [
 export function GamePage() {
   const navigate = useNavigate()
   const run = useRunSnapshot()
+  // The lobby's selected character decides what the run opens with.
+  const { character } = useSelectedCharacter()
+  const loadout = loadoutFor(character.id)
+  const lastReward = useLastReward()
+  // Only ever shown on the panel that is up because this run ended, so a
+  // reward banked before a restart cannot reappear.
+  const reward = run.status === 'dead' ? lastReward : null
+
+  /*
+   * Bank the run exactly once.
+   *
+   * Keyed on the world's own death counter rather than on the status, because
+   * the status stays 'dead' across every publish until a restart -- paying on
+   * that would pay fifteen times a second. The ref survives re-renders; the
+   * counter survives restarts.
+   */
+  const bankedRun = useRef(0)
+  useEffect(() => {
+    if (run.deaths === 0 || run.deaths === bankedRun.current) {
+      return
+    }
+    bankedRun.current = run.deaths
+    recordRun({
+      wave: run.wave,
+      kills: run.kills,
+      coins: run.coins,
+      hitsTaken: run.hitsTaken,
+    })
+  }, [run.deaths, run.wave, run.kills, run.coins, run.hitsTaken])
 
   const hpPercent = run.maxHp > 0 ? (run.hp / run.maxHp) * 100 : 0
   const xpPercent = run.xpToLevel > 0 ? (run.xp / run.xpToLevel) * 100 : 0
@@ -131,7 +178,7 @@ export function GamePage() {
 
   return (
     <div className="game-root">
-      <GameCanvas />
+      <GameCanvas loadout={loadout} />
 
       <div className="game-overlay">
         {/* Top-left: the way out, and the purse. Coins are what the shop will
@@ -187,6 +234,21 @@ export function GamePage() {
               {Math.floor(run.xp)} / {run.xpToLevel}
             </span>
           </div>
+        </div>
+
+        {/* ---------- the rack ---------- */}
+        <div className="rack">
+          {run.weapons.map((slot, i) => (
+            <span
+              key={`${slot.kind}-${slot.tier}-${i}`}
+              className="rack-slot"
+              style={{ '--weapon-tint': hexOf(WEAPONS[slot.kind].tint) } as CSSProperties}
+              title={WEAPONS[slot.kind].detail}
+            >
+              <span className="rack-name">{WEAPONS[slot.kind].label}</span>
+              <span className="rack-tier">{TIER_MARK[slot.tier]}</span>
+            </span>
+          ))}
         </div>
 
         {/* ---------- counters ---------- */}
@@ -256,19 +318,127 @@ export function GamePage() {
           </div>
         ) : null}
 
+        {/* ---------- shop ---------- */}
+        {run.status === 'shop' ? (
+          <div className="shop">
+            <header className="shop-head">
+              <p className="shop-title">補給</p>
+              <p className="shop-sub">
+                第 {run.wave} 波結束 · 持有 <b>{run.coins}</b> 金幣
+              </p>
+            </header>
+
+            <div className="shop-cards">
+              {run.shop.map((offer, slot) => {
+                const affordable = run.coins >= offer.price
+                if (offer.sort === 'weapon') {
+                  const weapon = WEAPONS[offer.index]
+                  return (
+                    <button
+                      type="button"
+                      key={`w${slot}-${offer.index}-${offer.tier}`}
+                      className={`shop-card is-weapon${affordable ? '' : ' is-broke'}`}
+                      style={{ '--weapon-tint': hexOf(weapon.tint) } as CSSProperties}
+                      onClick={() => requestBuy(slot)}
+                      disabled={!affordable}
+                    >
+                      <span className="shop-kind">武器 {TIER_MARK[offer.tier]}</span>
+                      <span className="shop-label">{weapon.label}</span>
+                      <span className="shop-detail">{weapon.detail}</span>
+                      <span className="shop-price">
+                        <Icon name="coin" className="shop-coin" />
+                        {offer.price}
+                      </span>
+                    </button>
+                  )
+                }
+                const item = SHOP_ITEMS[offer.index]
+                return (
+                  <button
+                    type="button"
+                    key={`i${slot}-${item.id}`}
+                    className={`shop-card${affordable ? '' : ' is-broke'}`}
+                    onClick={() => requestBuy(slot)}
+                    disabled={!affordable}
+                  >
+                    <span className="shop-kind">道具</span>
+                    <span className="shop-label">{item.label}</span>
+                    <span className="shop-detail">{item.detail}</span>
+                    <span className="shop-price">
+                      <Icon name="coin" className="shop-coin" />
+                      {offer.price}
+                    </span>
+                  </button>
+                )
+              })}
+
+              {run.shop.length === 0 ? <p className="shop-empty">貨架空了。</p> : null}
+            </div>
+
+            <footer className="shop-foot">
+              <button
+                type="button"
+                className="shop-reroll"
+                onClick={requestReroll}
+                disabled={run.coins < run.rerollPrice}
+              >
+                重骰
+                <span className="shop-price">
+                  <Icon name="coin" className="shop-coin" />
+                  {run.rerollPrice}
+                </span>
+              </button>
+
+              <button type="button" className="shop-go" onClick={requestLeaveShop}>
+                前往第 {run.wave + 1} 波
+              </button>
+            </footer>
+
+            {run.items.length > 0 ? (
+              <p className="shop-owned">
+                已持有：
+                {run.items
+                  .map((id) => SHOP_ITEMS.find((entry) => entry.id === id)?.label ?? id)
+                  .join('、')}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {run.status === 'dead' ? (
           <div className="game-over">
             <p className="game-over-title">陣亡</p>
             <p className="game-over-line">
               存活到第 <b>{run.wave}</b> 波 · 擊殺 <b>{run.kills}</b>
             </p>
+            {reward ? (
+              <div className="reward-row">
+                {reward.record ? <p className="reward-record">新紀錄</p> : null}
+                <div className="reward-line">
+                  <Icon name="coin" className="reward-icon" />
+                  <b>+{reward.coins}</b>
+                </div>
+                <div className="reward-line">
+                  <Icon name="gem" className="reward-icon" />
+                  <b>+{reward.gems}</b>
+                </div>
+                <div className="reward-line">
+                  <Icon name="exp" className="reward-icon" />
+                  <b>+{reward.exp}</b>
+                </div>
+              </div>
+            ) : null}
+
             <button type="button" className="game-over-btn" onClick={requestRestart}>
               重新開始 <kbd>R</kbd>
             </button>
           </div>
         ) : null}
 
-        <p className="game-hint">WASD / 方向鍵 移動 · 武器自動開火</p>
+        <p className="game-hint">
+          {loadout.trait ? `${loadout.trait} · ` : ''}
+          WASD / 方向鍵 移動 · 武器自動開火
+        </p>
       </div>
     </div>
   )

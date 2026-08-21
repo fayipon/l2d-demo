@@ -7,20 +7,34 @@ import {
   DODGE_CAP,
   ENEMY_KINDS,
   LEVEL_BONUS,
+  MAX_WEAPON_SLOTS,
+  MAX_WEAPON_TIER,
+  MERGE_COUNT,
   SPREAD_PER_EXTRA_SHOT,
   WEAPONS,
   armourReduction,
+  findWeapon,
   getUpgrade,
   healthScale,
   pickEnemyKind,
   rollUpgradeOffers,
   spawnInterval,
   speedScale,
+  tierDamageScale,
+  tierRateScale,
   waveDuration,
   xpForLevel,
   type PlayerStats,
   type UpgradeId,
 } from '../data/content'
+import {
+  SHOP_ITEMS,
+  rerollPrice,
+  rollShop,
+  type MergeTarget,
+  type ShopOffer,
+} from '../data/shop'
+import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
 
 export type { PlayerStats }
 
@@ -90,7 +104,13 @@ const BREAK_LOOT_MULTIPLIER = 10
  */
 const HIT_EVENT_CAPACITY = 64
 
-export type RunStatus = 'fighting' | 'break' | 'dead'
+/**
+ * 'break' is the few seconds after a wave while the floor is being hoovered
+ * up; 'shop' is the pause after it, which waits for the player rather than a
+ * clock. Splitting them is what lets the coins arrive before there is
+ * anything to spend them on.
+ */
+export type RunStatus = 'fighting' | 'break' | 'shop' | 'dead'
 
 export interface Enemy extends Pooled {
   x: number
@@ -139,6 +159,8 @@ export interface Pickup extends Pooled {
 
 export interface WeaponSlot {
   kind: number
+  /** 1..MAX_WEAPON_TIER. Three of a kind at one tier fuse into the next. */
+  tier: number
   cooldown: number
 }
 
@@ -190,6 +212,13 @@ export class World {
   waveTimeLeft = waveDuration(1)
   kills = 0
   elapsed = 0
+  /** Contact hits taken, for the flawless-run record. */
+  hitsTaken = 0
+  /**
+   * Runs finished. The HUD banks a result when this changes, which is what
+   * stops a rerender from paying the same run twice.
+   */
+  deaths = 0
 
   /**
    * Levels gained but not yet spent.
@@ -202,6 +231,13 @@ export class World {
   pendingLevels = 0
   /** What to offer for the level at the front of that queue. */
   offers: UpgradeId[] = []
+
+  /** The shop laid out for this break. Empty while fighting. */
+  shopOffers: ShopOffer[] = []
+  /** Rerolls bought this visit, which is what makes the next one cost more. */
+  rerolls = 0
+  /** Items taken this run, by id, for the HUD to list. */
+  readonly ownedItems: string[] = []
 
   /**
    * Shake the scene should apply, in pixels, accumulated since it last looked.
@@ -234,8 +270,10 @@ export class World {
   /** Reused across every query, so the broadphase never allocates. */
   private readonly neighbours: number[] = []
   private random = mulberry32(0x9e3779b9)
+  private readonly loadout: ArenaLoadout
 
-  constructor() {
+  constructor(loadout: ArenaLoadout = DEFAULT_LOADOUT) {
+    this.loadout = loadout
     this.enemies = new Pool<Enemy>(CAPACITY.enemies, (index) => ({
       index,
       active: false,
@@ -291,12 +329,28 @@ export class World {
       level: 1,
       xp: 0,
       xpToLevel: xpForLevel(1),
-      weapons: [
-        { kind: 0, cooldown: 0 },
-        { kind: 1, cooldown: 0.5 },
-      ],
+      weapons: [],
       stats: { ...BASE_STATS },
     }
+
+    this.applyLoadout()
+  }
+
+  /**
+   * Stamps the chosen character onto a fresh run.
+   *
+   * Modifiers are added to the block the same way an item or an upgrade card
+   * adds to it -- a trait is not a special case, it is just the first writer.
+   */
+  private applyLoadout(): void {
+    const player = this.player
+    for (const [key, value] of Object.entries(this.loadout.mods)) {
+      player.stats[key as keyof PlayerStats] += value as number
+    }
+    player.hp = player.stats.maxHp
+
+    const kind = findWeapon(this.loadout.weapon)
+    player.weapons.push({ kind: kind >= 0 ? kind : 0, tier: 1, cooldown: 0 })
   }
 
   /**
@@ -343,15 +397,15 @@ export class World {
     player.x = ARENA_WIDTH / 2
     player.y = ARENA_HEIGHT / 2
     Object.assign(player.stats, BASE_STATS)
-    player.hp = player.stats.maxHp
+    player.weapons.length = 0
+    this.ownedItems.length = 0
     player.invuln = 0
     player.dodgeFlash = 0
     player.coins = 0
     player.level = 1
     player.xp = 0
     player.xpToLevel = xpForLevel(1)
-    player.weapons[0].cooldown = 0
-    player.weapons[1].cooldown = 0.5
+
 
     this.status = 'fighting'
     this.wave = 1
@@ -360,11 +414,16 @@ export class World {
     this.spawnTimer = 0
     this.kills = 0
     this.elapsed = 0
+    this.hitsTaken = 0
     this.shake = 0
     this.hitCount = 0
     this.pendingLevels = 0
     this.offers = []
+    this.shopOffers = []
+    this.rerolls = 0
     this.random = mulberry32(0x9e3779b9)
+
+    this.applyLoadout()
   }
 
   /* ---------- upgrades ---------- */
@@ -433,10 +492,15 @@ export class World {
   /* ---------- the director ---------- */
 
   private stepDirector(dt: number): void {
+    if (this.status === 'shop') {
+      // Waits for the player, not for a clock.
+      return
+    }
+
     if (this.status === 'break') {
       this.breakTimeLeft -= dt
       if (this.breakTimeLeft <= 0) {
-        this.startWave(this.wave + 1)
+        this.openShop()
       }
       return
     }
@@ -461,7 +525,157 @@ export class World {
     this.wave = wave
     this.waveTimeLeft = waveDuration(wave)
     this.spawnTimer = 0.4
+    this.shopOffers = []
+    this.rerolls = 0
     this.status = 'fighting'
+  }
+
+  /* ---------- the shop ---------- */
+
+  private openShop(): void {
+    this.rerolls = 0
+    this.shopOffers = this.layOutShop()
+    this.status = 'shop'
+  }
+
+  private layOutShop(): ShopOffer[] {
+    return rollShop(
+      {
+        wave: this.wave,
+        weaponCount: this.player.weapons.length,
+        mergeable: this.mergeTargets(),
+      },
+      this.random,
+    )
+  }
+
+/** Kind-and-tier pairs the player is one copy short of fusing. */
+  private mergeTargets(): MergeTarget[] {
+    const counts = new Map<string, number>()
+    for (const slot of this.player.weapons) {
+      const key = `${slot.kind}:${slot.tier}`
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    const targets: MergeTarget[] = []
+    for (const [key, count] of counts) {
+      const [kind, tier] = key.split(':').map(Number)
+      if (count >= MERGE_COUNT - 1 && tier < MAX_WEAPON_TIER) {
+        targets.push({ kind, tier })
+      }
+    }
+    return targets
+  }
+
+  /** Buys the offer in that slot, or does nothing if it cannot be afforded. */
+  buy(slot: number): boolean {
+    const offer = this.shopOffers[slot]
+    if (this.status !== 'shop' || !offer || this.player.coins < offer.price) {
+      return false
+    }
+
+    if (offer.sort === 'weapon') {
+      if (!this.addWeapon(offer.index, offer.tier)) {
+        return false
+      }
+    } else {
+      const item = SHOP_ITEMS[offer.index]
+      for (const [key, value] of Object.entries(item.mods)) {
+        this.player.stats[key as keyof PlayerStats] += value as number
+      }
+      // A maximum-health item that raises the ceiling should raise the water
+      // with it, the same as a level does.
+      if (item.mods.maxHp && item.mods.maxHp > 0) {
+        this.player.hp = Math.min(this.player.stats.maxHp, this.player.hp + item.mods.maxHp)
+      }
+      this.player.hp = Math.min(this.player.hp, this.player.stats.maxHp)
+      this.ownedItems.push(item.id)
+    }
+
+    this.player.coins -= offer.price
+    // Sold, not replaced: leaving a bought card on the shelf invites a second
+    // click on something that is already gone.
+    this.shopOffers = this.shopOffers.filter((_, i) => i !== slot)
+    return true
+  }
+
+  reroll(): boolean {
+    if (this.status !== 'shop') {
+      return false
+    }
+    const price = rerollPrice(this.wave, this.rerolls)
+    if (this.player.coins < price) {
+      return false
+    }
+    this.player.coins -= price
+    this.rerolls += 1
+    this.shopOffers = this.layOutShop()
+    return true
+  }
+
+  /** Leaves the shop and starts the next wave. */
+  leaveShop(): void {
+    if (this.status === 'shop') {
+      this.startWave(this.wave + 1)
+    }
+  }
+
+  /**
+   * Adds a weapon, then fuses whatever that made possible.
+   *
+   * Merging happens here rather than in a screen of its own because it has no
+   * decision in it: three of a kind at one tier are strictly worse than one of
+   * the next, so asking would only be asking whether the player wants to be
+   * stronger.
+   */
+  addWeapon(kind: number, tier = 1): boolean {
+    const weapons = this.player.weapons
+    weapons.push({ kind, tier, cooldown: 0 })
+    this.mergeWeapons()
+
+    // The merge is what makes room when the rack is full, so the check has to
+    // come after it. If nothing fused, the copy goes back rather than leaving
+    // a seventh slot the rest of the code does not expect.
+    if (weapons.length > MAX_WEAPON_SLOTS) {
+      const added = weapons.findIndex((slot) => slot.kind === kind && slot.tier === tier)
+      weapons.splice(added >= 0 ? added : weapons.length - 1, 1)
+      return false
+    }
+    return true
+  }
+
+  private mergeWeapons(): void {
+    const weapons = this.player.weapons
+    let merged = true
+
+    // Repeats, because one fusion can complete another: three tier-1 make a
+    // tier-2, which may be the third tier-2 waiting to become a tier-3.
+    while (merged) {
+      merged = false
+      const counts = new Map<string, number[]>()
+      for (let i = 0; i < weapons.length; i++) {
+        const key = `${weapons[i].kind}:${weapons[i].tier}`
+        const list = counts.get(key)
+        if (list) {
+          list.push(i)
+        } else {
+          counts.set(key, [i])
+        }
+      }
+
+      for (const [key, indices] of counts) {
+        const [kind, tier] = key.split(':').map(Number)
+        if (indices.length < MERGE_COUNT || tier >= MAX_WEAPON_TIER) {
+          continue
+        }
+        // Removed from the back so the earlier indices stay valid.
+        for (let n = MERGE_COUNT - 1; n >= 0; n--) {
+          weapons.splice(indices[n], 1)
+        }
+        weapons.push({ kind, tier: tier + 1, cooldown: 0 })
+        merged = true
+        break
+      }
+    }
   }
 
   private endWave(): void {
@@ -655,10 +869,12 @@ export class World {
       }
 
       player.hp -= enemy.contactDamage * (1 - armourReduction(stats.armour))
+      this.hitsTaken += 1
       this.shake += 6
       if (player.hp <= 0) {
         player.hp = 0
         this.status = 'dead'
+        this.deaths += 1
       }
       return
     }
@@ -689,8 +905,9 @@ export class World {
       if (target.distance > weapon.range * player.stats.range) {
         continue
       }
-      this.fire(slot.kind, Math.atan2(target.y - player.y, target.x - player.x))
-      slot.cooldown = weapon.cooldown / player.stats.attackSpeed
+      this.fire(slot, Math.atan2(target.y - player.y, target.x - player.x))
+      slot.cooldown =
+        weapon.cooldown / (player.stats.attackSpeed * tierRateScale(slot.tier))
     }
   }
 
@@ -724,7 +941,8 @@ export class World {
    * therefore unaffected by an upgrade taken while it is still travelling --
    * which is both simpler and what you would want anyway.
    */
-  private fire(kindIndex: number, angle: number): void {
+  private fire(slot: WeaponSlot, angle: number): void {
+    const kindIndex = slot.kind
     const weapon = WEAPONS[kindIndex]
     const player = this.player
     const stats = player.stats
@@ -734,9 +952,11 @@ export class World {
     // A weapon with no spread of its own would stack every extra shot on the
     // same line, so the fan widens with each one it did not ask for.
     const spread = weapon.spread + extra * SPREAD_PER_EXTRA_SHOT
-    // Flat attack power first, then the percentage -- so a damage upgrade
-    // scales what levelling has already added instead of ignoring it.
-    const damage = (weapon.damage + stats.attackPower) * stats.damage
+    // Flat attack power first, then the percentage, then the weapon's own
+    // tier -- so an upgrade scales what levelling added and a merge scales the
+    // lot.
+    const damage =
+      (weapon.damage + stats.attackPower) * stats.damage * tierDamageScale(slot.tier)
 
     const first = angle - spread / 2
     const gap = count > 1 ? spread / (count - 1) : 0

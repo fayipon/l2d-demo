@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { StageShell } from '../components/StageShell'
 import { Icon, type IconName } from '../components/icons'
 import { useSelectedCharacter } from '../app/selectedCharacterContext'
+import { formatCurrency, useProfile } from '../features/profile'
 import { CHAPTERS, DEFAULT_CHAPTER_ID, type StoryReward } from '../features/story'
 import './StoryPage.css'
 
@@ -21,6 +22,7 @@ const REWARD_LABEL: Record<StoryReward['kind'], string> = {
 export function StoryPage() {
   const navigate = useNavigate()
   const { character } = useSelectedCharacter()
+  const profile = useProfile()
   const [chapterId, setChapterId] = useState(DEFAULT_CHAPTER_ID)
   const [stageId, setStageId] = useState(CHAPTERS[0].stages[0].id)
 
@@ -47,12 +49,12 @@ export function StoryPage() {
           <div className="currency-row">
             <div className="currency-pill panel">
               <Icon name="coin" className="currency-icon" />
-              <span className="currency-value">99,999</span>
+              <span className="currency-value">{formatCurrency(profile.coins)}</span>
               <button type="button" className="plus" aria-label="增加金幣">+</button>
             </div>
             <div className="currency-pill panel">
               <Icon name="gem" className="currency-icon" />
-              <span className="currency-value">8,420</span>
+              <span className="currency-value">{formatCurrency(profile.gems)}</span>
               <button type="button" className="plus" aria-label="增加寶石">+</button>
             </div>
           </div>

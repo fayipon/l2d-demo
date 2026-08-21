@@ -1,4 +1,5 @@
 import type { IconName } from '../components/icons'
+import type { Profile } from './profile'
 import type { EmblemFrame, EmblemTone } from '../components/Emblem'
 import scene01 from '../assets/scene-01.webp'
 import scene02 from '../assets/scene-02.webp'
@@ -10,11 +11,11 @@ import scene06 from '../assets/scene-06.webp'
 /**
  * The achievement book.
  *
- * Same arrangement as features/story.ts: the content is real, the progress is
- * baked. Nothing in this demo can advance a counter, so `progress` and
- * `claimedOn` exist to give the screen its four states to draw. Claiming is
- * the one thing that does move -- the screen keeps that in its own state -- so
- * this file stays the starting position rather than the save.
+ * Same arrangement as features/story.ts: the content is real and the progress
+ * is mostly baked, because most of what is written here has no system behind
+ * it yet. The entries the arena can actually move carry a `track` instead,
+ * which reads the account rather than a number in this file -- so those four
+ * are live and the rest are still a picture of where a save would be.
  *
  * A category's `done`/`total` are written here rather than counted from the
  * list below. The list is a sample: the mock's sidebar says 128 achievements
@@ -64,6 +65,14 @@ export interface Achievement {
   /** Backdrop for the feature panel. */
   art: string
   rewards: AchievementReward[]
+  /**
+   * Reads live progress off the account instead of using the baked number.
+   *
+   * Only the arena can move anything in this demo, so only the entries it
+   * feeds have one. The rest keep their written progress, which is the whole
+   * reason `progress` is still a field rather than being replaced by this.
+   */
+  track?: (profile: Profile) => number
 }
 
 export type AchievementState = 'progress' | 'claimable' | 'claimed'
@@ -110,6 +119,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     claimedOn: null,
     art: scene02,
     rewards: [coin(2000), exp(200)],
+    track: (profile) => profile.totalKills,
   },
   {
     id: 'reaper',
@@ -124,6 +134,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     claimedOn: null,
     art: scene03,
     rewards: [coin(3000), exp(300)],
+    track: (profile) => profile.bestRunKills,
   },
   {
     id: 'awaken-1',
@@ -222,6 +233,22 @@ export const ACHIEVEMENTS: Achievement[] = [
     claimedOn: null,
     art: scene05,
     rewards: [coin(1200)],
+    track: (profile) => profile.flawlessRuns,
+  },
+  {
+    id: 'arena-veteran',
+    category: 'battle',
+    name: '競技場老兵',
+    detail: '在競技場存活到第 10 波。',
+    frame: 'shield',
+    glyph: 'swords',
+    tone: 'epic',
+    progress: 0,
+    goal: 10,
+    claimedOn: null,
+    art: scene03,
+    rewards: [gem(60), exp(1500)],
+    track: (profile) => profile.bestWave,
   },
   {
     id: 'awaken-2',
@@ -298,9 +325,18 @@ export const ACHIEVEMENTS: Achievement[] = [
 /** The one the feature panel opens on, matching the mock. */
 export const FEATURED_ID = 'blood-collector'
 
-export function achievementState(entry: Achievement, claimed: boolean): AchievementState {
+/** Live progress: what the account says, when anything says anything. */
+export function achievementProgress(entry: Achievement, profile: Profile): number {
+  return entry.track ? entry.track(profile) : entry.progress
+}
+
+export function achievementState(
+  entry: Achievement,
+  claimed: boolean,
+  progress: number,
+): AchievementState {
   if (entry.claimedOn || claimed) {
     return 'claimed'
   }
-  return entry.progress >= entry.goal ? 'claimable' : 'progress'
+  return progress >= entry.goal ? 'claimable' : 'progress'
 }

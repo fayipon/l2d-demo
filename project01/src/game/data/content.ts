@@ -16,6 +16,8 @@ export type SpriteFrame =
   | 'brute'
   | 'bullet'
   | 'blade'
+  | 'pellet'
+  | 'beam'
   | 'coin'
   | 'bar'
 
@@ -95,6 +97,10 @@ export interface WeaponKind {
   label: string
   frame: SpriteFrame
   tint: number
+  /** Base shop price at wave 1, before the wave markup. */
+  price: number
+  /** One line for the shop card. */
+  detail: string
   /** Seconds between volleys. */
   cooldown: number
   damage: number
@@ -120,6 +126,8 @@ export const WEAPONS: WeaponKind[] = [
     label: '手槍',
     frame: 'bullet',
     tint: 0xfff0f6,
+    price: 14,
+    detail: '穩定的單發武器，射程中等。',
     cooldown: 0.42,
     damage: 6,
     range: 420,
@@ -136,6 +144,8 @@ export const WEAPONS: WeaponKind[] = [
     label: '碎裂刃',
     frame: 'blade',
     tint: 0x4fe6c0,
+    price: 26,
+    detail: '三片扇形飛刃，會穿透。近距離最強。',
     cooldown: 1.05,
     damage: 5,
     range: 240,
@@ -147,7 +157,114 @@ export const WEAPONS: WeaponKind[] = [
     spread: 0.55,
     life: 0.75,
   },
+  {
+    id: 'shotgun',
+    label: '散彈槍',
+    frame: 'pellet',
+    tint: 0xffb267,
+    price: 32,
+    detail: '五發散射，貼臉時全部命中。',
+    cooldown: 1.25,
+    damage: 4,
+    range: 200,
+    projectileSpeed: 520,
+    projectileRadius: 5,
+    pierce: 0,
+    knockback: 14,
+    count: 5,
+    spread: 0.72,
+    life: 0.42,
+  },
+  {
+    id: 'railgun',
+    label: '貫穿槍',
+    frame: 'beam',
+    tint: 0x8ad6ff,
+    price: 48,
+    detail: '射程極遠的穿透彈，冷卻很長。',
+    cooldown: 1.9,
+    damage: 26,
+    range: 620,
+    projectileSpeed: 940,
+    projectileRadius: 6,
+    pierce: 8,
+    knockback: 4,
+    count: 1,
+    spread: 0,
+    life: 0.95,
+  },
+  {
+    id: 'dart',
+    label: '飛針',
+    frame: 'bullet',
+    tint: 0xd0ff8a,
+    price: 22,
+    detail: '射速極快，單發傷害很低。',
+    cooldown: 0.17,
+    damage: 2,
+    range: 380,
+    projectileSpeed: 780,
+    projectileRadius: 3,
+    pierce: 0,
+    knockback: 2,
+    count: 1,
+    spread: 0.06,
+    life: 0.7,
+  },
+  {
+    id: 'reaper',
+    label: '收割鐮',
+    frame: 'blade',
+    tint: 0xd18aff,
+    price: 44,
+    detail: '朝八方甩出短刃，只打身邊。',
+    cooldown: 1.5,
+    damage: 7,
+    range: 150,
+    projectileSpeed: 300,
+    projectileRadius: 9,
+    pierce: 4,
+    knockback: 16,
+    count: 8,
+    spread: 6.28,
+    life: 0.5,
+  },
 ]
+
+/** Weapon slots a run may hold. */
+export const MAX_WEAPON_SLOTS = 6
+
+/** Tiers a weapon can reach by merging. */
+export const MAX_WEAPON_TIER = 4
+
+/** Copies of one weapon at one tier that fuse into the next. */
+export const MERGE_COUNT = 3
+
+/**
+ * What a tier is worth.
+ *
+ * One curve for every weapon rather than four hand-written stat blocks each:
+ * a tier is strictly "the same weapon, more of it", and writing that out six
+ * times over would be six places to get inconsistent. Damage carries most of
+ * it because that is what the merge is for -- the rate bump is small so a
+ * high-tier weapon does not also drain the projectile pool.
+ */
+export function tierDamageScale(tier: number): number {
+  return 1 + 0.7 * (tier - 1)
+}
+
+export function tierRateScale(tier: number): number {
+  return 1 + 0.12 * (tier - 1)
+}
+
+/** Shop price of a weapon at a tier, before the wave markup. */
+export function weaponPrice(kind: number, tier: number): number {
+  return Math.round(WEAPONS[kind].price * Math.pow(1.9, tier - 1))
+}
+
+export function findWeapon(id: string): number {
+  return WEAPONS.findIndex((weapon) => weapon.id === id)
+}
 
 /* ---------- the wave curve ---------- */
 

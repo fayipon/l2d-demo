@@ -4,6 +4,7 @@ import { Live2DStage, type Live2DStageHandle } from '../pixi/Live2DStage'
 import { StageShell } from '../components/StageShell'
 import { Icon, type IconName } from '../components/icons'
 import { useSelectedCharacter } from '../app/selectedCharacterContext'
+import { formatCurrency, useProfile } from '../features/profile'
 import './HomePage.css'
 
 // Everything below the Live2D layer is decorative -- no game systems behind it.
@@ -76,6 +77,7 @@ export function HomePage() {
   const stageRef = useRef<Live2DStageHandle>(null)
   const navigate = useNavigate()
   const { character } = useSelectedCharacter()
+  const profile = useProfile()
   const [muted, setMuted] = useState(false)
   // The bubble is hidden until the character is tapped. Text is kept while it
   // fades out so the words do not vanish before the animation does.
@@ -101,7 +103,7 @@ export function HomePage() {
         <div className="player-card panel">
           <div className="player-level">
             <span className="player-level-label">PLAYER LV.</span>
-            <span className="player-level-value">34</span>
+            <span className="player-level-value">{profile.level}</span>
           </div>
           <div className="player-main">
             <div className="player-name-row">
@@ -111,21 +113,26 @@ export function HomePage() {
               </span>
             </div>
             <div className="exp-bar">
-              <div className="exp-fill" style={{ width: '42%' }} />
+              <div
+                className="exp-fill"
+                style={{ width: `${Math.min(100, (profile.xp / profile.xpToLevel) * 100)}%` }}
+              />
             </div>
-            <div className="exp-text">EXP 7,569 / 18,000</div>
+            <div className="exp-text">
+              EXP {formatCurrency(profile.xp)} / {formatCurrency(profile.xpToLevel)}
+            </div>
           </div>
         </div>
 
         <div className="currency-row">
           <div className="currency-pill panel">
             <Icon name="coin" className="currency-icon" />
-            <span className="currency-value">99,999</span>
+            <span className="currency-value">{formatCurrency(profile.coins)}</span>
             <button type="button" className="plus" aria-label="增加金幣">+</button>
           </div>
           <div className="currency-pill panel">
             <Icon name="gem" className="currency-icon" />
-            <span className="currency-value">8,420</span>
+            <span className="currency-value">{formatCurrency(profile.gems)}</span>
             <button type="button" className="plus" aria-label="增加寶石">+</button>
           </div>
         </div>
