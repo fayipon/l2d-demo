@@ -29,9 +29,9 @@ export interface Live2DModelConfig {
 
 export const haruConfig: Live2DModelConfig = {
   modelPath: '/live2d/haru/Haru.model3.json',
-  heightRatio: 2.1,
+  heightRatio: 2.25,
   anchor: { x: 0.5, y: 0.5 },
-  position: { x: 0.24, y: 1.02 },
+  position: { x: 0.3, y: 1.04 },
   idleMotionGroup: 'Idle',
   tapMotionGroup: 'TapBody',
   expressions: ['F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08'],

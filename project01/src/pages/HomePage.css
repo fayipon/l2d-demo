@@ -8,7 +8,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  background: #05060f;
+  background: #05020a;
   overflow: hidden;
 }
 
@@ -25,20 +25,9 @@
 .stage-backdrop {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(120% 90% at 18% 30%, rgba(120, 90, 220, 0.55), transparent 60%),
-    radial-gradient(100% 80% at 80% 20%, rgba(60, 190, 220, 0.35), transparent 55%),
-    radial-gradient(90% 90% at 70% 90%, rgba(190, 80, 200, 0.35), transparent 60%),
-    linear-gradient(160deg, #2a1b5e 0%, #3a2472 40%, #21173f 100%);
-}
-
-.stage-backdrop::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.07) 45%, transparent 48%),
-    linear-gradient(75deg, transparent 60%, rgba(255, 255, 255, 0.05) 63%, transparent 66%);
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .live2d-stage {
@@ -72,28 +61,34 @@
   background-color: transparent;
 }
 
+.hud svg {
+  width: 1em;
+  height: 1em;
+}
+
 /* ---------- shared panel look ---------- */
+/* Near-black glass with a hairline edge -- the mock has no coloured chrome
+   anywhere except the menu diamonds and the START frame. */
 .player-card,
 .currency-pill,
-.rail-btn,
-.wide-btn,
 .round-btn {
-  background: linear-gradient(160deg, rgba(18, 22, 52, 0.92), rgba(10, 12, 32, 0.92));
-  border: 0.25cqh solid rgba(120, 200, 255, 0.35);
-  box-shadow: 0 0 1.4cqh rgba(90, 180, 255, 0.25), inset 0 0 1.2cqh rgba(70, 140, 255, 0.15);
+  background: rgba(8, 6, 12, 0.82);
+  border: 0.22cqh solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0.5cqh 1.6cqh rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(0.6cqh);
 }
 
 /* ---------- player card ---------- */
 .player-card {
   position: absolute;
-  top: 2.2cqh;
-  left: 1.6cqw;
+  top: 2.4cqh;
+  left: 1.5cqw;
   display: flex;
   align-items: stretch;
-  gap: 1cqw;
-  padding: 1cqh 1.4cqw 1cqh 1cqw;
-  border-radius: 1cqh;
-  min-width: 24cqw;
+  gap: 1.1cqw;
+  padding: 0.9cqh 1.6cqw 0.9cqh 1cqw;
+  border-radius: 1.4cqh;
+  min-width: 25cqw;
 }
 
 .player-level {
@@ -102,51 +97,48 @@
   align-items: center;
   justify-content: center;
   padding-right: 1cqw;
-  border-right: 0.2cqh solid rgba(120, 200, 255, 0.3);
+  border-right: 0.2cqh solid rgba(255, 255, 255, 0.16);
 }
 
 .player-level-label {
   font-size: 1.5cqh;
-  letter-spacing: 0.05em;
-  color: #9fd7ff;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .player-level-value {
-  font-size: 5cqh;
-  font-weight: 800;
-  line-height: 1;
-  text-shadow: 0 0 1.2cqh rgba(120, 210, 255, 0.8);
+  font-size: 5.4cqh;
+  font-weight: 700;
+  line-height: 1.05;
 }
 
 .player-main {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.6cqh;
+  gap: 0.7cqh;
   flex: 1;
 }
 
 .player-name-row {
   display: flex;
   align-items: center;
-  gap: 0.8cqw;
+  gap: 0.7cqw;
 }
 
 .player-name {
-  font-size: 3.4cqh;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-size: 3.6cqh;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
-.icon-mini {
-  font-size: 1.8cqh;
-  padding: 0.3cqh 0.5cqh;
-  border-radius: 0.5cqh;
-  background: rgba(255, 255, 255, 0.12);
+.player-crest {
+  font-size: 3cqh;
+  line-height: 0;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.exp-bar,
-.energy-bar {
+.exp-bar {
   height: 1.1cqh;
   border-radius: 1cqh;
   background: rgba(255, 255, 255, 0.16);
@@ -155,69 +147,62 @@
 
 .exp-fill {
   height: 100%;
-  background: linear-gradient(90deg, #34e0d0, #7b6bff, #d55cff);
-}
-
-.energy-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #ffd23f, #ff9d2e);
+  border-radius: 1cqh;
+  background: linear-gradient(90deg, #6d4bff, #a45cff);
+  box-shadow: 0 0 1cqh rgba(140, 90, 255, 0.7);
 }
 
 .exp-text {
-  display: flex;
-  gap: 1cqw;
-  font-size: 1.6cqh;
-  color: #cfe6ff;
+  font-size: 1.7cqh;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* ---------- currencies ---------- */
 .currency-row {
   position: absolute;
-  top: 2.2cqh;
-  right: 9.5cqw;
+  top: 2.6cqh;
+  right: 1.4cqw;
   display: flex;
-  align-items: flex-start;
-  gap: 1cqw;
+  align-items: center;
+  gap: 1.2cqw;
 }
 
 .currency-pill {
   display: flex;
   align-items: center;
-  gap: 0.7cqw;
-  padding: 0.9cqh 1cqw;
-  border-radius: 3cqh;
+  gap: 1cqw;
+  padding: 0.8cqh 0.9cqw;
+  border-radius: 4cqh;
 }
 
 .currency-icon {
-  font-size: 2.6cqh;
-}
-
-.currency-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3cqh;
-  min-width: 9cqw;
+  font-size: 3.2cqh;
 }
 
 .currency-value {
-  font-size: 2.2cqh;
-  font-weight: 700;
-}
-
-.currency-sub {
-  font-size: 1.4cqh;
-  color: #ffd98a;
+  min-width: 7cqw;
+  font-size: 2.6cqh;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .plus {
-  width: 3cqh;
-  height: 3cqh;
+  display: grid;
+  place-items: center;
+  width: 3.6cqh;
+  height: 3.6cqh;
   border-radius: 50%;
-  font-size: 2cqh;
-  font-weight: 800;
+  border: 0.2cqh solid rgba(255, 255, 255, 0.55);
+  font-size: 2.4cqh;
+  font-weight: 400;
   line-height: 1;
-  background: linear-gradient(160deg, #59d5ff, #2b7bd6);
-  box-shadow: 0 0 0.8cqh rgba(90, 200, 255, 0.7);
+  color: rgba(255, 255, 255, 0.9);
+  transition: background-color 0.15s ease;
+}
+
+.plus:hover {
+  background-color: rgba(255, 255, 255, 0.16);
 }
 
 /* ---------- diamond menu ---------- */
@@ -228,20 +213,23 @@
 
 .tile {
   position: absolute;
-  width: 12cqw;
+  width: 14.8cqw;
   aspect-ratio: 1;
   transform: translate(-50%, -50%) rotate(45deg);
-  border-radius: 1.4cqh;
-  border: 0.35cqh solid rgba(255, 255, 255, 0.75);
+  border-radius: 0.8cqh;
+  border: 0.32cqh solid var(--tone);
+  background: linear-gradient(150deg, var(--tone-deep), #07030b 78%);
   box-shadow:
-    0 0 2cqh rgba(120, 200, 255, 0.45),
-    inset 0 0 2.5cqh rgba(255, 255, 255, 0.18);
-  transition: transform 0.15s ease, filter 0.15s ease;
+    0 0 2.4cqh var(--tone-glow),
+    inset 0 0 3cqh rgba(0, 0, 0, 0.55);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .tile:hover {
-  transform: translate(-50%, -50%) rotate(45deg) scale(1.05);
-  filter: brightness(1.2);
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.04);
+  box-shadow:
+    0 0 4cqh var(--tone-glow),
+    inset 0 0 3cqh rgba(0, 0, 0, 0.4);
 }
 
 .tile-inner {
@@ -251,172 +239,178 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.4cqh;
+  gap: 0.6cqh;
   transform: rotate(-45deg);
-  text-shadow: 0 0.3cqh 0.6cqh rgba(0, 0, 0, 0.6);
+  text-shadow: 0 0.3cqh 0.8cqh rgba(0, 0, 0, 0.7);
 }
 
 .tile-icon {
-  font-size: 4.2cqh;
+  font-size: 6cqh;
+  stroke-width: 1.4;
 }
 
 .tile-en {
-  font-size: 2.6cqh;
-  font-weight: 800;
-  letter-spacing: 0.03em;
+  font-size: 3.4cqh;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .tile-jp {
-  font-size: 1.6cqh;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.9cqh;
+  color: var(--tone-text);
 }
 
 .tile-ribbon {
   position: absolute;
-  top: -1.2cqh;
-  right: -2.5cqw;
-  padding: 0.5cqh 1cqw;
-  border-radius: 2cqh;
-  background: linear-gradient(160deg, #ff5470, #d61f4a);
-  border: 0.25cqh solid #fff;
-  font-size: 1.6cqh;
-  font-weight: 800;
+  top: 0.5cqh;
+  right: -5.2cqw;
+  padding: 0.5cqh 1.1cqw;
+  border-radius: 0.5cqh;
+  background: #d3102f;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 6% 50%);
+  font-size: 1.9cqh;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   white-space: nowrap;
+  text-shadow: none;
 }
 
-/* Diamond lattice: a tile is a square rotated 45deg, so neighbours meet edge to
-   edge when their centres differ by the half-diagonal S/sqrt(2) (plus a small
-   gap). Steps are 8.99cqw / 15.99cqh -- the same absolute distance either way.
-   Cells sit at (i,j) with i+j even, which is what keeps the lattice regular. */
+/* Diamond lattice, positioned to match the mock: STORY sits high and centre
+   right, with CHARACTER and EXPLORE flanking it one row down. */
 .tile-story {
-  left: 63.5%;
-  top: 38%;
-  background: linear-gradient(160deg, #1f63d8, #0b2a6b);
+  left: 74.8%;
+  top: 32.3%;
+  --tone: #a05cff;
+  --tone-deep: #180a3a;
+  --tone-glow: rgba(160, 92, 255, 0.55);
+  --tone-text: #c8aaff;
 }
 
 .tile-character {
-  left: 54.5%;
-  top: 54%;
-  background: linear-gradient(160deg, #d6247f, #6d0f42);
+  left: 62.8%;
+  top: 65.2%;
+  --tone: #ff2b3d;
+  --tone-deep: #4a0313;
+  --tone-glow: rgba(255, 43, 61, 0.5);
+  --tone-text: rgba(255, 255, 255, 0.92);
 }
 
 .tile-explore {
-  left: 72.5%;
-  top: 54%;
-  background: linear-gradient(160deg, #16b189, #06503f);
+  left: 85.3%;
+  top: 65.2%;
+  --tone: #24e07d;
+  --tone-deep: #032a1a;
+  --tone-glow: rgba(36, 224, 125, 0.45);
+  --tone-text: #4cf1a0;
 }
 
-.tile-studio {
-  left: 63.5%;
-  top: 70%;
-  background: linear-gradient(160deg, #1d7ae0, #0a2f6b);
-}
-
-.tile-gacha {
-  left: 81.5%;
-  top: 70%;
-  background: linear-gradient(160deg, #8b46d6, #3d1670);
-}
-
-/* ---------- right rail ---------- */
-.side-rail {
+/* ---------- START ---------- */
+/* Neon frame: an outer hot-pink rule, an inner hairline, and blocky corner
+   swatches standing in for the mock's pixel-art fringe. */
+.start-btn {
   position: absolute;
-  top: 13cqh;
-  right: 1.2cqw;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1cqh;
-}
-
-.rail-btn {
-  position: relative;
-  width: 7cqw;
-  padding: 0.9cqh 0;
-  border-radius: 1cqh;
+  left: 3.8cqw;
+  bottom: 10cqh;
+  width: 32.6cqw;
+  padding: 3cqh 2cqw 2.6cqh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3cqh;
+  gap: 1cqh;
+  border-radius: 0.4cqh;
+  border: 0.28cqh solid rgba(255, 60, 160, 0.95);
+  background: linear-gradient(180deg, rgba(70, 6, 38, 0.5), rgba(16, 2, 12, 0.6));
+  box-shadow:
+    0 0 3cqh rgba(255, 45, 150, 0.55),
+    inset 0 0 4cqh rgba(255, 45, 150, 0.28);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.rail-icon {
-  font-size: 3.2cqh;
-  line-height: 1;
+.start-btn:hover {
+  transform: translateY(-0.4cqh);
+  box-shadow:
+    0 0 5cqh rgba(255, 45, 150, 0.75),
+    inset 0 0 5cqh rgba(255, 45, 150, 0.4);
 }
 
-.rail-label {
-  font-size: 1.4cqh;
-  color: #cfe6ff;
-}
-
-.badge {
+.start-btn::before {
+  content: "";
   position: absolute;
-  top: -0.8cqh;
-  right: -0.6cqh;
-  width: 2.4cqh;
-  height: 2.4cqh;
-  border-radius: 50%;
-  background: #ff3355;
-  border: 0.2cqh solid #fff;
-  font-size: 1.6cqh;
+  inset: 1cqh 0.7cqw;
+  border: 0.16cqh solid rgba(255, 90, 175, 0.45);
+  border-radius: 0.3cqh;
+  pointer-events: none;
+}
+
+/* pixel fringe in the corners */
+.start-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0.3cqh 0.25cqw;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 60, 160, 0.75) 0 100%),
+    linear-gradient(rgba(255, 60, 160, 0.45) 0 100%),
+    linear-gradient(rgba(255, 60, 160, 0.75) 0 100%),
+    linear-gradient(rgba(255, 60, 160, 0.45) 0 100%);
+  background-repeat: no-repeat;
+  background-size: 1cqh 1cqh, 0.7cqh 0.7cqh, 1cqh 1cqh, 0.7cqh 0.7cqh;
+  background-position:
+    left 0 top 0,
+    left 1.4cqh top 1.4cqh,
+    right 0 bottom 0,
+    right 1.4cqh bottom 1.4cqh;
+}
+
+.start-en {
+  font-size: 9cqh;
   font-weight: 800;
-  line-height: 2cqh;
-  text-align: center;
+  line-height: 0.95;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
+  color: #fff;
+  text-shadow:
+    0 0 1cqh rgba(255, 255, 255, 0.9),
+    0 0 2.4cqh rgba(255, 45, 160, 0.95),
+    0 0 5cqh rgba(255, 45, 160, 0.7);
 }
 
-/* ---------- bottom corners ---------- */
-.bottom-left {
-  position: absolute;
-  left: 1.6cqw;
-  bottom: 2.5cqh;
-  display: flex;
-  gap: 1cqw;
-}
-
-.wide-btn {
-  position: relative;
+.start-jp {
   display: flex;
   align-items: center;
-  gap: 0.8cqw;
-  padding: 1.1cqh 1.4cqw;
-  border-radius: 1.2cqh;
-}
-
-.wide-icon {
-  font-size: 3.6cqh;
-}
-
-.wide-text {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.wide-en {
+  gap: 1.2cqw;
   font-size: 2.4cqh;
-  font-weight: 800;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  color: #ffdcef;
+  text-shadow: 0 0 1.2cqh rgba(255, 45, 160, 0.8);
 }
 
-.wide-jp {
-  font-size: 1.5cqh;
-  color: #cfe6ff;
+.start-rule {
+  width: 5cqw;
+  height: 0.16cqh;
+  background: linear-gradient(90deg, transparent, rgba(255, 90, 175, 0.9), transparent);
 }
 
-.bottom-right {
-  position: absolute;
-  right: 1.2cqw;
-  bottom: 2.5cqh;
-  display: flex;
-  gap: 0.8cqw;
-}
-
+/* ---------- mute ---------- */
+/* Not in the mock, but the character is voiced, so the toggle stays -- kept
+   small and dark so it reads as chrome rather than part of the layout. */
 .round-btn {
-  width: 6.5cqh;
-  height: 6.5cqh;
+  position: absolute;
+  right: 1.4cqw;
+  bottom: 3cqh;
+  width: 6cqh;
+  height: 6cqh;
   border-radius: 50%;
   font-size: 3cqh;
   display: grid;
   place-items: center;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.round-btn:hover {
+  color: #fff;
 }
 
 /* ---------- speech bubble ---------- */
@@ -424,17 +418,17 @@
    hangs off the bottom left so it points back at her. */
 .speech-bubble {
   position: absolute;
-  left: 34cqw;
-  top: 17cqh;
-  max-width: 20cqw;
+  left: 36cqw;
+  top: 15cqh;
+  max-width: 21cqw;
   padding: 1.6cqh 1.8cqw;
   border-radius: 2.4cqh;
   background: rgba(255, 255, 255, 0.94);
-  color: #241a3f;
+  color: #200a16;
   font-size: 2.4cqh;
   font-weight: 700;
   text-align: left;
-  box-shadow: 0 0.6cqh 1.8cqh rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0.6cqh 2cqh rgba(0, 0, 0, 0.55);
   opacity: 0;
   transform: translateY(1.2cqh) scale(0.96);
   transition: opacity 0.22s ease, transform 0.22s ease;
@@ -455,4 +449,3 @@
   border-style: solid;
   border-color: rgba(255, 255, 255, 0.94) transparent transparent transparent;
 }
-

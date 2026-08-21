@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import { Live2DStage, type Live2DStageHandle } from '../pixi/Live2DStage'
+import { StageBackdrop } from '../components/StageBackdrop'
+import { Icon, type IconName } from '../components/icons'
 import './HomePage.css'
 
 // Everything below the Live2D layer is decorative -- no game systems behind it.
@@ -7,32 +9,15 @@ interface MenuTile {
   id: string
   en: string
   jp: string
-  icon: string
+  icon: IconName
   tone: string
   event?: boolean
 }
 
-interface RailItem {
-  id: string
-  jp: string
-  icon: string
-  badge?: boolean
-}
-
 const MENU_TILES: MenuTile[] = [
-  { id: 'story', en: 'STORY', jp: 'ストーリー', icon: '📖', tone: 'story', event: true },
-  { id: 'character', en: 'CHARACTER', jp: 'キャラクター', icon: '🎀', tone: 'character' },
-  { id: 'explore', en: 'EXPLORE', jp: '探索', icon: '🧭', tone: 'explore' },
-  { id: 'studio', en: 'STUDIO', jp: 'スタジオ', icon: '🎤', tone: 'studio' },
-  { id: 'gacha', en: 'GACHA', jp: 'ガチャ', icon: '💠', tone: 'gacha' },
-]
-
-const RAIL_ITEMS: RailItem[] = [
-  { id: 'mail', jp: 'メール', icon: '✉️', badge: true },
-  { id: 'present', jp: 'プレゼント', icon: '🎁', badge: true },
-  { id: 'shop', jp: 'ショップ', icon: '🛒' },
-  { id: 'friend', jp: 'フレンド', icon: '👥' },
-  { id: 'menu', jp: 'メニュー', icon: '☰' },
+  { id: 'story', en: 'STORY', jp: 'ストーリー', icon: 'book', tone: 'story', event: true },
+  { id: 'character', en: 'CHARACTER', jp: 'キャラクター', icon: 'sword', tone: 'character' },
+  { id: 'explore', en: 'EXPLORE', jp: '探索', icon: 'compass', tone: 'explore' },
 ]
 
 export function HomePage() {
@@ -45,7 +30,7 @@ export function HomePage() {
   return (
     <div className="home-root">
       <div className="home-stage">
-        <div className="stage-backdrop" />
+        <StageBackdrop />
 
         <Live2DStage
           ref={stageRef}
@@ -66,37 +51,27 @@ export function HomePage() {
             <div className="player-main">
               <div className="player-name-row">
                 <span className="player-name">HARU</span>
-                <button type="button" className="icon-mini">✎</button>
+                <span className="player-crest" aria-hidden="true">
+                  <Icon name="sword" />
+                </span>
               </div>
               <div className="exp-bar">
-                <div className="exp-fill" style={{ width: '75%' }} />
+                <div className="exp-fill" style={{ width: '42%' }} />
               </div>
-              <div className="exp-text">
-                <span>EXP</span>
-                <span>7,500 / 10,000</span>
-              </div>
+              <div className="exp-text">EXP 7,569 / 18,000</div>
             </div>
           </div>
 
           <div className="currency-row">
-            <div className="currency-pill energy">
-              <span className="currency-icon">⚡</span>
-              <div className="currency-body">
-                <span className="currency-value">60 / 80</span>
-                <div className="energy-bar"><div className="energy-fill" style={{ width: '75%' }} /></div>
-                <span className="currency-sub">回復まで 01:25</span>
-              </div>
-              <button type="button" className="plus">+</button>
-            </div>
             <div className="currency-pill">
-              <span className="currency-icon">🪙</span>
+              <Icon name="coin" className="currency-icon" />
               <span className="currency-value">99,999</span>
-              <button type="button" className="plus">+</button>
+              <button type="button" className="plus" aria-label="コインを追加">+</button>
             </div>
             <div className="currency-pill">
-              <span className="currency-icon">💎</span>
+              <Icon name="gem" className="currency-icon" />
               <span className="currency-value">8,420</span>
-              <button type="button" className="plus">+</button>
+              <button type="button" className="plus" aria-label="ジェムを追加">+</button>
             </div>
           </div>
 
@@ -107,7 +82,7 @@ export function HomePage() {
                   {/* inside the counter-rotated layer so the ribbon sits against
                       the tile's upper-right edge rather than a rotated corner */}
                   {tile.event ? <span className="tile-ribbon">EVENT!</span> : null}
-                  <span className="tile-icon">{tile.icon}</span>
+                  <Icon name={tile.icon} className="tile-icon" />
                   <span className="tile-en">{tile.en}</span>
                   <span className="tile-jp">{tile.jp}</span>
                 </span>
@@ -115,46 +90,25 @@ export function HomePage() {
             ))}
           </nav>
 
-          <div className="side-rail">
-            {RAIL_ITEMS.map((item) => (
-              <button type="button" key={item.id} className="rail-btn">
-                {item.badge ? <span className="badge">!</span> : null}
-                <span className="rail-icon">{item.icon}</span>
-                <span className="rail-label">{item.jp}</span>
-              </button>
-            ))}
-          </div>
+          {/* Nothing to launch yet, so START just prompts the character. */}
+          <button type="button" className="start-btn" onClick={() => stageRef.current?.speak()}>
+            <span className="start-en">START</span>
+            <span className="start-jp">
+              <i className="start-rule" />
+              任務開始
+              <i className="start-rule" />
+            </span>
+          </button>
 
-          <div className="bottom-left">
-            <button type="button" className="wide-btn">
-              <span className="wide-icon">🛏️</span>
-              <span className="wide-text">
-                <span className="wide-en">MY ROOM</span>
-                <span className="wide-jp">マイルーム</span>
-              </span>
-            </button>
-            <button type="button" className="wide-btn">
-              <span className="badge">!</span>
-              <span className="wide-icon">📋</span>
-              <span className="wide-text">
-                <span className="wide-en">MISSION</span>
-                <span className="wide-jp">ミッション</span>
-              </span>
-            </button>
-          </div>
-
-          <div className="bottom-right">
-            <button
-              type="button"
-              className="round-btn"
-              onClick={() => setMuted((m) => !m)}
-              aria-pressed={muted}
-              title={muted ? '音声オン' : '音声オフ'}
-            >
-              {muted ? '🔇' : '🔊'}
-            </button>
-            <button type="button" className="round-btn" title="設定">⚙️</button>
-          </div>
+          <button
+            type="button"
+            className="round-btn"
+            onClick={() => setMuted((m) => !m)}
+            aria-pressed={muted}
+            title={muted ? '音声オン' : '音声オフ'}
+          >
+            <Icon name={muted ? 'soundOff' : 'soundOn'} />
+          </button>
 
           {/* Display only -- tapping the character is what raises it. */}
           <div className={`speech-bubble${bubble.visible ? ' is-visible' : ''}`} aria-live="polite">
