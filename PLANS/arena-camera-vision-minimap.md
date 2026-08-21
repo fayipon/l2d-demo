@@ -55,6 +55,17 @@ outside, and a minimap shows what the viewport no longer can.
     a killed enemy's pool slot was reused by a fresh spawn with the same kind
     and full health, which read as "it survived"; and the grid assertion ran
     after the enemy was already dead.
+- **Step 3 done** (`87ae490`). Vision at base 560, the edge of sight, the card,
+  two shop items, the arrival ring tied to sight, and the cull box bounded by it.
+  - **The vignette replaced the per-sprite fade the plan called for.** Drawn
+    over everything, damage numbers included, it hides what the dark should
+    hide by ordering alone — one quad a frame instead of an alpha write per
+    entity in the scene's busiest loop, and it is what makes decision 6 free.
+  - 700 enemies across the world: **576 of 3259 rendered**, down from 698;
+    181 health bars, down from 212.
+  - **Still open**: whether a character trait should carry a vision minus. The
+    shop trade `血色鏡片` (+20% damage, -30% sight) is currently the only way
+    the stat goes down.
 - **Correction to a number quoted below**: the 0.45ms simulation step is not
   reproducible, and neither is the 0.999ms the harness first recorded. Spread
   on this machine is about ±0.4ms, so only interleaved A/B in one sitting
