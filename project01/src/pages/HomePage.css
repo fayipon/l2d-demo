@@ -206,19 +206,31 @@
 }
 
 /* ---------- diamond menu ---------- */
+/*
+ * A tile is a square of side 15cqw rotated 45deg, so its half-diagonal is
+ * 15 / sqrt(2) = 10.61cqw. Neighbouring tiles share an edge when their centres
+ * differ by exactly the half-diagonal in both axes; adding 1.2cqw on top opens
+ * a uniform 1.7cqw gap between the parallel edges.
+ *
+ * `left` is a percentage of stage width and `top` of stage height, and the
+ * stage is 16:9 -- so the same physical distance is 1.7778x larger measured in
+ * cqh. Every vertical step below is therefore (10.61 + 1.2) * 16 / 9 = 20.99.
+ * Getting that conversion wrong is what made the tiles look skewed before.
+ */
 .menu-cluster {
   position: absolute;
   inset: 0;
+  --tile-side: 15cqw;
 }
 
 .tile {
   position: absolute;
-  width: 14.8cqw;
+  width: var(--tile-side);
   aspect-ratio: 1;
   transform: translate(-50%, -50%) rotate(45deg);
   border-radius: 0.8cqh;
   border: 0.32cqh solid var(--tone);
-  background: linear-gradient(150deg, var(--tone-deep), #07030b 78%);
+  background: radial-gradient(115% 115% at 50% 8%, var(--tone-deep), #07030b 88%);
   box-shadow:
     0 0 2.4cqh var(--tone-glow),
     inset 0 0 3cqh rgba(0, 0, 0, 0.55);
@@ -260,10 +272,15 @@
   color: var(--tone-text);
 }
 
+/* The mock hangs the ribbon just outside the upper-right edge. .tile-inner is
+   the counter-rotated square, so its box is the tile side (not the diagonal) --
+   88%/0% with a centring translate lands the ribbon on that edge rather than
+   floating off past the right vertex. */
 .tile-ribbon {
   position: absolute;
-  top: 0.5cqh;
-  right: -5.2cqw;
+  top: 0;
+  left: 88%;
+  transform: translate(-50%, -50%);
   padding: 0.5cqh 1.1cqw;
   border-radius: 0.5cqh;
   background: #d3102f;
@@ -275,11 +292,10 @@
   text-shadow: none;
 }
 
-/* Diamond lattice, positioned to match the mock: STORY sits high and centre
-   right, with CHARACTER and EXPLORE flanking it one row down. */
+/* STORY sits one row above the midpoint of the other two. */
 .tile-story {
-  left: 74.8%;
-  top: 32.3%;
+  left: 73.5%;
+  top: 41%;
   --tone: #a05cff;
   --tone-deep: #180a3a;
   --tone-glow: rgba(160, 92, 255, 0.55);
@@ -287,8 +303,8 @@
 }
 
 .tile-character {
-  left: 62.8%;
-  top: 65.2%;
+  left: 61.69%;
+  top: 61.99%;
   --tone: #ff2b3d;
   --tone-deep: #4a0313;
   --tone-glow: rgba(255, 43, 61, 0.5);
@@ -296,8 +312,8 @@
 }
 
 .tile-explore {
-  left: 85.3%;
-  top: 65.2%;
+  left: 85.31%;
+  top: 61.99%;
   --tone: #24e07d;
   --tone-deep: #032a1a;
   --tone-glow: rgba(36, 224, 125, 0.45);
