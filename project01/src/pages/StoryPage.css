@@ -51,55 +51,8 @@
 }
 
 /* ---------- top bar ---------- */
-.story-topbar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 8.4cqh;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1.4cqw;
-  /* The gradient alone separates the bar from the content; a rule under it as
-     well drew a hard line across the screen. */
-  background: linear-gradient(180deg, rgba(6, 3, 10, 0.96), rgba(6, 3, 10, 0.5));
-}
-
-/* Inside the bar these are laid out by it, not by the absolute positions they
-   carry for screens with no bar. Overridden by name rather than with `> *`,
-   which is what flattened this layout the first time. */
-.story-topbar .back-btn,
-.story-topbar .currency-row {
-  position: static;
-}
-
-/* The currencies headline the home screen; here they are chrome above three
-   columns of content, so they shrink to fit the bar. The back button does not:
-   it is the same control on every screen and looked wrong at two sizes. */
-.story-topbar .currency-row {
-  gap: 0.9cqw;
-}
-
-.story-topbar .currency-pill {
-  gap: 0.7cqw;
-  padding: 0.5cqh 0.7cqw;
-}
-
-.story-topbar .currency-icon {
-  font-size: 2.6cqh;
-}
-
-.story-topbar .currency-value {
-  min-width: 5.4cqw;
-  font-size: 2.1cqh;
-}
-
-.story-topbar .plus {
-  width: 2.8cqh;
-  height: 2.8cqh;
-  font-size: 1.9cqh;
-}
+/* Lives in styles/stage.css as `.top-bar`, shared with the achievements
+   screen. It was defined here first and copied; the copy drifted. */
 
 /* ---------- chapters ---------- */
 .chapter-col {

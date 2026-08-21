@@ -38,7 +38,7 @@ export function StoryPage() {
         {/* One bar rather than two floating controls, so the top of the screen
             reads as chrome and the columns below it get a clean edge to start
             from. */}
-        <div className="story-topbar">
+        <div className="top-bar">
           <button type="button" className="back-btn panel" onClick={() => navigate('/')}>
             <Icon name="back" />
             <span>BACK</span>

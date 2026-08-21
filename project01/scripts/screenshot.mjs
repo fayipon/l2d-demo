@@ -10,9 +10,14 @@
  *
  *   npm run shot -- story
  *   npm run shot -- story --out story.png --clip 0,0,400,900
+ *   npm run shot -- achievements --click ".ach-tab:nth-child(3)"
  *
  * --clip takes x,y,width,height in CSS pixels, for looking at one component
  * rather than the whole screen.
+ *
+ * --click takes CSS selectors separated by ">>" and clicks them in order
+ * before the shot, which is the only way to see a state that needs a tab or a
+ * filter -- half a screen's rules only apply to something that has been picked.
  */
 import { mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
@@ -59,6 +64,7 @@ const width = Number(flag('width', 1600))
 const height = Number(flag('height', 900))
 const clip = flag('clip')
 const wait = Number(flag('wait', 1500))
+const clicks = (flag('click') ?? '').split('>>').map((c) => c.trim()).filter(Boolean)
 
 const { existsSync } = await import('node:fs')
 const executablePath = CHROME_CANDIDATES.find((p) => p && existsSync(p))
@@ -84,6 +90,12 @@ try {
   // The Live2D model and the HUD fade-in both settle after load, and a shot
   // taken mid-animation is not what the screen looks like.
   await new Promise((r) => setTimeout(r, wait))
+
+  for (const selector of clicks) {
+    await page.click(selector)
+    // Long enough for a CSS transition to finish; React has already rerendered.
+    await new Promise((r) => setTimeout(r, 350))
+  }
 
   await mkdir(dirname(out), { recursive: true })
   await page.screenshot({

@@ -82,7 +82,11 @@
   background-color: transparent;
 }
 
-.hud svg {
+/* Icons are sized by font-size, so this is only the default box. `:where()`
+   again, for the same reason as the button reset above: as `.hud svg` it beat
+   any single class that wanted to size one svg differently -- which is exactly
+   what an achievement medallion needs to do to its own two layers. */
+:where(.hud) svg {
   width: 1em;
   height: 1em;
 }
@@ -128,6 +132,81 @@
 
 .round-btn:hover {
   color: #fff;
+}
+
+/* Screen-reader-only label, for a control whose visible form is a glyph. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- top bar ---------- */
+/*
+ * The chrome strip on a screen that is all content: back on the left,
+ * currencies on the right. One bar rather than two floating controls, so the
+ * top of the screen reads as chrome and the columns below it get a clean edge
+ * to start from.
+ *
+ * Shared rather than per-screen because a sub-screen that grew its own would
+ * drift -- the story screen's bar and this one differed by a couple of cqh for
+ * a while, which is exactly the kind of thing nobody can name but everybody
+ * sees.
+ */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8.4cqh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.4cqw;
+  /* The gradient alone separates the bar from the content; a rule under it as
+     well drew a hard line across the screen. */
+  background: linear-gradient(180deg, rgba(6, 3, 10, 0.96), rgba(6, 3, 10, 0.5));
+  z-index: 2;
+}
+
+/* Inside the bar these are laid out by it, not by the absolute positions they
+   carry for screens with no bar. Overridden by name rather than with `> *`,
+   which is what flattened the story layout the first time. */
+.top-bar .back-btn,
+.top-bar .currency-row {
+  position: static;
+}
+
+/* The currencies headline the home screen; here they are chrome above a screen
+   full of content, so they shrink to fit the bar. The back button does not: it
+   is the same control on every screen and looked wrong at two sizes. */
+.top-bar .currency-row {
+  gap: 0.9cqw;
+}
+
+.top-bar .currency-pill {
+  gap: 0.7cqw;
+  padding: 0.5cqh 0.7cqw;
+}
+
+.top-bar .currency-icon {
+  font-size: 2.6cqh;
+}
+
+.top-bar .currency-value {
+  min-width: 5.4cqw;
+  font-size: 2.1cqh;
+}
+
+.top-bar .plus {
+  width: 2.8cqh;
+  height: 2.8cqh;
+  font-size: 1.9cqh;
 }
 
 /* ---------- back ---------- */

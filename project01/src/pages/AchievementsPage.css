@@ -1,0 +1,917 @@
+/*
+ * Achievements screen. Three columns under a masthead: categories on the left,
+ * the book itself down the middle, and the selected achievement on the right.
+ *
+ * The stage shell, the top bar and the currency row come from
+ * styles/stage.css. Everything here is specific to this screen.
+ */
+
+.ach-hud {
+  /*
+   * Sampled off the mock. Same family as the story screen but not the same
+   * values -- the progress bars and the tab underline sit on a cleaner pink
+   * than the story screen's headings, and the completed state is a warm bronze
+   * that appears nowhere else in the app.
+   */
+  --rose: #ec5082;
+  --rose-bright: #fe6ea3;
+  --rose-edge: #e2487a;
+  --gold: #e2a556;
+  --gold-edge: rgba(180, 130, 60, 0.6);
+  --track: #1c1c1e;
+  --hair: rgba(255, 255, 255, 0.08);
+  /* Where all three columns begin, below the masthead. One value rather than
+     three, so the block moves as a unit. */
+  --content-top: 16.5cqh;
+  --content-bottom: 3cqh;
+  /* Serif, because the mock's title is cut stone rather than UI text. No web
+     font is loaded, so this is what is already on the machine. */
+  --display: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;
+}
+
+/* A real element rather than a ::before, so the columns paint over it by DOM
+   order alone -- see the note on .story-scrim for what happens otherwise. */
+.ach-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6, 3, 10, 0.7), rgba(6, 3, 10, 0.92));
+}
+
+/* ---------- masthead ---------- */
+/*
+ * Sits across the top bar rather than under it. The bar is empty between the
+ * back button and the currencies, and giving the masthead its own band below
+ * pushed the columns down far enough that the list lost a row -- and the
+ * bar's own gradient is exactly the backing the title wants. Above it in the
+ * stack, or the gradient paints over the title.
+ */
+.ach-masthead {
+  position: absolute;
+  top: 1.8cqh;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1cqh;
+}
+
+.ach-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 1.4cqw;
+  font-family: var(--display);
+  font-size: 4.9cqh;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
+/* Lit from above: near-white at the cap line, deepening into the screen's rose
+   at the baseline. A flat pink title reads as a label rather than as the name
+   of the screen. */
+.ach-title-text {
+  background: linear-gradient(180deg, #fff2f7 0%, #ffc3d8 46%, #e0466f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 1.4cqh rgba(236, 80, 130, 0.45));
+}
+
+.ach-title-flourish {
+  font-size: 2.6cqh;
+  color: #f7b3c9;
+  filter: drop-shadow(0 0 0.8cqh rgba(247, 179, 201, 0.7));
+}
+
+/*
+ * Two rows: the count on top, the bar under it with its percentage at the end.
+ * Placed by column rather than left to flow -- with two auto columns the track
+ * inherited the label's width and collapsed to nothing.
+ */
+.ach-meter {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.7cqh 1cqw;
+  width: 30cqw;
+  padding-top: 1cqh;
+  border-top: 0.1cqh solid rgba(255, 255, 255, 0.16);
+}
+
+.ach-meter-label {
+  grid-column: 1;
+  font-size: 1.9cqh;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.ach-meter-count {
+  grid-column: 2 / span 2;
+  justify-self: start;
+  font-size: 2.3cqh;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.ach-meter-count b {
+  font-size: 3.4cqh;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ach-meter-track {
+  grid-column: 1 / span 2;
+  position: relative;
+  height: 0.9cqh;
+  border-radius: 1cqh;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.ach-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 1cqh;
+  background: linear-gradient(90deg, #f6739e, var(--rose));
+  box-shadow: 0 0 1cqh rgba(236, 80, 130, 0.6);
+  transition: width 0.3s ease;
+}
+
+.ach-meter-percent {
+  grid-column: 3;
+  font-size: 1.8cqh;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- categories ---------- */
+/* pointer-events, because .hud turns them off for the layer and only puts them
+   back on buttons -- a panel that scrolls or holds a native control needs them
+   back explicitly. */
+.ach-cats {
+  position: absolute;
+  left: 1.4cqw;
+  top: var(--content-top);
+  width: 20cqw;
+  display: flex;
+  flex-direction: column;
+  padding: 0.4cqh 0.35cqw;
+  border-radius: 1cqh;
+  pointer-events: auto;
+}
+
+.ach-cat {
+  position: relative;
+  display: grid;
+  grid-template-columns: 5.2cqh 1fr auto;
+  align-items: center;
+  gap: 0.8cqw;
+  padding: 1.5cqh 0.9cqw;
+  border-radius: 0.8cqh;
+  /* Transparent rather than absent, so selecting a row does not change its
+     height by the width of a border. */
+  border: 0.18cqh solid transparent;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Hairline between rows, drawn on the row rather than as a border so the
+   selected row's own outline can replace it cleanly. */
+.ach-cat::before {
+  content: "";
+  position: absolute;
+  left: 0.9cqw;
+  right: 0.9cqw;
+  top: -0.1cqh;
+  height: 0.1cqh;
+  background: var(--hair);
+}
+
+.ach-cat:first-child::before,
+.ach-cat.is-selected::before,
+.ach-cat.is-selected + .ach-cat::before,
+.ach-cat.is-death::before {
+  display: none;
+}
+
+.ach-cat-icon {
+  font-size: 4.4cqh;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.ach-cat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3cqh;
+  min-width: 0;
+}
+
+.ach-cat-en {
+  font-size: 2.3cqh;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.ach-cat-zh {
+  font-size: 1.7cqh;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.ach-cat-count {
+  font-size: 2cqh;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+
+/* The open category: a hairline rose edge with a soft bloom outside it and a
+   fill that fades away to the right, which is what the mock draws. */
+.ach-cat.is-selected {
+  border-color: var(--rose-edge);
+  background: linear-gradient(90deg, #3e101e 0%, #260c15 100%);
+  box-shadow: 0 0 1.4cqh rgba(226, 72, 122, 0.45);
+}
+
+.ach-cat.is-selected .ach-cat-en,
+.ach-cat.is-selected .ach-cat-count {
+  color: var(--rose-bright);
+}
+
+.ach-cat.is-selected .ach-cat-icon {
+  color: var(--rose-bright);
+}
+
+/* Death is red wherever it appears, selected or not -- the mock treats it as a
+   themed section rather than as another row. */
+.ach-cat.is-death {
+  border-top-color: rgba(170, 40, 28, 0.85);
+  background: linear-gradient(90deg, #2a0c0a 0%, #180809 100%);
+}
+
+.ach-cat.is-death .ach-cat-en,
+.ach-cat.is-death .ach-cat-count {
+  color: #e5493f;
+}
+
+.ach-cat.is-death .ach-cat-icon {
+  color: #d8564a;
+}
+
+.ach-cat.is-death.is-selected {
+  border-color: #c4372c;
+  background: linear-gradient(90deg, #3d1110 0%, #200a0a 100%);
+  box-shadow: 0 0 1.4cqh rgba(196, 55, 44, 0.45);
+}
+
+/* ---------- list ---------- */
+.ach-list-col {
+  position: absolute;
+  left: 23cqw;
+  top: var(--content-top);
+  bottom: var(--content-bottom);
+  width: 49.2cqw;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1cqw 0.4cqh;
+  border-radius: 1cqh;
+  /* The mock outlines this panel in a dim rose rather than the neutral hairline
+     the other panels get; it is the part of the screen being worked in. */
+  border-color: rgba(236, 80, 130, 0.3);
+  pointer-events: auto;
+}
+
+.ach-tabs {
+  flex: 0 0 auto;
+  height: 7cqh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.1cqh solid rgba(255, 255, 255, 0.1);
+}
+
+.ach-tab-group {
+  display: flex;
+  align-self: stretch;
+}
+
+.ach-tab {
+  position: relative;
+  padding: 0 2.2cqw;
+  font-size: 2.2cqh;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.15s ease;
+}
+
+.ach-tab:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ach-tab + .ach-tab::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 0.1cqh;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.ach-tab.is-active {
+  color: var(--rose-bright);
+}
+
+.ach-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 1cqw;
+  right: 1cqw;
+  bottom: -0.15cqh;
+  height: 0.28cqh;
+  border-radius: 1cqh;
+  background: var(--rose);
+  box-shadow: 0 0 1cqh rgba(236, 80, 130, 0.7);
+}
+
+.ach-sort {
+  position: relative;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.ach-sort select {
+  appearance: none;
+  font: inherit;
+  font-size: 2cqh;
+  padding: 0.8cqh 3.2cqw 0.8cqh 1.4cqw;
+  border-radius: 0.6cqh;
+  border: 0.16cqh solid rgba(255, 255, 255, 0.24);
+  background: #111114;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Native option lists are drawn by the OS, so they get their own colours -- on
+   a dark page the default is white text on white. */
+.ach-sort option {
+  background: #14141a;
+  color: #fff;
+}
+
+.ach-sort-caret {
+  position: absolute;
+  right: 1.1cqw;
+  font-size: 1.8cqh;
+  color: rgba(255, 255, 255, 0.7);
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+
+.ach-rows {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+/*
+ * Grows to share out whatever the panel has spare, capped so that a category
+ * holding two achievements does not draw them 300px tall. At natural height
+ * instead, five rows left an empty band the depth of a sixth at the foot of
+ * the panel.
+ */
+.ach-row {
+  position: relative;
+  flex: 1 0 auto;
+  max-height: 13cqh;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1cqw;
+  padding: 1.3cqh 0.7cqw;
+  border: 0.16cqh solid transparent;
+  border-radius: 0.8cqh;
+}
+
+.ach-row::before {
+  content: "";
+  position: absolute;
+  left: 0.7cqw;
+  right: 0.7cqw;
+  top: -0.08cqh;
+  height: 0.1cqh;
+  background: var(--hair);
+}
+
+.ach-row:first-child::before,
+.ach-row.is-claimable::before,
+.ach-row.is-claimable + .ach-row::before {
+  display: none;
+}
+
+/* A reward waiting to be taken is the one thing on this screen that wants the
+   player's attention, so it is the only row that gets an edge. */
+.ach-row.is-claimable {
+  border-color: rgba(236, 80, 130, 0.75);
+  background: linear-gradient(90deg, rgba(62, 16, 32, 0.66), rgba(20, 8, 16, 0.3));
+  box-shadow: 0 0 1.8cqh rgba(236, 80, 130, 0.26);
+}
+
+/* Which row the panel on the right is showing. Deliberately quiet: it competes
+   with the claimable edge otherwise, and the mock's framed row is not the one
+   the panel is showing. */
+.ach-row.is-selected {
+  background-color: rgba(255, 255, 255, 0.045);
+}
+
+.ach-row.is-selected::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1.4cqh;
+  bottom: 1.4cqh;
+  width: 0.22cqw;
+  border-radius: 1cqh;
+  background: var(--rose);
+}
+
+.ach-open {
+  display: grid;
+  grid-template-columns: 8cqh 1fr auto;
+  align-items: center;
+  gap: 1.2cqw;
+  padding: 0;
+  text-align: left;
+}
+
+.ach-row-emblem {
+  font-size: 8cqh;
+}
+
+.ach-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5cqh;
+  min-width: 0;
+}
+
+.ach-row-name {
+  font-size: 2.5cqh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.ach-row-detail {
+  font-size: 1.85cqh;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.ach-row-meter {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.8cqw;
+  margin-top: 0.2cqh;
+}
+
+/* Rarity, which the mock carries on the title alone. */
+.tone-legend {
+  color: var(--rose-bright);
+}
+
+.tone-epic {
+  color: #d592fb;
+}
+
+.tone-rare {
+  color: #ffd278;
+}
+
+.tone-common {
+  color: #ccd2de;
+}
+
+/* ---------- progress bars ---------- */
+/* Fluid, not fixed: the row's text column is what is left after the medallion,
+   the reward tiles and the status chip, and a bar wider than that overflowed
+   the column and painted straight over the count beside it. */
+.ach-bar {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 0.75cqh;
+  border-radius: 1cqh;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.ach-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 1cqh;
+  background: linear-gradient(90deg, #f6739e, var(--rose));
+  box-shadow: 0 0 0.8cqh rgba(236, 80, 130, 0.5);
+  transition: width 0.3s ease;
+}
+
+.ach-bar-text {
+  font-size: 1.7cqh;
+  color: rgba(255, 255, 255, 0.72);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- reward tiles ---------- */
+/* Neutral frame, coloured contents: the mock draws every tile the same dark
+   grey and lets the coin, the crystal and the EXP sigil supply the colour. */
+.ach-row-rewards {
+  display: flex;
+  gap: 0.5cqw;
+}
+
+.ach-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5cqh;
+  width: 7cqh;
+  padding: 0.9cqh 0.3cqw;
+  border-radius: 0.8cqh;
+  border: 0.16cqh solid #33333a;
+  background: #0c0c0e;
+}
+
+.ach-reward-icon {
+  font-size: 3.2cqh;
+  color: var(--reward-tone);
+}
+
+.ach-reward-amount {
+  font-size: 1.5cqh;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ach-reward-coin {
+  --reward-tone: #ffc74a;
+}
+
+.ach-reward-gem {
+  --reward-tone: #4fc3ff;
+}
+
+.ach-reward-exp {
+  --reward-tone: #a05cff;
+}
+
+/* A CG is a thing rather than a quantity, so it is a card rather than a tile --
+   gold-framed and portrait, as the mock draws it. */
+.ach-reward-cg {
+  width: 6.4cqw;
+  padding: 0.5cqh 0.3cqw;
+  gap: 0.4cqh;
+  border-color: #b98a3c;
+  background: linear-gradient(180deg, #1a1207, #0d0a06);
+  box-shadow: inset 0 0 1.2cqh rgba(185, 138, 60, 0.25);
+}
+
+.ach-reward-art,
+.ach-reward-fallback {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 0.4cqh;
+  display: block;
+}
+
+.ach-reward-fallback {
+  font-size: 4.6cqh;
+  width: auto;
+  aspect-ratio: 1;
+  margin: 0.6cqh auto;
+}
+
+/* ---------- row status ---------- */
+.ach-claim {
+  width: 8.6cqw;
+  padding: 1.3cqh 0;
+  border-radius: 0.6cqh;
+  border: 0.18cqh solid var(--rose-edge);
+  background: linear-gradient(180deg, #3d1020, #4b1327);
+  color: #ffd6e4;
+  font-size: 2.2cqh;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 1.4cqh rgba(226, 72, 122, 0.35);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ach-claim:hover {
+  background: linear-gradient(180deg, #55162c, #631a36);
+  box-shadow: 0 0 2.2cqh rgba(226, 72, 122, 0.55);
+}
+
+.ach-pending {
+  width: 8.6cqw;
+  padding: 1.3cqh 0;
+  text-align: center;
+  border-radius: 0.6cqh;
+  border: 0.16cqh solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 2.1cqh;
+  letter-spacing: 0.06em;
+}
+
+.ach-done {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2cqh;
+  width: 8.6cqw;
+  padding: 0.9cqh 0;
+  border-radius: 0.6cqh;
+  border: 0.16cqh solid var(--gold-edge);
+  color: var(--gold);
+  font-size: 2cqh;
+  letter-spacing: 0.06em;
+}
+
+/* Corner ticks, which the mock puts at all four corners of a completed badge.
+   Four gradients rather than four elements: each corner is one horizontal and
+   one vertical stub. */
+.ach-done::after {
+  content: "";
+  position: absolute;
+  inset: 0.25cqh 0.15cqw;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--gold) 0 0), linear-gradient(var(--gold) 0 0),
+    linear-gradient(var(--gold) 0 0), linear-gradient(var(--gold) 0 0),
+    linear-gradient(var(--gold) 0 0), linear-gradient(var(--gold) 0 0),
+    linear-gradient(var(--gold) 0 0), linear-gradient(var(--gold) 0 0);
+  background-size:
+    0.8cqh 0.13cqh, 0.13cqh 0.8cqh,
+    0.8cqh 0.13cqh, 0.13cqh 0.8cqh,
+    0.8cqh 0.13cqh, 0.13cqh 0.8cqh,
+    0.8cqh 0.13cqh, 0.13cqh 0.8cqh;
+  background-position:
+    left top, left top,
+    right top, right top,
+    left bottom, left bottom,
+    right bottom, right bottom;
+}
+
+.ach-done-date {
+  font-size: 1.5cqh;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.ach-empty {
+  margin: auto;
+  font-size: 2cqh;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ach-more {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6cqw;
+  padding: 1.2cqh 0;
+  border-top: 0.1cqh solid var(--hair);
+  font-size: 2cqh;
+  color: rgba(255, 255, 255, 0.62);
+  transition: color 0.15s ease;
+}
+
+.ach-more:hover {
+  color: #fff;
+}
+
+.ach-more-caret {
+  font-size: 1.8cqh;
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+.ach-more-caret.is-open {
+  transform: rotate(-90deg);
+}
+
+/* ---------- feature ---------- */
+.ach-feature-col {
+  position: absolute;
+  right: 1.4cqw;
+  top: var(--content-top);
+  bottom: var(--content-bottom);
+  width: 25.4cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2cqh;
+  pointer-events: auto;
+}
+
+.ach-claim-all {
+  align-self: flex-end;
+  padding: 0.9cqh 1.6cqw;
+  border-radius: 0.8cqh;
+  font-size: 2cqh;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.9);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.ach-claim-all:not(:disabled):hover {
+  border-color: var(--rose-edge);
+  color: var(--rose-bright);
+}
+
+.ach-claim-all:disabled {
+  color: rgba(255, 255, 255, 0.35);
+  cursor: default;
+}
+
+.ach-feature {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 1cqh;
+  overflow: hidden;
+  display: flex;
+}
+
+/*
+ * Three layers, ordered explicitly. Left to auto z-index they stack in DOM
+ * order and ::before counts as the first child -- so the scrim would paint
+ * under the art and do nothing, which is the bug the chapter cards had.
+ */
+.ach-feature-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.5;
+}
+
+.ach-feature::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(8, 4, 12, 0.72) 0%, rgba(8, 4, 12, 0.93) 62%, #08040c 100%);
+}
+
+.ach-feature-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1cqh;
+  padding: 2.2cqh 1.3cqw 1.8cqh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.ach-feature-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 3.2cqh;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  filter: drop-shadow(0 0 1.2cqh rgba(236, 80, 130, 0.4));
+}
+
+.ach-feature-detail {
+  margin: 0;
+  font-size: 1.9cqh;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+/* Auto margins top and bottom: the medallion takes the panel's slack and
+   centres itself in it, rather than the slack collecting in one gap above the
+   button at the foot. */
+.ach-feature-emblem {
+  font-size: 22cqh;
+  margin: auto 0;
+}
+
+.ach-feature-progress {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.8cqh 1cqw;
+}
+
+.ach-feature-heading {
+  font-size: 1.9cqh;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ach-feature-heading.with-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+  width: 100%;
+}
+
+.ach-feature-heading.with-rule::after {
+  content: "";
+  flex: 1;
+  height: 0.1cqh;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.ach-feature-count {
+  font-size: 2cqh;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* The bar spans the panel here rather than taking the list's fixed width. */
+.ach-feature-progress .ach-bar {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 0.9cqh;
+}
+
+.ach-feature-rewards {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1cqh;
+}
+
+.ach-feature-reward-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5cqw;
+}
+
+/* In the panel the tiles share the row with the status chip, so they stretch
+   rather than keeping the list's fixed square. */
+.ach-feature-reward-row .ach-reward {
+  flex: 1;
+  width: auto;
+}
+
+.ach-feature-reward-row .ach-reward-cg {
+  flex: 0 0 6.4cqw;
+}
+
+.ach-claim-wide,
+.ach-pending-wide,
+.ach-done-wide {
+  flex: 1;
+  width: auto;
+  align-self: stretch;
+}
+
+.ach-done-wide {
+  flex-direction: row;
+  gap: 0.5cqw;
+}
+
+.ach-done-check {
+  font-size: 2.2cqh;
+}
+
+.ach-details {
+  margin-top: 0.8cqh;
+  width: 68%;
+  padding: 1.2cqh 0;
+  border-radius: 0.6cqh;
+  border: 0.16cqh solid rgba(255, 255, 255, 0.26);
+  font-size: 2.2cqh;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.88);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ach-details:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.45);
+}

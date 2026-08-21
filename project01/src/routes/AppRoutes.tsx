@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { HomePage } from '../pages/HomePage'
 import { CharacterPage } from '../pages/CharacterPage'
 import { StoryPage } from '../pages/StoryPage'
+import { AchievementsPage } from '../pages/AchievementsPage'
 import '../pages/GamePage.css'
 
 /**
@@ -21,6 +22,7 @@ export function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/character" element={<CharacterPage />} />
       <Route path="/story" element={<StoryPage />} />
+      <Route path="/achievements" element={<AchievementsPage />} />
       <Route
         path="/battle"
         element={

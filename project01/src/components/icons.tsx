@@ -31,6 +31,11 @@ export type IconName =
   | 'chevron'
   | 'swords'
   | 'exp'
+  | 'skull'
+  | 'banner'
+  | 'person'
+  | 'check'
+  | 'sparkle'
 
 const PATHS: Record<IconName, ReactElement> = {
   book: (
@@ -136,18 +141,19 @@ const PATHS: Record<IconName, ReactElement> = {
   ),
   chevron: <path d="m9.4 5.4 6.6 6.6-6.6 6.6" />,
   /*
-   * Crossed swords: thick blades, a guard across each near the hilt, a short
-   * pommel below it. Earlier versions marked the tips with corner brackets,
-   * which at button size read as arrowheads rather than blades.
+   * Crossed swords: two full diagonals that meet in the middle, a guard across
+   * each near its hilt, and a short grip past it. Both earlier versions failed
+   * at small sizes -- corner brackets on the tips read as arrowheads, and
+   * crossing the blades low down read as a single V.
    */
   swords: (
     <>
-      <path d="M19.9 3.9 9.9 13.9" strokeWidth={2.9} />
-      <path d="M4.1 3.9 14.1 13.9" strokeWidth={2.9} />
-      <path d="m7.3 12.7 4 4" strokeWidth={1.7} />
-      <path d="m16.7 12.7-4 4" strokeWidth={1.7} />
-      <path d="m4.6 16.2 3.2 3.2" strokeWidth={1.7} />
-      <path d="m19.4 16.2-3.2 3.2" strokeWidth={1.7} />
+      <path d="M20.6 3.4 7.6 16.4" strokeWidth={2.6} />
+      <path d="M3.4 3.4 16.4 16.4" strokeWidth={2.6} />
+      <path d="M6.2 13.8 10.2 17.8" strokeWidth={1.6} />
+      <path d="M17.8 13.8 13.8 17.8" strokeWidth={1.6} />
+      <path d="M7.6 16.4 5.2 18.8" strokeWidth={2} />
+      <path d="M16.4 16.4 18.8 18.8" strokeWidth={2} />
     </>
   ),
   exp: (
@@ -155,6 +161,45 @@ const PATHS: Record<IconName, ReactElement> = {
       <circle cx="12" cy="12" r="8.4" />
       <path d="M9 9.2h6M12 9.2v5.6" />
     </>
+  ),
+  /*
+   * The next three are solid rather than stroked because their only job is to
+   * sit in the middle of an achievement medallion at about 20px, where a 1.7px
+   * outline turns into a grey smudge. Sockets and cut-outs are holes in the
+   * same path, punched with evenodd, so the glyph is one colour and works over
+   * whatever the plate behind it happens to be.
+   */
+  skull: (
+    <path
+      fillRule="evenodd"
+      fill="currentColor"
+      stroke="none"
+      d="M12 2.6c-4.6 0-7.7 3.2-7.7 7.6 0 2.5 1 4.5 2.5 5.8v2.4c0 1 .8 1.8 1.8 1.8h.7v1.6h1.6v-1.6h2.2v1.6h1.6v-1.6h.7c1 0 1.8-.8 1.8-1.8v-2.4c1.5-1.3 2.5-3.3 2.5-5.8 0-4.4-3.1-7.6-7.7-7.6ZM6.9 10.6a2.1 2.4 0 0 1 4.2 0 2.1 2.4 0 0 1-4.2 0ZM12.9 10.6a2.1 2.4 0 0 1 4.2 0 2.1 2.4 0 0 1-4.2 0ZM12 13.4 10.6 16.2h2.8L12 13.4Z"
+    />
+  ),
+  banner: (
+    <path
+      fillRule="evenodd"
+      fill="currentColor"
+      stroke="none"
+      d="M5.6 2.8h12.8v18.4L12 17.4l-6.4 3.8V2.8ZM11.2 6h1.6v2.2H15v1.6h-2.2V12h-1.6V9.8H9V8.2h2.2V6Z"
+    />
+  ),
+  person: (
+    <path
+      fill="currentColor"
+      stroke="none"
+      d="M12 3.6a3.9 3.9 0 1 0 0 7.8 3.9 3.9 0 0 0 0-7.8ZM12 12.8c-4.2 0-7 2.6-7 6V21h14v-2.2c0-3.4-2.8-6-7-6Z"
+    />
+  ),
+  check: <path d="m5 12.6 4.6 4.6L19 7.6" strokeWidth={2.2} />,
+  /* The flourish either side of the ACHIEVEMENTS title. */
+  sparkle: (
+    <path
+      fill="currentColor"
+      stroke="none"
+      d="M12 1.6c.8 6 4.4 9.6 10.4 10.4-6 .8-9.6 4.4-10.4 10.4-.8-6-4.4-9.6-10.4-10.4C7.6 11.2 11.2 7.6 12 1.6Z"
+    />
   ),
   moon: <path d="M20 14.4A8.4 8.4 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4Z" />,
   burst: (

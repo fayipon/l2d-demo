@@ -21,7 +21,7 @@ interface MenuTile {
 const MENU_TILES: MenuTile[] = [
   { id: 'story', en: 'STORY', sub: '劇情', icon: 'book', tone: 'story', event: true, to: '/story' },
   { id: 'character', en: 'CHARACTER', sub: '角色', icon: 'sword', tone: 'character', to: '/character' },
-  { id: 'achievement', en: 'ACHIEVEMENT', sub: '成就', icon: 'trophy', tone: 'achievement' },
+  { id: 'achievement', en: 'ACHIEVEMENT', sub: '成就', icon: 'trophy', tone: 'achievement', to: '/achievements' },
 ]
 
 export function HomePage() {
