@@ -46,6 +46,14 @@ const base = flag('base', 'http://localhost:5173')
 const enemies = Number(flag('enemies', 700))
 const seconds = Number(flag('seconds', 6))
 const spread = flag('spread', 'view')
+/*
+ * --hold KeyD runs away instead of measuring a load: the pool is left to the
+ * simulation's own spawn rate and nothing is topped up, so the enemy count is
+ * free to tell the truth. The player outruns every enemy in the game, so
+ * without recycling the stragglers this is the run where the count climbs to
+ * the cap and the wave in front goes empty.
+ */
+const hold = flag('hold')
 const width = Number(flag('width', 1280))
 const height = Number(flag('height', 720))
 
@@ -85,8 +93,15 @@ try {
     { timeout: 30000 },
   )
 
+  if (hold) {
+    // The canvas has to have the focus or Phaser's keyboard plugin never sees
+    // the event, and a headless page starts with the focus on nothing.
+    await page.click('canvas')
+    await page.keyboard.down(hold)
+  }
+
   const report = await page.evaluate(
-    async ({ enemies, seconds, spread }) => {
+    async ({ enemies, seconds, spread, hold }) => {
       const game = window.__arena
       const scene = game.scene.getScene('arena')
       const world = scene.world
@@ -119,6 +134,24 @@ try {
 
       const live = (pool) => pool.items.filter((e) => e.active).length
 
+      /* Started against the far wall, so the whole map is ahead. From the
+         middle a run east reaches the boundary in 1585px and spends the rest
+         of the sample pressed against it, which is not the thing being
+         measured. */
+      const map = window.__arenaWorld
+      if (hold && map) {
+        const start = {
+          KeyD: { x: 80, y: map.height / 2 },
+          KeyA: { x: map.width - 80, y: map.height / 2 },
+          KeyS: { x: map.width / 2, y: 80 },
+          KeyW: { x: map.width / 2, y: map.height - 80 },
+        }[hold]
+        if (start) {
+          world.player.x = start.x
+          world.player.y = start.y
+        }
+      }
+
       /* Holds the crowd at the target. Without it the count falls as fast as
          the player can kill, and the sample slides off the load it was asked
          to measure.
@@ -145,6 +178,10 @@ try {
         }
         return added
       }
+      /* Filled in both modes, and in the running one deliberately: starting at
+         the cap is the state the recycling has to be able to get out of. Left
+         alone from here -- nothing is topped up while running, so the count is
+         free to say what really happens. */
       topUp()
 
       /* Wrapped on the instance, which shadows the prototype method and is put
@@ -187,6 +224,8 @@ try {
       let barsSum = 0
       let levelsSkipped = 0
       let toppedUp = 0
+      const enemyCounts = []
+      const startedAt = { x: world.player.x, y: world.player.y }
 
       const started = performance.now()
       let last = started
@@ -214,7 +253,11 @@ try {
           if (world.status === 'shop') {
             world.leaveShop()
           }
-          toppedUp += topUp()
+          if (hold) {
+            enemyCounts.push(live(world.enemies))
+          } else {
+            toppedUp += topUp()
+          }
 
           const sprite = scene.playerSprite
           screenPositions.push({
@@ -291,10 +334,24 @@ try {
         drift,
         levelsSkipped,
         toppedUp,
+        enemyLow: enemyCounts.length ? Math.min(...enemyCounts) : 0,
+        enemyHigh: enemyCounts.length ? Math.max(...enemyCounts) : 0,
+        capacity: world.enemies.capacity,
+        // Anything close enough to be a fight rather than a rumour. If this is
+        // zero after a run, the wave in front of the player is empty.
+        nearby: world.enemies.items.filter(
+          (e) => e.active && Math.hypot(e.x - world.player.x, e.y - world.player.y) < 900,
+        ).length,
+        travelled: Math.hypot(world.player.x - startedAt.x, world.player.y - startedAt.y),
+        at: { x: Math.round(world.player.x), y: Math.round(world.player.y) },
       }
     },
-    { enemies, seconds, spread },
+    { enemies, seconds, spread, hold },
   )
+
+  if (hold) {
+    await page.keyboard.up(hold)
+  }
 
   const n = (v, places = 1) => v.toFixed(places)
   const worldSize = report.world
@@ -323,10 +380,22 @@ try {
       `${report.pickups} drops`,
   )
   console.log(`  centre     ${n(report.drift, 2)}px max player drift`)
-  console.log(
-    `  held       ${report.toppedUp} respawned to hold the load, ` +
-      `${report.levelsSkipped} level-ups skipped`,
-  )
+  if (hold) {
+    console.log(
+      `  running    ${hold} held, ${n(report.travelled, 0)}px travelled ` +
+        `to (${report.at.x}, ${report.at.y})`,
+    )
+    console.log(
+      `  crowd      ${report.enemyLow}-${report.enemyHigh} enemies alive ` +
+        `against a pool of ${report.capacity}, ` +
+        `${report.nearby} still within 900px at the end`,
+    )
+  } else {
+    console.log(
+      `  held       ${report.toppedUp} respawned to hold the load, ` +
+        `${report.levelsSkipped} level-ups skipped`,
+    )
+  }
 
   if (problems.length) {
     console.log(`page reported ${problems.length} problem(s):`)

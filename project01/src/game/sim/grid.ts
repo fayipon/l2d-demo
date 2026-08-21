@@ -69,9 +69,11 @@ export class SpatialGrid {
     }
   }
 
-  /* Entities spawn outside the arena and are clamped in, so an out-of-bounds
-     position lands in the nearest edge cell rather than throwing or being
-     silently dropped. */
+  /* Kept as a guard rather than a working part. Enemies used to spawn outside
+     the arena and walk in, so out-of-bounds positions were routine; they now
+     arrive inside the world and are clamped to it every step. The clamp stays
+     because the alternative to a wrong cell is an exception or a silently
+     dropped entity, and this is on the path of every insert. */
   private cellIndex(x: number, y: number): number {
     const col = this.clampCol(Math.floor(x / this.cellSize))
     const row = this.clampRow(Math.floor(y / this.cellSize))

@@ -1,12 +1,23 @@
 import Phaser from 'phaser'
-import { ARENA_HEIGHT, ARENA_WIDTH, STEP_SECONDS, World } from '../sim/world'
+import { STEP_SECONDS, WORLD_HEIGHT, WORLD_WIDTH, World } from '../sim/world'
 import { ENEMY_KINDS, WEAPONS } from '../data/content'
 import { ATLAS_KEY, FONT_KEY, buildAtlas, buildDamageFont } from '../view/atlas'
 import { consumeRestart, consumeUpgrade, drainShopCommands, publishRun } from '../runStore'
 import { rerollPrice } from '../data/shop'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
 
-export { ARENA_WIDTH, ARENA_HEIGHT }
+/**
+ * The window onto the world, and the size the canvas is scaled to fit.
+ *
+ * The world is WORLD_WIDTH x WORLD_HEIGHT and much larger than this. Keeping
+ * the two apart is what the camera needs: Phaser is told the size of the
+ * window and nothing about the map, and the simulation is told the size of the
+ * map and nothing about the window.
+ */
+export const VIEW_WIDTH = 1280
+export const VIEW_HEIGHT = 720
+
+export { WORLD_WIDTH, WORLD_HEIGHT }
 
 /** Never run more than this many simulation steps for one rendered frame. */
 const MAX_STEPS_PER_FRAME = 5
@@ -70,6 +81,19 @@ const BAR_LIFT = 7
 const BAR_TRACK_TINT = 0x53293c
 /** Fill colour by remaining fraction, healthiest first. */
 const BAR_TINTS = [0x5ce6a0, 0xffc74a, 0xf4436c]
+
+/**
+ * How far past the window an entity is still given a sprite.
+ *
+ * Wide enough to cover the largest sprite's own half-width plus the health bar
+ * that sits above it, so nothing is hidden while any part of it would still
+ * have been on screen. Anything further out is not merely skipped -- its
+ * sprite is hidden, which is the part that matters: `willRender` tests
+ * visibility and camera filters and nothing else, so a sprite left visible at
+ * a stale position off screen is still transformed and submitted with the
+ * rest, and costs exactly what it did before.
+ */
+const CULL_MARGIN = 48
 
 /**
  * The arena.
@@ -358,12 +382,45 @@ export class ArenaScene extends Phaser.Scene {
 
   private syncSprites(): void {
     const world = this.world
+    const player = world.player
+
+    /*
+     * The camera is placed here, from the simulation's own position, in the
+     * same pass that moves the player's sprite.
+     *
+     * `startFollow` on the sprite would be one line instead of four, and it
+     * would put the camera a frame behind the thing it is following: the
+     * player would slide off centre whenever they moved and settle back when
+     * they stopped. Reading the position both the camera and the sprite are
+     * about to use costs nothing and cannot drift.
+     *
+     * Deliberately unclamped. The player is always dead centre, so at the edge
+     * of the map you see past the boundary into nothing -- which is why the
+     * floor draws a hard border and no grid beyond it.
+     */
+    const camera = this.cameras.main
+    camera.scrollX = player.x - VIEW_WIDTH / 2
+    camera.scrollY = player.y - VIEW_HEIGHT / 2
+
+    /* The rectangle worth drawing. Most of the crowd is off it now, which is
+       new: nothing was ever off screen before, so every entity got a sprite
+       update and a place in the batch whether it could be seen or not. */
+    const cullLeft = camera.scrollX - CULL_MARGIN
+    const cullRight = camera.scrollX + VIEW_WIDTH + CULL_MARGIN
+    const cullTop = camera.scrollY - CULL_MARGIN
+    const cullBottom = camera.scrollY + VIEW_HEIGHT + CULL_MARGIN
 
     const pickups = world.pickups.items
     for (let i = 0; i < pickups.length; i++) {
       const drop = pickups[i]
       const sprite = this.pickupSprites[i]
-      if (!drop.active) {
+      if (
+        !drop.active ||
+        drop.x < cullLeft ||
+        drop.x > cullRight ||
+        drop.y < cullTop ||
+        drop.y > cullBottom
+      ) {
         sprite.visible = false
         continue
       }
@@ -383,6 +440,21 @@ export class ArenaScene extends Phaser.Scene {
         this.barTracks[i].visible = false
         this.barFills[i].visible = false
         this.enemyFrames[i] = -1
+        continue
+      }
+
+      /* Off camera. The cached frame and tint are left alone rather than
+         invalidated: the slot has not changed hands, and if it does while it
+         is out there the checks below catch it on the way back in. */
+      if (
+        enemy.x < cullLeft ||
+        enemy.x > cullRight ||
+        enemy.y < cullTop ||
+        enemy.y > cullBottom
+      ) {
+        sprite.visible = false
+        this.barTracks[i].visible = false
+        this.barFills[i].visible = false
         continue
       }
 
@@ -446,6 +518,16 @@ export class ArenaScene extends Phaser.Scene {
         continue
       }
 
+      if (
+        shot.x < cullLeft ||
+        shot.x > cullRight ||
+        shot.y < cullTop ||
+        shot.y > cullBottom
+      ) {
+        sprite.visible = false
+        continue
+      }
+
       if (this.projectileFrames[i] !== shot.kind) {
         this.projectileFrames[i] = shot.kind
         sprite.setTexture(ATLAS_KEY, WEAPONS[shot.kind].frame)
@@ -458,7 +540,6 @@ export class ArenaScene extends Phaser.Scene {
       sprite.rotation = Math.atan2(shot.vy, shot.vx)
     }
 
-    const player = world.player
     this.playerSprite.x = player.x
     this.playerSprite.y = player.y
     this.playerSprite.setTint(player.dodgeFlash > 0 ? DODGE_TINT : PLAYER_TINT)
@@ -478,19 +559,31 @@ export class ArenaScene extends Phaser.Scene {
     return sprites
   }
 
+  /**
+   * The ground, drawn once across the whole world.
+   *
+   * One Graphics for a 3200x1800 map is 51 vertical lines and 29 horizontal
+   * ones -- geometry, built at boot and never touched again. Baking it into a
+   * RenderTexture instead would be 92MB of video memory for the same picture,
+   * which is the trap worth naming here rather than discovering later.
+   *
+   * The grid stops at the boundary and the boundary is drawn hard, because the
+   * camera does not clamp: standing at the edge you see past it into nothing,
+   * and nothing has to look deliberate.
+   */
   private drawFloor(): void {
     const floor = this.add.graphics()
     floor.fillStyle(0x0b0512, 1)
-    floor.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT)
+    floor.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT)
     floor.lineStyle(1, 0x1d0f28, 1)
-    for (let x = 0; x <= ARENA_WIDTH; x += 64) {
-      floor.lineBetween(x, 0, x, ARENA_HEIGHT)
+    for (let x = 0; x <= WORLD_WIDTH; x += 64) {
+      floor.lineBetween(x, 0, x, WORLD_HEIGHT)
     }
-    for (let y = 0; y <= ARENA_HEIGHT; y += 64) {
-      floor.lineBetween(0, y, ARENA_WIDTH, y)
+    for (let y = 0; y <= WORLD_HEIGHT; y += 64) {
+      floor.lineBetween(0, y, WORLD_WIDTH, y)
     }
     floor.lineStyle(3, 0xf4436c, 0.5)
-    floor.strokeRect(1.5, 1.5, ARENA_WIDTH - 3, ARENA_HEIGHT - 3)
+    floor.strokeRect(1.5, 1.5, WORLD_WIDTH - 3, WORLD_HEIGHT - 3)
   }
 
   private publish(): void {

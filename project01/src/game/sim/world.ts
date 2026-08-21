@@ -48,9 +48,20 @@ export type { PlayerStats }
  * make the whole thing testable without a canvas.
  */
 
-/** Design resolution. The canvas is scaled to fit; the world stays this size. */
-export const ARENA_WIDTH = 1280
-export const ARENA_HEIGHT = 720
+/**
+ * The size of the simulated world.
+ *
+ * This used to be the canvas size as well, because the two were the same
+ * number: one screen, no camera, nothing off it. They are separate concerns
+ * and now they are separate constants -- the window onto this is VIEW_WIDTH /
+ * VIEW_HEIGHT in the scene, which is all Phaser is told about.
+ *
+ * Two and a half windows across and four screens of area. Big enough that the
+ * camera and the minimap earn their keep, small enough that a wave still finds
+ * you.
+ */
+export const WORLD_WIDTH = 3200
+export const WORLD_HEIGHT = 1800
 
 /**
  * The simulation runs at a fixed 60Hz whatever the display does.
@@ -65,8 +76,36 @@ export const STEP_SECONDS = 1 / 60
 /** One cell comfortably wider than the largest thing that queries it. */
 const CELL_SIZE = 64
 
-/** How far outside the arena an enemy appears. */
+/** Slack kept between the world's edge and anything placed against it. */
 const SPAWN_MARGIN = 46
+
+/**
+ * How far from the player an enemy arrives.
+ *
+ * Past the corner of a 1280x720 window, which is 734 away, so nothing is
+ * watched appearing. The simulation has no business knowing the viewport --
+ * what it needs is "far enough that the player does not see it happen", and
+ * the window is only where the number came from.
+ */
+const SPAWN_DISTANCE = 780
+
+/**
+ * How far an enemy may fall behind before it is recycled.
+ *
+ * Not an optimisation -- without it a wave goes empty. The player moves at
+ * 232px/s and the fastest enemy in the game manages 191 at the top of its
+ * speed curve, so a player running in a straight line outruns everything. On
+ * one screen that ended at a wall after 2.8 seconds; across 3200x1800 it runs
+ * for sixteen, and the stragglers neither catch up nor ever disappear. They
+ * accumulate to the pool's capacity, and from there every new spawn is dropped
+ * for want of a slot: seven hundred enemies trailing a player who is never
+ * touched, and nothing at all in front of them.
+ *
+ * Set well outside the longest reach in the game -- a railgun at 620 with the
+ * range stat doubled is 1240 -- so nothing is ever recycled out of a fight the
+ * player is still in.
+ */
+const CULL_DISTANCE = 1700
 
 /** Seconds between waves. */
 const BREAK_SECONDS = 3
@@ -89,9 +128,15 @@ const HOMING_MAX = 1020
  *
  * Surviving the clock is the win condition, so anything still lying on the
  * floor when the wave ends was earned -- making the player walk a lap to pick
- * it up is busywork, and forgetting to is a silent loss. Ten times the radius
- * covers most of the arena, and the homing speed ramps with distance, so the
- * floor clears well inside the break.
+ * it up is busywork, and forgetting to is a silent loss.
+ *
+ * Ten times the radius is 1080, which used to cover most of the arena. Across
+ * 3200x1800 it covers a fifth of it, and widening it would not help: homing
+ * runs from 190px/s at the edge of the magnet to 1020 on top of the player, so
+ * even at full speed a drop in the far corner needs 3.6s against a 3s break.
+ * What runs out is the speed, not the reach. So this is now the radius inside
+ * which a drop is worth watching fly in, and everything past it is credited
+ * where it lies -- see stepPickups.
  */
 const BREAK_LOOT_MULTIPLIER = 10
 
@@ -266,7 +311,7 @@ export class World {
    *  the wave itself. */
   breakTimeLeft = 0
   private spawnTimer = 0
-  private readonly grid = new SpatialGrid(ARENA_WIDTH, ARENA_HEIGHT, CELL_SIZE)
+  private readonly grid = new SpatialGrid(WORLD_WIDTH, WORLD_HEIGHT, CELL_SIZE)
   /** Reused across every query, so the broadphase never allocates. */
   private readonly neighbours: number[] = []
   /**
@@ -326,8 +371,8 @@ export class World {
     }))
 
     this.player = {
-      x: ARENA_WIDTH / 2,
-      y: ARENA_HEIGHT / 2,
+      x: WORLD_WIDTH / 2,
+      y: WORLD_HEIGHT / 2,
       radius: 15,
       hp: BASE_STATS.maxHp,
       invuln: 0,
@@ -401,8 +446,8 @@ export class World {
     this.pickups.releaseAll()
 
     const player = this.player
-    player.x = ARENA_WIDTH / 2
-    player.y = ARENA_HEIGHT / 2
+    player.x = WORLD_WIDTH / 2
+    player.y = WORLD_HEIGHT / 2
     Object.assign(player.stats, BASE_STATS)
     player.weapons.length = 0
     this.ownedItems.length = 0
@@ -482,8 +527,8 @@ export class World {
     const stats = player.stats
     const speed = BASE_MOVE_SPEED * stats.moveSpeed
 
-    player.x = clamp(player.x + input.x * speed * dt, player.radius, ARENA_WIDTH - player.radius)
-    player.y = clamp(player.y + input.y * speed * dt, player.radius, ARENA_HEIGHT - player.radius)
+    player.x = clamp(player.x + input.x * speed * dt, player.radius, WORLD_WIDTH - player.radius)
+    player.y = clamp(player.y + input.y * speed * dt, player.radius, WORLD_HEIGHT - player.radius)
 
     if (player.invuln > 0) {
       player.invuln -= dt
@@ -705,7 +750,7 @@ export class World {
 
     const kindIndex = pickEnemyKind(this.wave, this.random())
     const kind = ENEMY_KINDS[kindIndex]
-    const spot = this.perimeterPoint()
+    const spot = this.spawnPoint()
 
     enemy.x = spot.x
     enemy.y = spot.y
@@ -721,23 +766,41 @@ export class World {
     enemy.flashCrit = false
   }
 
-  /** A point just outside the arena, anywhere on its perimeter. */
-  private perimeterPoint(): { x: number; y: number } {
-    const perimeter = 2 * (ARENA_WIDTH + ARENA_HEIGHT)
-    let t = this.random() * perimeter
-    if (t < ARENA_WIDTH) {
-      return { x: t, y: -SPAWN_MARGIN }
+  /**
+   * A point on the ring around the player, inside the world.
+   *
+   * This was the arena's own perimeter, which meant something only while the
+   * arena was one screen: released at the far edge of a 3200x1800 map, a grunt
+   * at 62px/s spends the better part of a minute walking, and the wave it
+   * belongs to is over before it arrives. The ring travels with the player
+   * instead, so what a wave costs no longer depends on which corner of the
+   * world it is fought in.
+   *
+   * Rejection rather than clamping. A clamped ring point slides along the wall
+   * and comes to rest beside a player who is already cornered, which is the
+   * one place an enemy must not simply appear. A quarter of the ring is still
+   * open even in a corner, so twelve tries is generous; the clamp is only
+   * there so this always returns.
+   */
+  private spawnPoint(): { x: number; y: number } {
+    const player = this.player
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const angle = this.random() * Math.PI * 2
+      const x = player.x + Math.cos(angle) * SPAWN_DISTANCE
+      const y = player.y + Math.sin(angle) * SPAWN_DISTANCE
+      if (
+        x >= SPAWN_MARGIN &&
+        x <= WORLD_WIDTH - SPAWN_MARGIN &&
+        y >= SPAWN_MARGIN &&
+        y <= WORLD_HEIGHT - SPAWN_MARGIN
+      ) {
+        return { x, y }
+      }
     }
-    t -= ARENA_WIDTH
-    if (t < ARENA_HEIGHT) {
-      return { x: ARENA_WIDTH + SPAWN_MARGIN, y: t }
+    return {
+      x: clamp(player.x + SPAWN_DISTANCE, SPAWN_MARGIN, WORLD_WIDTH - SPAWN_MARGIN),
+      y: clamp(player.y, SPAWN_MARGIN, WORLD_HEIGHT - SPAWN_MARGIN),
     }
-    t -= ARENA_HEIGHT
-    if (t < ARENA_WIDTH) {
-      return { x: ARENA_WIDTH - t, y: ARENA_HEIGHT + SPAWN_MARGIN }
-    }
-    t -= ARENA_WIDTH
-    return { x: -SPAWN_MARGIN, y: ARENA_HEIGHT - t }
   }
 
   /* ---------- enemies ---------- */
@@ -759,16 +822,25 @@ export class World {
       const dx = px - enemy.x
       const dy = py - enemy.y
       const distance = Math.hypot(dx, dy)
+
+      // Left too far behind to matter. Released here rather than in a pass of
+      // its own, because the distance this decides on has just been measured
+      // for the chase.
+      if (distance > CULL_DISTANCE) {
+        this.enemies.release(enemy)
+        continue
+      }
+
       if (distance > 0.001) {
         const step = (enemy.speed * dt) / distance
         enemy.x += dx * step
         enemy.y += dy * step
       }
 
-      // Held inside a margin rather than the arena itself, so one that has
-      // just spawned can still walk in.
-      enemy.x = clamp(enemy.x, -SPAWN_MARGIN, ARENA_WIDTH + SPAWN_MARGIN)
-      enemy.y = clamp(enemy.y, -SPAWN_MARGIN, ARENA_HEIGHT + SPAWN_MARGIN)
+      // Everything spawns inside the world now, so this is the world itself
+      // rather than a margin around it.
+      enemy.x = clamp(enemy.x, 0, WORLD_WIDTH)
+      enemy.y = clamp(enemy.y, 0, WORLD_HEIGHT)
     }
   }
 
@@ -1103,9 +1175,9 @@ export class World {
       if (
         shot.life <= 0 ||
         shot.x < -SPAWN_MARGIN ||
-        shot.x > ARENA_WIDTH + SPAWN_MARGIN ||
+        shot.x > WORLD_WIDTH + SPAWN_MARGIN ||
         shot.y < -SPAWN_MARGIN ||
-        shot.y > ARENA_HEIGHT + SPAWN_MARGIN
+        shot.y > WORLD_HEIGHT + SPAWN_MARGIN
       ) {
         this.projectiles.release(shot)
         continue
@@ -1231,10 +1303,9 @@ export class World {
    */
   private stepPickups(dt: number): void {
     const player = this.player
+    const breaking = this.status === 'break'
     const magnet =
-      BASE_LOOT_RANGE *
-      player.stats.lootRange *
-      (this.status === 'break' ? BREAK_LOOT_MULTIPLIER : 1)
+      BASE_LOOT_RANGE * player.stats.lootRange * (breaking ? BREAK_LOOT_MULTIPLIER : 1)
     const reach = player.radius + PICKUP_REACH
     const items = this.pickups.items
 
@@ -1257,6 +1328,17 @@ export class World {
         continue
       }
 
+      /* Everything the break cannot reach is credited where it lies.
+         Flying it in is not an option -- see BREAK_LOOT_MULTIPLIER, the homing
+         speed runs out long before the break does -- and losing it silently is
+         exactly what the break exists to prevent. Nothing is skipped visually
+         either: past the magnet a drop is 1080 away, which is well outside a
+         640-wide half-window, so there was never anything to watch. */
+      if (breaking && distance > magnet) {
+        this.collect(drop)
+        continue
+      }
+
       if (drop.age > PICKUP_SCATTER && distance < magnet) {
         const closeness = 1 - distance / magnet
         const speed = HOMING_MIN + (HOMING_MAX - HOMING_MIN) * closeness * closeness
@@ -1272,8 +1354,8 @@ export class World {
         drop.vy *= 0.92
       }
 
-      drop.x = clamp(drop.x + drop.vx * dt, 6, ARENA_WIDTH - 6)
-      drop.y = clamp(drop.y + drop.vy * dt, 6, ARENA_HEIGHT - 6)
+      drop.x = clamp(drop.x + drop.vx * dt, 6, WORLD_WIDTH - 6)
+      drop.y = clamp(drop.y + drop.vy * dt, 6, WORLD_HEIGHT - 6)
     }
   }
 

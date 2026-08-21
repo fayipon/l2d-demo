@@ -1,6 +1,12 @@
 import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
-import { ArenaScene, ARENA_HEIGHT, ARENA_WIDTH } from './scenes/ArenaScene'
+import {
+  ArenaScene,
+  VIEW_HEIGHT,
+  VIEW_WIDTH,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+} from './scenes/ArenaScene'
 import { resetRun } from './runStore'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from './data/loadouts'
 
@@ -41,13 +47,14 @@ export function GameCanvas({ loadout = DEFAULT_LOADOUT }: GameCanvasProps) {
     const game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: host,
-      width: ARENA_WIDTH,
-      height: ARENA_HEIGHT,
+      width: VIEW_WIDTH,
+      height: VIEW_HEIGHT,
       backgroundColor: '#0a0510',
       scale: {
-        // Same letterboxing the lobby gets from CSS, done by Phaser: the world
-        // is a fixed 1280x720 and the canvas is fitted into whatever space the
-        // host has, so nothing in the game needs to know the viewport size.
+        // Same letterboxing the lobby gets from CSS, done by Phaser: the
+        // window onto the world is a fixed 1280x720 and the canvas is fitted
+        // into whatever space the host has, so nothing in the game needs to
+        // know the size of the browser viewport.
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
@@ -65,7 +72,15 @@ export function GameCanvas({ loadout = DEFAULT_LOADOUT }: GameCanvasProps) {
        * six hundred enemies do to the frame time is not something you can wait
        * out by playing. Stripped from the production bundle by the guard.
        */
-      ;(window as unknown as { __arena?: Phaser.Game }).__arena = game
+      const hooks = window as unknown as {
+        __arena?: Phaser.Game
+        __arenaWorld?: { width: number; height: number }
+      }
+      hooks.__arena = game
+      // The size of the map, which nothing on the page can otherwise find out:
+      // the scene is told it, Phaser is not. scripts/bench.mjs needs it to
+      // scatter a crowd across the world rather than across the window.
+      hooks.__arenaWorld = { width: WORLD_WIDTH, height: WORLD_HEIGHT }
     }
 
     return () => {
