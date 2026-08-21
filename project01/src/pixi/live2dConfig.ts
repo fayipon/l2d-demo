@@ -5,7 +5,8 @@
 export interface Live2DVoiceLine {
   /** Index into the tap motion group. */
   motionIndex: number
-  /** Placeholder subtitle for the speech bubble -- not a transcript of the wav. */
+  /** Placeholder subtitle for the speech bubble. The voice clips are Japanese;
+   * these are display text, never a transcript. */
   caption: string
 }
 
@@ -39,9 +40,9 @@ export const haruConfig: Live2DModelConfig = {
   // The TapBody group has 4 motions, each with a Sound bound in the model3.json,
   // so playing the motion plays the voice and drives lip sync automatically.
   voiceLines: [
-    { motionIndex: 0, caption: '今日はどこへ行く？' },
-    { motionIndex: 1, caption: '新しいお知らせが届いてるよ。' },
-    { motionIndex: 2, caption: 'いつでも呼んでね。' },
-    { motionIndex: 3, caption: 'ミッション、まだ残ってるみたい。' },
+    { motionIndex: 0, caption: '今天要去哪裡呢？' },
+    { motionIndex: 1, caption: '有新的通知送到囉。' },
+    { motionIndex: 2, caption: '隨時都可以叫我喔。' },
+    { motionIndex: 3, caption: '任務好像還沒完成呢。' },
   ],
 }

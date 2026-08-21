@@ -18,7 +18,7 @@
   height: min(100vh, calc(100vw * 9 / 16));
   overflow: hidden;
   container-type: size;
-  font-family: "Segoe UI", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  font-family: "Segoe UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
   color: #fff;
 }
 
@@ -267,7 +267,7 @@
   letter-spacing: 0.02em;
 }
 
-.tile-jp {
+.tile-sub {
   font-size: 1.9cqh;
   color: var(--tone-text);
 }
@@ -391,7 +391,7 @@
     0 0 5cqh rgba(255, 45, 160, 0.7);
 }
 
-.start-jp {
+.start-sub {
   display: flex;
   align-items: center;
   gap: 1.2cqw;
