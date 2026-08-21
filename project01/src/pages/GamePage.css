@@ -45,6 +45,50 @@
   height: 1em;
 }
 
+.game-topleft {
+  position: absolute;
+  top: 1.2rem;
+  left: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+/* Laid out by the row above, not by the absolute position it carries for
+   screens that have no such row.
+
+   Three classes deep on purpose: the `.game-overlay .back-btn` rule below
+   scores the same (0,2,0) and is declared later, so at two classes this lost
+   the tie and the button stayed absolute -- inside a box the width of the coin
+   purse, which drew it one letter per line. */
+.game-overlay .game-topleft .back-btn {
+  position: static;
+}
+
+.coin-purse {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 2rem;
+  background: rgba(8, 6, 12, 0.82);
+  border: 1px solid rgba(255, 199, 74, 0.35);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.coin-icon {
+  font-size: 1.25rem;
+}
+
+.coin-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffd98a;
+  min-width: 2.2rem;
+}
+
 /* This screen has no container-query stage, so the back button is sized in rem
    rather than the lobby's cq units. */
 .game-overlay .back-btn {

@@ -127,10 +127,20 @@ export function GamePage() {
       <GameCanvas />
 
       <div className="game-overlay">
-        <button type="button" className="back-btn panel" onClick={() => navigate('/')}>
-          <Icon name="back" />
-          <span>返回大廳</span>
-        </button>
+        {/* Top-left: the way out, and the purse. Coins are what the shop will
+            spend, so they belong where the eye starts rather than tucked in
+            with the diagnostics. */}
+        <div className="game-topleft">
+          <button type="button" className="back-btn panel" onClick={() => navigate('/')}>
+            <Icon name="back" />
+            <span>返回大廳</span>
+          </button>
+
+          <div className="coin-purse">
+            <Icon name="coin" className="coin-icon" />
+            <span className="coin-value">{run.coins}</span>
+          </div>
+        </div>
 
         {/* ---------- wave ---------- */}
         <div className="wave-readout">
@@ -174,10 +184,6 @@ export function GamePage() {
 
         {/* ---------- counters ---------- */}
         <div className="counters">
-          <div className="counter">
-            <Icon name="gem" className="counter-icon" />
-            <span>{run.materials}</span>
-          </div>
           <div className="counter">
             <Icon name="skull" className="counter-icon is-kills" />
             <span>{run.kills}</span>

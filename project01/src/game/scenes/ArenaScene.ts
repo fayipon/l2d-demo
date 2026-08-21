@@ -26,7 +26,9 @@ const FLASH_TINT = 0xffffff
 /** Crits flash gold rather than white, so a big hit is visible in a crowd
  *  without a damage-number pool. */
 const CRIT_TINT = 0xffd166
-const PICKUP_TINT = 0x4fc3ff
+/** Coins are gold, and the atlas frame is a disc -- the cyan diamond it used
+ *  to be read as a gem, which is a different currency in the lobby. */
+const PICKUP_TINT = 0xffc74a
 
 /**
  * Floating damage numbers.
@@ -133,7 +135,7 @@ export class ArenaScene extends Phaser.Scene {
     // Created in paint order: depth sorting is off, so the order they are
     // added is the order they are drawn. Drops go under the crowd, shots and
     // the player over it.
-    this.pickupSprites = this.makeSprites(this.world.pickups.capacity, 'material', PICKUP_TINT)
+    this.pickupSprites = this.makeSprites(this.world.pickups.capacity, 'coin', PICKUP_TINT)
     this.enemySprites = this.makeSprites(this.world.enemies.capacity, 'grunt', 0xffffff)
     this.projectileSprites = this.makeSprites(this.world.projectiles.capacity, 'bullet', 0xffffff)
     // Added after the crowd and the shots, so a bar is never buried by the
@@ -468,7 +470,7 @@ export class ArenaScene extends Phaser.Scene {
       level: player.level,
       xp: player.xp,
       xpToLevel: player.xpToLevel,
-      materials: player.materials,
+      coins: player.coins,
       kills: world.kills,
       enemies: world.enemies.used,
       fps: Math.round(this.game.loop.actualFps),

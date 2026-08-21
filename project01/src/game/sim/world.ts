@@ -6,6 +6,7 @@ import {
   BASE_STATS,
   DODGE_CAP,
   ENEMY_KINDS,
+  LEVEL_BONUS,
   SPREAD_PER_EXTRA_SHOT,
   WEAPONS,
   armourReduction,
@@ -164,7 +165,7 @@ export interface PlayerState {
   invuln: number
   /** Counts down after a dodge, purely so the player can see one happen. */
   dodgeFlash: number
-  materials: number
+  coins: number
   level: number
   xp: number
   xpToLevel: number
@@ -286,7 +287,7 @@ export class World {
       hp: BASE_STATS.maxHp,
       invuln: 0,
       dodgeFlash: 0,
-      materials: 0,
+      coins: 0,
       level: 1,
       xp: 0,
       xpToLevel: xpForLevel(1),
@@ -345,7 +346,7 @@ export class World {
     player.hp = player.stats.maxHp
     player.invuln = 0
     player.dodgeFlash = 0
-    player.materials = 0
+    player.coins = 0
     player.level = 1
     player.xp = 0
     player.xpToLevel = xpForLevel(1)
@@ -870,6 +871,11 @@ export class World {
 
   private kill(enemy: Enemy): void {
     this.kills += 1
+    // Experience for the kill itself, separate from anything it drops. Killing
+    // and collecting are different actions and both should count -- otherwise
+    // a wave spent clearing a crowd out of reach pays nothing.
+    this.grantXp(ENEMY_KINDS[enemy.kind].xp)
+
     for (let i = 0; i < enemy.drop; i++) {
       const drop = this.pickups.spawn()
       if (!drop) {
@@ -954,14 +960,37 @@ export class World {
 
   private collect(drop: Pickup): void {
     const player = this.player
-    player.materials += drop.value
-    player.xp += drop.value
+    player.coins += drop.value
     this.pickups.release(drop)
+    this.grantXp(drop.value)
+  }
+
+  /**
+   * The single door experience comes in through.
+   *
+   * Both sources -- the kill and the coin it drops -- funnel here, so the
+   * level-up rule exists once. A while loop rather than an if, because a brute
+   * paying four at a time can cross two thresholds in one call.
+   */
+  private grantXp(amount: number): void {
+    if (amount <= 0) {
+      return
+    }
+    const player = this.player
+    player.xp += amount
 
     while (player.xp >= player.xpToLevel) {
       player.xp -= player.xpToLevel
       player.level += 1
       player.xpToLevel = xpForLevel(player.level)
+
+      // The automatic half of a level, before the card is even offered. Health
+      // is healed by what it gained, for the same reason the card does it:
+      // a ceiling raised over an empty tank is not a reward.
+      player.stats.maxHp += LEVEL_BONUS.maxHp
+      player.hp = Math.min(player.stats.maxHp, player.hp + LEVEL_BONUS.maxHp)
+      player.stats.damage += LEVEL_BONUS.damage
+
       this.pendingLevels += 1
       if (this.offers.length === 0) {
         this.offers = rollUpgradeOffers(player.stats, this.random)

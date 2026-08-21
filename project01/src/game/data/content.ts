@@ -16,7 +16,7 @@ export type SpriteFrame =
   | 'brute'
   | 'bullet'
   | 'blade'
-  | 'material'
+  | 'coin'
   | 'bar'
 
 export interface EnemyKind {
@@ -30,8 +30,10 @@ export interface EnemyKind {
   speed: number
   radius: number
   contactDamage: number
-  /** Material pickups dropped on death. */
+  /** Coins dropped on death. Each is also worth one experience when collected. */
   drop: number
+  /** Experience for the kill itself, before anything is picked up. */
+  xp: number
   /** How much this one resists being shoved by a hit. */
   mass: number
   /** First wave this kind can appear on. */
@@ -51,6 +53,7 @@ export const ENEMY_KINDS: EnemyKind[] = [
     radius: 13,
     contactDamage: 6,
     drop: 1,
+    xp: 1,
     mass: 1,
     fromWave: 1,
     weight: 10,
@@ -65,6 +68,7 @@ export const ENEMY_KINDS: EnemyKind[] = [
     radius: 11,
     contactDamage: 5,
     drop: 1,
+    xp: 1,
     mass: 0.7,
     fromWave: 2,
     weight: 7,
@@ -79,6 +83,7 @@ export const ENEMY_KINDS: EnemyKind[] = [
     radius: 22,
     contactDamage: 14,
     drop: 4,
+    xp: 4,
     mass: 3.2,
     fromWave: 4,
     weight: 3,
@@ -170,9 +175,18 @@ export function speedScale(wave: number): number {
   return Math.min(1.45, 1 + 0.028 * (wave - 1))
 }
 
-/** Experience needed to reach the next level. */
+/**
+ * Experience needed to reach the next level.
+ *
+ * Raised when kills started paying experience of their own, but deliberately
+ * by less than the income went up. The first attempt at this curve cancelled
+ * the new source exactly -- level 10 by wave 7 either way -- which would have
+ * made the whole change invisible. This one lands around level 12 by wave 7
+ * against the same bot, so killing something out of reach is worth doing
+ * without turning a wave into a queue of upgrade screens.
+ */
 export function xpForLevel(level: number): number {
-  return Math.round(4 + level * 3.2 + level * level * 0.35)
+  return Math.round(5 + level * 4.2 + level * level * 0.45)
 }
 
 /** Picks a kind for the wave, weighted. `roll` is 0..1. */
@@ -445,6 +459,24 @@ const UPGRADE_BY_ID = new Map(UPGRADES.map((upgrade) => [upgrade.id, upgrade]))
 export function getUpgrade(id: UpgradeId): Upgrade | undefined {
   return UPGRADE_BY_ID.get(id)
 }
+
+/**
+ * Granted by every level on top of whatever card is chosen.
+ *
+ * The card is the decision; this is the floor under it. Without something
+ * automatic, a run that keeps drawing utility cards gets no sturdier as the
+ * waves scale, and levelling stops feeling like progress in the two numbers
+ * that matter most.
+ *
+ * Deliberately small. It is a floor, not the reward -- if it were large the
+ * card would stop mattering.
+ */
+export const LEVEL_BONUS = {
+  /** Flat, and healed by the same amount. */
+  maxHp: 4,
+  /** Added to the damage multiplier, the same way the card adds to it. */
+  damage: 0.04,
+} as const
 
 /** How many cards a level offers. */
 export const OFFER_COUNT = 3

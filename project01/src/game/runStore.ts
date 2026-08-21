@@ -26,7 +26,7 @@ export interface RunSnapshot {
   level: number
   xp: number
   xpToLevel: number
-  materials: number
+  coins: number
   kills: number
   /** Live entity counts, so a performance problem is visible rather than felt. */
   enemies: number
@@ -49,7 +49,7 @@ const EMPTY: RunSnapshot = {
   level: 1,
   xp: 0,
   xpToLevel: 1,
-  materials: 0,
+  coins: 0,
   kills: 0,
   enemies: 0,
   fps: 0,

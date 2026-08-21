@@ -83,10 +83,13 @@ const SHAPES: ShapeSpec[] = [
     draw: (ctx, w, h, inset) => polygon(ctx, w / 2, h / 2, w / 2 - inset, 4, 0),
   },
   {
-    name: 'material',
+    name: 'coin',
     width: 14,
     height: 14,
-    draw: (ctx, w, h, inset) => polygon(ctx, w / 2, h / 2, w / 2 - inset, 4, 0),
+    draw: (ctx, w, h, inset) => {
+      ctx.beginPath()
+      ctx.arc(w / 2, h / 2, w / 2 - inset, 0, Math.PI * 2)
+    },
   },
   {
     // Health bars. Solid and rectangular: it is stretched to whatever width and
