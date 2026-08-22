@@ -163,6 +163,7 @@ type RunCommand =
   | { sort: 'reroll' }
   | { sort: 'leave' }
   | { sort: 'merge'; from: number; to: number }
+  | { sort: 'sell'; slot: number }
 const commandQueue: RunCommand[] = []
 
 export function requestBuy(slot: number): void {
@@ -181,6 +182,12 @@ export function requestLeaveShop(): void {
  *  whether the pair is legal; the HUD only asks. */
 export function requestMerge(from: number, to: number): void {
   commandQueue.push({ sort: 'merge', from, to })
+}
+
+/** Sells the weapon in a rack slot. The simulation decides whether it may go
+ *  -- the last weapon may not -- and the HUD only asks. */
+export function requestSell(slot: number): void {
+  commandQueue.push({ sort: 'sell', slot })
 }
 
 export function drainCommands(): RunCommand[] {

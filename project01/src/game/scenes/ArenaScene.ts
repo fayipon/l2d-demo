@@ -309,14 +309,34 @@ export class ArenaScene extends Phaser.Scene {
     }
 
     for (const command of drainCommands()) {
-      if (command.sort === 'buy') {
-        world.buy(command.slot)
-      } else if (command.sort === 'reroll') {
-        world.reroll()
-      } else if (command.sort === 'merge') {
-        world.mergeWeapons(command.from, command.to)
-      } else {
-        world.leaveShop()
+      /*
+       * Exhaustive on purpose. This was a chain ending in a bare `else` that
+       * called leaveShop, and adding a command to the queue without a branch
+       * here landed it silently in that else -- a sell that quietly tried to
+       * leave the shop, and did nothing at all outside one. Nothing caught it:
+       * the else accepted any shape. The `never` below makes the next
+       * omission a compile error instead of a mystery.
+       */
+      switch (command.sort) {
+        case 'buy':
+          world.buy(command.slot)
+          break
+        case 'reroll':
+          world.reroll()
+          break
+        case 'merge':
+          world.mergeWeapons(command.from, command.to)
+          break
+        case 'sell':
+          world.sellWeapon(command.slot)
+          break
+        case 'leave':
+          world.leaveShop()
+          break
+        default: {
+          const unhandled: never = command
+          throw new Error(`unhandled run command: ${JSON.stringify(unhandled)}`)
+        }
       }
     }
 

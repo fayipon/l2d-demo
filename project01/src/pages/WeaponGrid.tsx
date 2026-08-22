@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { Emblem, type EmblemTone } from '../components/Emblem'
+import { Icon } from '../components/icons'
 import {
   MAX_WEAPON_SLOTS,
   WEAPONS,
@@ -7,7 +8,8 @@ import {
   tierDamageScale,
   tierRateScale,
 } from '../game/data/content'
-import { requestMerge } from '../game/runStore'
+import { weaponSellValue } from '../game/data/shop'
+import { requestMerge, requestSell } from '../game/runStore'
 import type { RunSnapshot } from '../game/runStore'
 
 /**
@@ -63,14 +65,23 @@ export function WeaponGrid({ run, detailed = false }: WeaponGridProps) {
   const weapons = run.weapons
   const dragging = drag && !drag.rejected ? weapons[drag.from] : undefined
 
-  /* Which slot the pointer is over, by asking the document rather than by
-     keeping a table of rectangles: the grid reflows whenever a fusion removes
-     a slot, and cached rectangles would be stale exactly when it matters. */
-  const slotUnder = (x: number, y: number): number => {
-    const el = document.elementFromPoint(x, y)?.closest('[data-slot]')
-    const index = el?.getAttribute('data-slot')
-    return index === null || index === undefined ? -1 : Number(index)
+  /* What the pointer is over, by asking the document rather than by keeping a
+     table of rectangles: the grid reflows whenever a fusion removes a slot,
+     and cached rectangles would be stale exactly when it matters. */
+  const dropUnder = (x: number, y: number): { slot: number } | 'sell' | null => {
+    const el = document.elementFromPoint(x, y)?.closest('[data-slot], [data-sell]')
+    if (!el) {
+      return null
+    }
+    if (el.hasAttribute('data-sell')) {
+      return 'sell'
+    }
+    return { slot: Number(el.getAttribute('data-slot')) }
   }
+
+  /* The last weapon cannot be sold -- see World.sellWeapon -- so the zone says
+     so rather than swallowing the drop and doing nothing. */
+  const canSell = weapons.length > 1
 
   const onPointerDown = (event: PointerEvent<HTMLLIElement>, from: number) => {
     if (!weapons[from]) {
@@ -99,9 +110,14 @@ export function WeaponGrid({ run, detailed = false }: WeaponGridProps) {
     if (!drag || drag.rejected) {
       return
     }
-    const to = slotUnder(event.clientX, event.clientY)
-    if (to >= 0 && canMerge(weapons[drag.from], weapons[to])) {
-      requestMerge(drag.from, to)
+    const over = dropUnder(event.clientX, event.clientY)
+    if (over === 'sell' && canSell) {
+      requestSell(drag.from)
+      setDrag(null)
+      return
+    }
+    if (over && over !== 'sell' && canMerge(weapons[drag.from], weapons[over.slot])) {
+      requestMerge(drag.from, over.slot)
       setDrag(null)
       return
     }
@@ -169,10 +185,43 @@ export function WeaponGrid({ run, detailed = false }: WeaponGridProps) {
                   {(weapon.cooldown / tierRateScale(held.tier)).toFixed(2)}s
                 </span>
               ) : null}
+              {/* What it is worth, on the slot rather than only in the sell
+                  zone: deciding what to let go of means comparing them to each
+                  other, which is not something to do one drag at a time. */}
+              <span className="grid-value">
+                {weaponSellValue(held.kind, held.tier, run.wave)}
+              </span>
             </li>
           )
         })}
       </ul>
+
+      {/* Where a weapon goes to be sold. Always present rather than appearing
+          mid-drag: a target that materialises under the hand is one the player
+          has to discover by accident. */}
+      <div
+        data-sell=""
+        className={[
+          'sell-zone',
+          dragging !== undefined ? 'is-live' : '',
+          dragging !== undefined && !canSell ? 'is-refused' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <Icon name="coin" className="sell-coin" />
+        {dragging !== undefined ? (
+          canSell ? (
+            <span>
+              賣出 <b>+{weaponSellValue(dragging.kind, dragging.tier, run.wave)}</b>
+            </span>
+          ) : (
+            <span>最後一把武器不能賣</span>
+          )
+        ) : (
+          <span>拖到此處賣出</span>
+        )}
+      </div>
 
       {/* The dragged slot, following the pointer. Outside the grid's flow and
           deaf to the pointer, so what is under the cursor is the slot beneath

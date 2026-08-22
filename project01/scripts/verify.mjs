@@ -250,6 +250,39 @@ try {
       'a pair at the ceiling fused past it',
     )
 
+    /* ---------- selling ---------- */
+
+    world.wave = 1
+    setRack([1, 1], [1, 1])
+    const purse = world.player.coins
+    const sold = world.sellWeapon(0)
+    /* 碎裂刃 lists at 26, tier I sells at full rate, and wave 1 adds no
+       markup -- so this number is the whole formula with nothing hidden in
+       it. If the price list moves this fails, which is the point. */
+    check(
+      'a tier I weapon sells for its full list price',
+      sold && rack.length === 1 && world.player.coins === purse + 26,
+      `coins went ${purse} -> ${world.player.coins}, expected +26`,
+    )
+
+    setRack([1, 2], [1, 1])
+    const purse2 = world.player.coins
+    world.sellWeapon(0)
+    check(
+      'each tier above the first takes ten points off the price',
+      // 26 * 1.9 = 49 at tier II, at 90% = 44.
+      world.player.coins === purse2 + 44,
+      `a tier II went for ${world.player.coins - purse2}, expected 44`,
+    )
+
+    setRack([1, 1])
+    const purse3 = world.player.coins
+    check(
+      'the last weapon cannot be sold',
+      !world.sellWeapon(0) && rack.length === 1 && world.player.coins === purse3,
+      'the rack was emptied, which leaves the run unable to kill anything',
+    )
+
     game.scene.resume('arena')
     return checks
   })

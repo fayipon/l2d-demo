@@ -33,6 +33,7 @@ import {
   SHOP_ITEMS,
   rerollPrice,
   rollShop,
+  weaponSellValue,
   type MergeTarget,
   type ShopOffer,
 } from '../data/shop'
@@ -747,6 +748,25 @@ export class World {
       return false
     }
     weapons.push({ kind, tier, cooldown: 0 })
+    return true
+  }
+
+  /**
+   * Sells the weapon in a slot back for coins.
+   *
+   * The last one cannot be sold. A run with an empty rack cannot kill
+   * anything, so the only thing on the far side of that drop is a wave spent
+   * watching -- and it is one slip of the hand away, which is not a decision,
+   * it is an accident waiting for somewhere to happen.
+   */
+  sellWeapon(slot: number): boolean {
+    const weapons = this.player.weapons
+    const held = weapons[slot]
+    if (!held || weapons.length <= 1) {
+      return false
+    }
+    this.player.coins += weaponSellValue(held.kind, held.tier, this.wave)
+    weapons.splice(slot, 1)
     return true
   }
 

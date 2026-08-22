@@ -111,6 +111,26 @@ export function priceAtWave(base: number, wave: number): number {
   return Math.max(1, Math.round(base * (1 + 0.16 * (wave - 1))))
 }
 
+/**
+ * What a weapon fetches when sold.
+ *
+ * The base is what the shop would charge for that exact weapon right now, so
+ * the number on a rack slot is on the same scale as the numbers on the cards
+ * beside it -- a resale value quoted against a list price nobody is being
+ * shown would be a number to nowhere.
+ *
+ * The tier rate is a tax on merging: full price at tier I, ten points off for
+ * every tier above it. Two tier-I blades sell for 52 apiece-and-apiece; fused
+ * and sold they fetch 44. Fusing is for fighting with, not for resale.
+ */
+export function sellRate(tier: number): number {
+  return Math.max(0.1, 1 - 0.1 * (tier - 1))
+}
+
+export function weaponSellValue(kind: number, tier: number, wave: number): number {
+  return Math.max(1, Math.round(priceAtWave(weaponPrice(kind, tier), wave) * sellRate(tier)))
+}
+
 /** What a reroll costs, given how many have already been bought this visit. */
 export function rerollPrice(wave: number, used: number): number {
   return Math.round((3 + wave) * Math.pow(1.6, used))
