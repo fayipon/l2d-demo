@@ -1,7 +1,8 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
 import { Minimap } from './Minimap'
+import { Inventory } from './Inventory'
 import { Icon, type IconName } from '../components/icons'
 import { Emblem, type EmblemTone } from '../components/Emblem'
 import {
@@ -201,6 +202,39 @@ export function GamePage() {
     })
   }, [run.deaths, run.wave, run.kills, run.coins, run.hitsTaken])
 
+  /*
+   * The equipment sheet, on I.
+   *
+   * Local state rather than anything the scene knows about: it reads the
+   * published snapshot and changes nothing, so the arena has no business being
+   * told it is open.
+   */
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  /* Hidden, not closed, while a screen that owns the whole display is up.
+     Derived rather than pushed into state by an effect: an effect that calls
+     setState is a second render to reach a value that was already knowable
+     during the first, and it would also fight the key handler over who owns
+     the flag. */
+  const overlayUp = run.pendingLevels > 0 || run.status === 'shop' || run.status === 'dead'
+  const showSheet = sheetOpen && !overlayUp
+
+  useEffect(() => {
+    if (overlayUp) {
+      return
+    }
+    const onKey = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase()
+      if (key === 'i') {
+        setSheetOpen((open) => !open)
+      } else if (key === 'escape') {
+        setSheetOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [overlayUp])
+
   const hpPercent = run.maxHp > 0 ? (run.hp / run.maxHp) * 100 : 0
   const xpPercent = run.xpToLevel > 0 ? (run.xp / run.xpToLevel) * 100 : 0
   const choosing = run.pendingLevels > 0
@@ -395,6 +429,16 @@ export function GamePage() {
           </div>
         ) : null}
 
+        {showSheet ? (
+          <Inventory
+            run={run}
+            statIcon={STAT_ICON}
+            statFormat={STAT_FORMAT}
+            statOrder={STAT_ORDER}
+            onClose={() => setSheetOpen(false)}
+          />
+        ) : null}
+
         {/* ---------- level up ---------- */}
         {choosing ? (
           <div className="levelup">
@@ -587,7 +631,7 @@ export function GamePage() {
 
         <p className="game-hint">
           {loadout.trait ? `${loadout.trait} · ` : ''}
-          WASD / 方向鍵 移動 · 武器自動開火
+          WASD / 方向鍵 移動 · 武器自動開火 · I 查看裝備
         </p>
 
         {/* Bottom-left, out of the way. The top-left corner belongs to the
