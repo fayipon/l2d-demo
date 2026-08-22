@@ -5,6 +5,7 @@ import { StageShell } from '../components/StageShell'
 import { Icon } from '../components/icons'
 import { useSelectedCharacter } from '../app/selectedCharacterContext'
 import { ROSTER } from '../features/character'
+import { arenaProfile } from '../features/arenaProfile'
 import { savePortrait, usePortraits } from '../features/portraits'
 import './CharacterPage.css'
 
@@ -18,6 +19,10 @@ export function CharacterPage() {
   const { character, select } = useSelectedCharacter()
   const [muted, setMuted] = useState(false)
   const [tab, setTab] = useState<PanelTab>('stats')
+  // Recomputed on selection rather than memoised: it is four multiplications
+  // and a lookup, and a stale profile beside a live portrait would be the
+  // exact failure this whole change exists to remove.
+  const profile = arenaProfile(character.id)
   const [expression, setExpression] = useState(0)
   const [bubble, setBubble] = useState({ text: '', visible: false })
   const portraits = usePortraits()
@@ -147,17 +152,55 @@ export function CharacterPage() {
           <div className="tab-body">
             {tab === 'stats' ? (
               <>
+                {/* Everything below is derived from the loadout the run is
+                    actually built from -- see features/arenaProfile. It used to
+                    be a hand-written block on a scale nothing else in the game
+                    used, which is the sort of number people read before
+                    choosing and then never see again. */}
                 <dl className="char-stats">
-                  {character.stats.map((stat) => (
-                    <div className="char-stat" key={stat.id}>
-                      <dt>{stat.label}</dt>
-                      <dd>{stat.value.toLocaleString('zh-Hant')}</dd>
+                  {profile.rows.map((row) => (
+                    <div className="char-stat" key={row.id}>
+                      <dt>{row.label}</dt>
+                      <dd>{row.text}</dd>
                       <div className="char-stat-bar">
-                        <div className="char-stat-fill" style={{ width: `${stat.ratio * 100}%` }} />
+                        <div
+                          className="char-stat-fill"
+                          style={{ width: `${Math.round(row.ratio * 100)}%` }}
+                        />
                       </div>
                     </div>
                   ))}
                 </dl>
+
+                {profile.weapon ? (
+                  <div className="char-weapon">
+                    <p className="char-weapon-head">
+                      <Icon name="swords" />
+                      起手武器
+                      <b>{profile.weapon.label}</b>
+                      <span className="char-weapon-family">{profile.weapon.family}</span>
+                    </p>
+                    <p className="char-weapon-detail">{profile.weapon.detail}</p>
+                    <p className="char-weapon-numbers">
+                      <span>傷害 {profile.weapon.damage}</span>
+                      <span>間隔 {profile.weapon.cooldown.toFixed(2)}s</span>
+                      <span>射程 {profile.weapon.range}</span>
+                      {profile.weapon.count > 1 ? <span>彈數 {profile.weapon.count}</span> : null}
+                    </p>
+                  </div>
+                ) : null}
+
+                {profile.mods.length > 0 ? (
+                  <ul className="char-mods">
+                    {profile.mods.map((mod) => (
+                      <li key={mod.id} className={mod.penalty ? 'is-penalty' : ''}>
+                        <span>{mod.label}</span>
+                        <b>{mod.text}</b>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
                 <p className="char-bio">{character.bio}</p>
               </>
             ) : (

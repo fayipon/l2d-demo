@@ -481,3 +481,92 @@
   color: #ffdcef;
   letter-spacing: 0.16em;
 }
+
+/* ---------- what the character brings into the arena ---------- */
+/*
+ * All of this is derived from the run's loadout rather than written here --
+ * see features/arenaProfile. The screen is a spec sheet now, so it is laid out
+ * as one: the four comparative bars, then the weapon, then the trade the
+ * character makes.
+ */
+.char-weapon {
+  margin-top: 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.char-weapon-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.char-weapon-head b {
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+
+.char-weapon-family {
+  padding: 0.06rem 0.42rem;
+  border-radius: 1rem;
+  border: 1px solid var(--accent);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.char-weapon-detail {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.char-weapon-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* The trade, spelled out. The trait line underneath says it in prose; this
+   says it in the numbers the arena will actually apply. */
+.char-mods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem 0.9rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.char-mods li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.char-mods b {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #7ee0a8;
+}
+
+/* The minus half. Every character pays for their plus with one of these, and
+   a selection screen that shows only the plus is an advertisement. */
+.char-mods li.is-penalty b {
+  color: #ff7a9c;
+}

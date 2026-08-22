@@ -605,11 +605,18 @@ export const DODGE_CAP = 0.6
  * Flat subtraction makes weak enemies harmless the moment armour passes their
  * damage; a flat percentage stacks to immunity. This form gives 50% at 20
  * points, 67% at 40, and never reaches 100.
+ *
+ * It runs below zero as well, and has to. Base armour is nothing, so every
+ * design in the game that charges armour was charging nothing: Rice's -3 and
+ * the glass lens's -4 both read as a price on the screen and cost the player
+ * exactly zero, because this used to clamp at the first point. Negative armour
+ * now takes more damage on the mirrored curve -- -4 is 17% more, -20 is 50%
+ * more -- which is what makes armour a currency a trade can spend.
  */
 const ARMOUR_HALF_POINT = 20
 
 export function armourReduction(armour: number): number {
-  return armour <= 0 ? 0 : armour / (armour + ARMOUR_HALF_POINT)
+  return armour / (Math.abs(armour) + ARMOUR_HALF_POINT)
 }
 
 /**

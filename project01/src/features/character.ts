@@ -24,14 +24,6 @@ import background04 from '../assets/game-background-04.webp'
  * and covered by Live2D's Free Material Licence -- fine for a demo, worth
  * re-reading before anything commercial.
  */
-export interface CharacterStat {
-  id: string
-  label: string
-  value: number
-  /** Bar fill as a fraction of the screen's implied cap. */
-  ratio: number
-}
-
 export interface CharacterSkill {
   id: string
   name: string
@@ -58,7 +50,11 @@ export interface Character {
   levelCap: number
   element: string
   bio: string
-  stats: CharacterStat[]
+  /* No stat block here. What a character is worth in the arena is decided by
+     their loadout in game/data/loadouts.ts, and features/arenaProfile derives
+     the selection screen from it -- a second, hand-written set of numbers on
+     this screen was a set of numbers and a piece of fiction, and the fiction
+     was the half people read before choosing. */
   skills: CharacterSkill[]
   /** Framing for the home screen and for the character screen. */
   home: Live2DModelConfig
@@ -79,12 +75,6 @@ export const ROSTER: Character[] = [
     levelCap: 60,
     element: '闇',
     bio: '在血月籠罩的城下獨自巡守的劍士。話不多，但只要開口，多半是提醒你別走太遠。',
-    stats: [
-      { id: 'atk', label: '攻擊', value: 1842, ratio: 0.78 },
-      { id: 'def', label: '防禦', value: 1216, ratio: 0.54 },
-      { id: 'spd', label: '速度', value: 137, ratio: 0.66 },
-      { id: 'hp', label: '生命', value: 9480, ratio: 0.88 },
-    ],
     skills: [
       {
         id: 'slash', name: '緋刃', kind: '普攻', tone: 'normal', icon: 'sword',
@@ -121,12 +111,6 @@ export const ROSTER: Character[] = [
     levelCap: 50,
     element: '風',
     bio: '跑遍整座城送信的少女。腳程比誰都快，但總會在半路停下來看風景。',
-    stats: [
-      { id: 'atk', label: '攻擊', value: 1206, ratio: 0.51 },
-      { id: 'def', label: '防禦', value: 964, ratio: 0.43 },
-      { id: 'spd', label: '速度', value: 186, ratio: 0.94 },
-      { id: 'hp', label: '生命', value: 7320, ratio: 0.68 },
-    ],
     skills: [
       {
         id: 'dash', name: '疾風連擊', kind: '普攻', tone: 'normal', icon: 'sword',
@@ -163,12 +147,6 @@ export const ROSTER: Character[] = [
     levelCap: 60,
     element: '光',
     bio: '掌管地下書庫的守夜人。記得每一本書的位置，也記得每一個借走沒還的人。',
-    stats: [
-      { id: 'atk', label: '攻擊', value: 1654, ratio: 0.7 },
-      { id: 'def', label: '防禦', value: 1428, ratio: 0.63 },
-      { id: 'spd', label: '速度', value: 121, ratio: 0.58 },
-      { id: 'hp', label: '生命', value: 8760, ratio: 0.81 },
-    ],
     skills: [
       {
         id: 'quill', name: '銀筆', kind: '普攻', tone: 'normal', icon: 'sword',
@@ -205,12 +183,6 @@ export const ROSTER: Character[] = [
     levelCap: 60,
     element: '靈',
     bio: '在城外神社替旅人祓除穢氣的巫女。看起來溫和，動起手來卻毫不留情。',
-    stats: [
-      { id: 'atk', label: '攻擊', value: 1978, ratio: 0.84 },
-      { id: 'def', label: '防禦', value: 1042, ratio: 0.46 },
-      { id: 'spd', label: '速度', value: 154, ratio: 0.75 },
-      { id: 'hp', label: '生命', value: 8120, ratio: 0.75 },
-    ],
     skills: [
       {
         id: 'purify', name: '祓刃', kind: '普攻', tone: 'normal', icon: 'sword',

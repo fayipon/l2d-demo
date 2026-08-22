@@ -461,6 +461,41 @@ try {
       'the staff read an attack power that is not its own',
     )
 
+    /* ---------- armour cuts both ways ---------- */
+
+    /* Base armour is zero, so until this was fixed every design that charged
+       armour charged nothing -- a price on the character screen and on a shop
+       card that the simulation clamped away. Measured as damage taken, which
+       is the only place it shows. */
+    const hitFor = (armour) => {
+      reset()
+      world.player.stats.armour = armour
+      world.player.stats.dodge = 0
+      world.player.hp = 1000
+      world.player.invuln = 0
+      world.spawnEnemy()
+      const biter = world.enemies.items.find((e) => e.active)
+      biter.arriving = 0
+      biter.x = world.player.x
+      biter.y = world.player.y
+      const before = world.player.hp
+      steps(1)
+      return before - world.player.hp
+    }
+
+    const plain = hitFor(0)
+    check(
+      'negative armour costs the player real health',
+      hitFor(-10) > plain,
+      `a hit at 0 armour took ${plain}, at -10 armour it took ${hitFor(-10)} -- ` +
+        'so every card that charges armour is charging nothing',
+    )
+    check(
+      'positive armour still protects',
+      hitFor(20) < plain,
+      `20 armour took ${hitFor(20)} against ${plain} unarmoured`,
+    )
+
     game.scene.resume('arena')
     return checks
   })
