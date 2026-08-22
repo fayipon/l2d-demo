@@ -66,6 +66,19 @@ outside, and a minimap shows what the viewport no longer can.
   - **Still open**: whether a character trait should carry a vision minus. The
     shop trade `血色鏡片` (+20% damage, -30% sight) is currently the only way
     the stat goes down.
+- **Step 4 done** (`a5cb83c`), plus a HUD and card-screen rebuild against
+  `DESIGN/game_screen_01` and `02` (`3f408f9`). No new art: the portrait comes
+  from the Live2D capture the lobby already makes, and card art from the
+  achievement medallions.
+  - **The minimap is DOM, not scene**, reversing this plan. The argument
+    against DOM was about hundreds of *nodes*; a single canvas is one node
+    doing fillRect. It also settles the coordinate-system question this plan
+    left open — scene-drawn, the map sits at the letterboxed arena's corner
+    while the objectives panel it must hang above sits at the window's.
+  - Not filtered by vision, as recommended. Vision shows on the map as a ring
+    around the player instead.
+  - Rarity on the cards is read off data that already ranks things: draw
+    weight, list price, weapon tier. No new table to drift.
 - **Correction to a number quoted below**: the 0.45ms simulation step is not
   reproducible, and neither is the 0.999ms the harness first recorded. Spread
   on this machine is about ±0.4ms, so only interleaved A/B in one sitting
