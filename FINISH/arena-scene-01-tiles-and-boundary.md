@@ -290,3 +290,14 @@ Re-measured after both: `verify` **28/28**, `bench` at 700 enemies **16.88 /
 nothing measurable on this machine -- it is a discrete GPU and the frame is
 vsync-bound either way, so this is the number to re-check first if the arena
 ever runs badly on a laptop.
+
+### And a third: the side walls were facing the wrong way
+
+Both of them, mirrored, which is why it read as wrong rather than as broken.
+The span is drawn face-on -- the stone face is the lower part of the frame and
+the capping course the upper part -- so whichever way the frame's bottom points
+after a quarter turn is the way the wall faces. Clockwise sends it left,
+anticlockwise sends it right, and the two edges had them the wrong way round:
+both walls were facing out into the dark with their caps toward the arena, so
+the field read as the outside of a building rather than the inside of one.
+Swapped, and the pillars now stand against a face rather than a roof.

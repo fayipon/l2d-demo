@@ -295,9 +295,22 @@ function buildBoundary(scene: Phaser.Scene, map: ArenaMap): { back: Phaser.GameO
   const sideLength = WORLD_HEIGHT + post.height * 2
   const sideCount = Math.max(1, Math.round(sideLength / span.width))
   const sideStep = sideLength / sideCount
+  /*
+   * Which way each side is turned is not a free choice, and getting it wrong
+   * is visible from across the room.
+   *
+   * The span is drawn face-on: the stone face the viewer sees is the lower part
+   * of the frame and the capping course is the upper part. Turned a quarter
+   * turn, whichever way the frame's bottom now points is the way the wall is
+   * facing -- and a boundary wall faces *into* the field, the same as the far
+   * and near runs do. A quarter turn clockwise sends the frame's bottom to the
+   * left, so that is the right edge; anticlockwise sends it right, so that is
+   * the left. Turned the other way round, both walls face out into the dark and
+   * the arena reads as the outside of a building.
+   */
   for (const [edgeX, angle] of [
-    [-span.height / 2, 90],
-    [WORLD_WIDTH + span.height / 2, -90],
+    [-span.height / 2, -90],
+    [WORLD_WIDTH + span.height / 2, 90],
   ] as const) {
     for (let i = 0; i < sideCount; i++) {
       const piece = scene.add.image(edgeX, sideTop + (i + 0.5) * sideStep, TILES_KEY, requireFrame(scene, style.span))
