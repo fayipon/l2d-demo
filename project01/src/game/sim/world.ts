@@ -132,7 +132,7 @@ export const ARRIVAL_SECONDS = 0.6
  * one screen that ended at a wall after 2.8 seconds; across 3200x1800 it runs
  * for sixteen, and the stragglers neither catch up nor ever disappear. They
  * accumulate to the pool's capacity, and from there every new spawn is dropped
- * for want of a slot: seven hundred enemies trailing a player who is never
+ * for want of a slot: a full pool of enemies trailing a player who is never
  * touched, and nothing at all in front of them.
  *
  * Set well outside the longest reach in the game -- a railgun at 620 with the
@@ -145,7 +145,24 @@ const CULL_DISTANCE = 1700
 const BREAK_SECONDS = 3
 
 const PLAYER_INVULN = 0.55
-const CAPACITY = { enemies: 700, projectiles: 500, pickups: 600 }
+
+/**
+ * How many of each may be alive at once.
+ *
+ * The enemy figure is the real ceiling on how big a wave can get: once the
+ * pool is full every further spawn is dropped, so this and not the spawn rate
+ * is what a late wave runs into. It was 700, which the curve reached at wave
+ * 20 -- and a wave that cannot grow is a wave that only gets tougher, not
+ * bigger.
+ *
+ * 1200 is where it sits now, and that is a measured number rather than a
+ * hopeful one. With 1200 alive and all of them packed into the window, which
+ * is the worst case the arena can produce: 60fps, a 3.04ms simulation step
+ * against a 16.67ms budget, 3445 of 4759 display objects actually rendered.
+ * Spread across the world it is 1.80ms and 962 rendered. There is room above
+ * this; what there may not be room for is a screen anyone can read.
+ */
+const CAPACITY = { enemies: 1200, projectiles: 500, pickups: 600 }
 
 /** How far past the player's own edge a drop counts as collected. */
 const PICKUP_REACH = 12

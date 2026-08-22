@@ -13,7 +13,7 @@
  * measurement hook is added to the game for this.
  *
  *   npm run bench
- *   npm run bench -- --enemies 700 --seconds 6
+ *   npm run bench -- --enemies 1200 --seconds 6
  *   npm run bench -- --spread world      (scatter across the map, not the view)
  *
  * --spread view  puts the crowd inside the camera, which is what the arena has
@@ -43,7 +43,9 @@ for (let i = 0; i < args.length; i++) {
 const flag = (name, fallback) => flags.get(name) ?? fallback
 
 const base = flag('base', 'http://localhost:5173')
-const enemies = Number(flag('enemies', 700))
+// Defaults to the enemy pool's capacity, so a bare run measures the ceiling
+// the game can actually reach rather than a number that used to be it.
+const enemies = Number(flag('enemies', 1200))
 const seconds = Number(flag('seconds', 6))
 const spread = flag('spread', 'view')
 /*

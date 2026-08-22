@@ -276,9 +276,22 @@ export function waveDuration(wave: number): number {
   return Math.min(20 + wave * 2, 46)
 }
 
-/** Seconds between spawns. Falls off fast early, then flattens. */
+/**
+ * Seconds between spawns.
+ *
+ * The floor used to be 0.1, which is ten a second, which against a wave
+ * capped at 46 seconds is 460 -- and the curve reaches that floor at wave 16.
+ * Every wave from the sixteenth onwards sent exactly the same 460 enemies, and
+ * the only thing that grew after that was their health. A wave is meant to get
+ * bigger as well as tougher.
+ *
+ * 0.035 is roughly two spawns per simulation step, which the director's while
+ * loop already handles -- its own comment says so. The real ceiling is now the
+ * enemy pool: spawns past capacity are dropped, which is the honest place for
+ * a limit and the number the frame budget was measured against.
+ */
 export function spawnInterval(wave: number): number {
-  return Math.max(0.1, 0.9 * Math.pow(0.86, wave - 1))
+  return Math.max(0.035, 0.9 * Math.pow(0.86, wave - 1))
 }
 
 /** Enemy health multiplier for the wave. */
