@@ -10,10 +10,13 @@ import {
   buildAtlas,
   buildVignette,
 } from '../view/atlas'
+import { FLOOR_KEY, FLOOR_URL, TILES_KEY, TILES_URL } from '../view/tiles'
+import { buildScenery, raiseNearWall, type Scenery } from '../view/scenery'
 import { consumeRestart, consumeUpgrade, drainCommands, publishRun } from '../runStore'
 import { rerollPrice } from '../data/shop'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
 import { actorFor, type ActorAnim, type ActorSheet } from '../data/actors'
+import { DEFAULT_SCENE, type ArenaMap } from '../data/scenes'
 
 /**
  * The window onto the world, and the size the canvas is scaled to fit.
@@ -25,6 +28,27 @@ import { actorFor, type ActorAnim, type ActorSheet } from '../data/actors'
  */
 export const VIEW_WIDTH = 1280
 export const VIEW_HEIGHT = 720
+
+/**
+ * Canvas pixels per world pixel.
+ *
+ * The window stays 1280x720 of world -- that is a gameplay number, and moving
+ * it changes how much of the map a player can see. This is the other thing
+ * entirely: how many real pixels that window is drawn with. The canvas is
+ * `VIEW * RENDER_SCALE` and the camera is zoomed by the same factor, so the
+ * same ground is shown at twice the resolution.
+ *
+ * It exists because the arena is painted art now. Phaser's scale manager fits
+ * the canvas to whatever space the browser gives it, so on any display worth
+ * having, a 1280x720 buffer was being stretched -- and a stretched raster is
+ * exactly what "the art looks rough" means. At 2 the buffer is 2560x1440,
+ * which meets or exceeds most windows, and the character sheet was already
+ * drawn at twice its world size and waiting for it.
+ *
+ * The cost is fill rate: four times the pixels, no change to anything on the
+ * CPU. Raising it further is free to try and measurable with `npm run bench`.
+ */
+export const RENDER_SCALE = 2
 
 export { WORLD_WIDTH, WORLD_HEIGHT }
 
@@ -201,6 +225,12 @@ export class ArenaScene extends Phaser.Scene {
 
   /** Drawn art for this character, or null for one who has none. */
   private readonly actor: ActorSheet | null
+  /** The place this run is fought in. Everything the scene knows about how the
+   *  ground looks comes from here; it knows nothing about which scene it is. */
+  private readonly map: ArenaMap
+  /** Held so the near wall can be lifted over the crowd once the crowd
+   *  exists. Nothing else in the scene reads it -- the scenery never moves. */
+  private scenery: Scenery | null = null
   /** What the player sprite is playing, so a pose that has not changed is not
    *  restarted from its first frame sixty times a second. */
   private actorAnim: ActorAnim = 'idle'
@@ -245,21 +275,29 @@ export class ArenaScene extends Phaser.Scene {
    */
   private readonly loadout: ArenaLoadout
 
-  constructor(loadout: ArenaLoadout = DEFAULT_LOADOUT, characterId = '') {
+  constructor(loadout: ArenaLoadout = DEFAULT_LOADOUT, characterId = '', map: ArenaMap = DEFAULT_SCENE) {
     super('arena')
     this.loadout = loadout
     this.actor = actorFor(characterId)
+    this.map = map
   }
 
   /**
-   * The sheet has to be fetched, which nothing else in this scene does -- the
-   * atlas and the digits are drawn at boot. Phaser runs preload to completion
-   * before create, so everything after it can assume the texture is there.
+   * The painted art, which has to be fetched. Phaser runs preload to completion
+   * before create, so everything after it can assume the textures are there.
+   *
+   * What is not here is the enemies: they are shapes baked on a canvas at boot
+   * by `view/atlas.ts`, and the day there is art for them this is where it
+   * lands.
    */
   preload(): void {
     // The painted digits, which have to arrive before create can register them
-    // as a font. Everything else this scene draws with is baked at boot.
+    // as a font.
     this.load.bitmapFont(FONT_KEY, FONT_IMAGE_URL, FONT_DATA_URL)
+    // The ground and everything standing on it. Both are one image each; the
+    // frame table for the scenery is compiled in, see view/tiles.ts.
+    this.load.image(FLOOR_KEY, FLOOR_URL)
+    this.load.image(TILES_KEY, TILES_URL)
 
     if (!this.actor) {
       return
@@ -276,7 +314,11 @@ export class ArenaScene extends Phaser.Scene {
     buildAtlas(this)
 
     this.cameras.main.setBackgroundColor('#07030d')
-    this.drawFloor()
+    /* The canvas is RENDER_SCALE times the window; zooming by the same factor
+       is what keeps the window itself 1280x720 of world. Everything after this
+       is written in world pixels and knows nothing about it. */
+    this.cameras.main.setZoom(RENDER_SCALE)
+    this.scenery = buildScenery(this, this.map)
 
     this.world = new World(this.loadout)
 
@@ -320,6 +362,14 @@ export class ArenaScene extends Phaser.Scene {
       this.playerSprite.setTint(PLAYER_TINT)
     }
     this.actorAnim = 'idle'
+
+    /* The near wall goes over the crowd, and only the near wall. Everything
+       added after this draws on top of it, which is the right answer for the
+       two things that still are: the damage numbers, and the edge of sight. */
+    if (this.scenery) {
+      raiseNearWall(this, this.scenery)
+    }
+
     this.lastVolleys = this.world.volleys
     this.lastHits = this.world.hitsTaken
     this.lastLevel = this.world.player.level
@@ -338,9 +388,14 @@ export class ArenaScene extends Phaser.Scene {
        is the whole mechanism: a hit in the dark still happens and still kills,
        and neither its number nor the victim's health bar leaks the position,
        because both are underneath this. */
+    /* Placed in the world and moved with the player rather than pinned to the
+       screen. Those are the same thing here -- the player is always dead
+       centre -- and the world is the one that survives a camera zoom: a
+       scroll-factor-zero object is still transformed by the zoom, so under
+       RENDER_SCALE a screen-pinned vignette lands off-centre and twice the
+       size it should be. */
     this.syncVignette()
-    this.vignette = this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, VIGNETTE_KEY)
-    this.vignette.setScrollFactor(0)
+    this.vignette = this.add.image(this.world.player.x, this.world.player.y, VIGNETTE_KEY)
 
     const keyboard = this.requireKeyboard()
     this.keys = keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT') as Record<
@@ -570,11 +625,16 @@ export class ArenaScene extends Phaser.Scene {
      * of the map you see past the boundary into nothing -- which is why the
      * floor draws a hard border and no grid beyond it.
      */
+    /* Half the camera's own size, not half the window: Phaser measures scroll
+       in canvas pixels and applies the zoom afterwards, so under RENDER_SCALE
+       these two are not the same number. */
     const camera = this.cameras.main
-    camera.scrollX = player.x - VIEW_WIDTH / 2
-    camera.scrollY = player.y - VIEW_HEIGHT / 2
+    camera.scrollX = player.x - camera.width / 2
+    camera.scrollY = player.y - camera.height / 2
 
     const sight = this.syncVignette()
+    // Rides the player, which is where the middle of the screen is.
+    this.vignette.setPosition(player.x, player.y)
 
     /* The rectangle worth drawing. Most of the crowd is off it now, which is
        new: nothing was ever off screen before, so every entity got a sprite
@@ -586,10 +646,11 @@ export class ArenaScene extends Phaser.Scene {
        one: the corners of that box are lit at the sides and dark at the
        diagonals, and paying a square root per entity to shave the difference
        would cost more than it saves. */
-    const cullLeft = Math.max(camera.scrollX, player.x - sight) - CULL_MARGIN
-    const cullRight = Math.min(camera.scrollX + VIEW_WIDTH, player.x + sight) + CULL_MARGIN
-    const cullTop = Math.max(camera.scrollY, player.y - sight) - CULL_MARGIN
-    const cullBottom = Math.min(camera.scrollY + VIEW_HEIGHT, player.y + sight) + CULL_MARGIN
+    const view = camera.worldView
+    const cullLeft = Math.max(view.left, player.x - sight) - CULL_MARGIN
+    const cullRight = Math.min(view.right, player.x + sight) + CULL_MARGIN
+    const cullTop = Math.max(view.top, player.y - sight) - CULL_MARGIN
+    const cullBottom = Math.min(view.bottom, player.y + sight) + CULL_MARGIN
 
     const pickups = world.pickups.items
     for (let i = 0; i < pickups.length; i++) {
@@ -856,33 +917,6 @@ export class ArenaScene extends Phaser.Scene {
       sprites.push(sprite)
     }
     return sprites
-  }
-
-  /**
-   * The ground, drawn once across the whole world.
-   *
-   * One Graphics for a 3200x1800 map is 51 vertical lines and 29 horizontal
-   * ones -- geometry, built at boot and never touched again. Baking it into a
-   * RenderTexture instead would be 92MB of video memory for the same picture,
-   * which is the trap worth naming here rather than discovering later.
-   *
-   * The grid stops at the boundary and the boundary is drawn hard, because the
-   * camera does not clamp: standing at the edge you see past it into nothing,
-   * and nothing has to look deliberate.
-   */
-  private drawFloor(): void {
-    const floor = this.add.graphics()
-    floor.fillStyle(0x0b0512, 1)
-    floor.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT)
-    floor.lineStyle(1, 0x1d0f28, 1)
-    for (let x = 0; x <= WORLD_WIDTH; x += 64) {
-      floor.lineBetween(x, 0, x, WORLD_HEIGHT)
-    }
-    for (let y = 0; y <= WORLD_HEIGHT; y += 64) {
-      floor.lineBetween(0, y, WORLD_WIDTH, y)
-    }
-    floor.lineStyle(3, 0xf4436c, 0.5)
-    floor.strokeRect(1.5, 1.5, WORLD_WIDTH - 3, WORLD_HEIGHT - 3)
   }
 
   private publish(): void {

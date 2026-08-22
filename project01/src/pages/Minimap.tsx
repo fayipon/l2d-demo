@@ -55,7 +55,13 @@ const ENEMY_DOT = 1.6
 const LOOT_DOT = 1.3
 const PLAYER_ARROW = 6
 
-export function Minimap() {
+interface MinimapProps {
+  /** The scene's number, printed in the header. The map of a place should say
+   *  which place, and this is the only panel on the HUD that is one. */
+  code: string
+}
+
+export function Minimap({ code }: MinimapProps) {
   const run = useRunSnapshot()
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -156,7 +162,7 @@ export function Minimap() {
 
   return (
     <div className="minimap">
-      <p className="minimap-title">戰場</p>
+      <p className="minimap-title">戰場 {code}</p>
       <div className="minimap-plate">
         <canvas ref={canvasRef} width={SIZE} height={SIZE} />
       </div>

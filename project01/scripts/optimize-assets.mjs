@@ -24,6 +24,7 @@ import { basename, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 import { buildDigitFont } from './fontjob.mjs'
+import { buildFloorTileset, buildTileSheet } from './tilejob.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repo = resolve(root, '..')
@@ -205,6 +206,32 @@ const JOBS = [
     to: resolve(assets, sprite.out),
     build: () => buildSpriteSheet(sprite),
   })),
+  {
+    /* The arena's floor, as a strict grid a Phaser tileset can index. */
+    from: resolve(repo, 'DESIGN/game_map_01.png'),
+    to: resolve(assets, 'tiles-abyss-floor.webp'),
+    build: async () => {
+      const { png } = await buildFloorTileset(resolve(repo, 'DESIGN/game_map_01.png'))
+      return png
+    },
+  },
+  {
+    /* Everything the arena stands on the floor: the boundary wall, its pillars
+       and banners, props and ground decals. See tilejob.mjs.
+
+       Two files again, for the same reason the font is two: the frame table is
+       measured in the same pass that packs the image, so it is written beside
+       it rather than copied into TypeScript by hand. */
+    from: resolve(repo, 'DESIGN/game_map_01.png'),
+    to: resolve(assets, 'tiles-abyss.webp'),
+    alsoWrites: ['tiles-abyss.json'],
+    build: async () => {
+      const { png, json, count } = await buildTileSheet(resolve(repo, 'DESIGN/game_map_01.png'))
+      await writeFile(resolve(assets, 'tiles-abyss.json'), json)
+      console.log(`  ${count} scenery frames`)
+      return png
+    },
+  },
   ...MODELS.flatMap((model) =>
     model.textures.map((texture) => ({
       from: resolve(repo, 'DESIGN/live2d', model.dir, `${texture}.png`),

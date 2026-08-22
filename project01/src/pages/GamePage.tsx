@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
 import { Minimap } from './Minimap'
 import { Inventory, ItemSection, StatSection, WeaponSection, type StatViews } from './Inventory'
@@ -27,6 +27,7 @@ import { useSelectedCharacter } from '../app/selectedCharacterContext'
 import { usePortraits } from '../features/portraits'
 import { recordRun, useLastReward } from '../features/profile'
 import { loadoutFor } from '../game/data/loadouts'
+import { sceneFor } from '../game/data/scenes'
 import './GamePage.css'
 
 /** Roman numerals for weapon tiers -- short, and unmistakably a rank. */
@@ -190,6 +191,17 @@ const STAT_ORDER: UpgradeId[] = [
 export function GamePage() {
   const navigate = useNavigate()
   const run = useRunSnapshot()
+  /*
+   * Which place this run is fought in, from the URL.
+   *
+   * A query parameter rather than router state, so /battle?scene=1-1 survives
+   * a refresh and can be shared -- and so the story screen hands over the
+   * stage code it already prints on the row, instead of a second identifier
+   * invented for the trip. An unknown code is not an error: sceneFor falls
+   * back to the first scene, and a stage with no map of its own is playable.
+   */
+  const [params] = useSearchParams()
+  const map = sceneFor(params.get('scene') ?? '')
   // The lobby's selected character decides what the run opens with.
   const { character } = useSelectedCharacter()
   const loadout = loadoutFor(character.id)
@@ -291,7 +303,7 @@ export function GamePage() {
 
   return (
     <div className="game-root">
-      <GameCanvas loadout={loadout} characterId={character.id} />
+      <GameCanvas loadout={loadout} characterId={character.id} map={map} />
 
       <div className="game-overlay">
         {/* ---------- who is fighting ---------- */}
@@ -351,7 +363,19 @@ export function GamePage() {
           </span>
         </div>
 
-        {/* ---------- wave ---------- */}
+        {/* ---------- where, and which wave of it ---------- */}
+        {/*
+          The scene number sits above the wave clock because the two answer
+          the same question at different scales: which fight this is, and how
+          far into it you are. It never changes during a run, so it is styled
+          quiet -- a heading over the readout rather than another number
+          competing with it.
+        */}
+        <p className="scene-badge">
+          <span className="scene-code">SCENE {map.code}</span>
+          <span className="scene-name">{map.name}</span>
+        </p>
+
         <div className="wave-readout">
           {run.status === 'break' ? (
             <>
@@ -373,7 +397,7 @@ export function GamePage() {
           )}
         </div>
 
-        <Minimap />
+        <Minimap code={map.code} />
 
         {/* ---------- what the run is for ---------- */}
         {/*

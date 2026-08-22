@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 import {
   ArenaScene,
+  RENDER_SCALE,
   VIEW_HEIGHT,
   VIEW_WIDTH,
   WORLD_HEIGHT,
@@ -9,6 +10,7 @@ import {
 } from './scenes/ArenaScene'
 import { resetRun } from './runStore'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from './data/loadouts'
+import { DEFAULT_SCENE, type ArenaMap } from './data/scenes'
 
 interface GameCanvasProps {
   /** The selected character's arena traits. Read once, at mount: a run does
@@ -18,6 +20,9 @@ interface GameCanvasProps {
   /** Who is fighting, for the drawn art in game/data/actors. Read once at
    *  mount for the same reason. */
   characterId?: string
+  /** Where it is fought. Read once at mount for the same reason again: a run
+   *  does not change place halfway through. */
+  map?: ArenaMap
 }
 
 /**
@@ -34,13 +39,18 @@ interface GameCanvasProps {
  * belongs in the scene, not in React. React mounts this and gets out of the
  * way -- a re-render here would tear down the whole game.
  */
-export function GameCanvas({ loadout = DEFAULT_LOADOUT, characterId = '' }: GameCanvasProps) {
+export function GameCanvas({
+  loadout = DEFAULT_LOADOUT,
+  characterId = '',
+  map = DEFAULT_SCENE,
+}: GameCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   /* Held in a ref so the effect below can stay keyed on nothing: a prop in the
      dependency array would tear down and rebuild the whole game the first time
      the parent re-rendered with a fresh object. */
   const loadoutRef = useRef(loadout)
   const characterRef = useRef(characterId)
+  const mapRef = useRef(map)
 
   useEffect(() => {
     const host = hostRef.current
@@ -51,8 +61,11 @@ export function GameCanvas({ loadout = DEFAULT_LOADOUT, characterId = '' }: Game
     const game = new Phaser.Game({
       type: Phaser.AUTO,
       parent: host,
-      width: VIEW_WIDTH,
-      height: VIEW_HEIGHT,
+      // The drawing buffer, which is not the window onto the world: the camera
+      // is zoomed by the same factor, so this buys resolution and not reach.
+      // See RENDER_SCALE.
+      width: VIEW_WIDTH * RENDER_SCALE,
+      height: VIEW_HEIGHT * RENDER_SCALE,
       backgroundColor: '#0a0510',
       scale: {
         // Same letterboxing the lobby gets from CSS, done by Phaser: the
@@ -66,7 +79,7 @@ export function GameCanvas({ loadout = DEFAULT_LOADOUT, characterId = '' }: Game
       // once there is pixel art in here.
       pixelArt: false,
       // An instance, not the class, so the loadout can be handed to it.
-      scene: [new ArenaScene(loadoutRef.current, characterRef.current)],
+      scene: [new ArenaScene(loadoutRef.current, characterRef.current, mapRef.current)],
     })
 
     if (import.meta.env.DEV) {

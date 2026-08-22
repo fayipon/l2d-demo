@@ -220,8 +220,15 @@ export function StoryPage() {
               </section>
             </div>
 
-            {/* The arena is the only thing behind any of this so far. */}
-            <button type="button" className="start-quest" onClick={() => navigate('/battle')}>
+            {/* The arena is the only thing behind any of this so far -- but it
+                is handed the stage's own code, so the map it opens is the one
+                this row is about. A stage with no map of its own gets the
+                first scene rather than an error. */}
+            <button
+              type="button"
+              className="start-quest"
+              onClick={() => navigate(`/battle?scene=${stage.code}`)}
+            >
               <Icon name="swords" />
               <span>開始劇情</span>
             </button>

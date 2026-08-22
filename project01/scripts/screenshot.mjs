@@ -11,9 +11,13 @@
  *   npm run shot -- story
  *   npm run shot -- story --out story.png --clip 0,0,400,900
  *   npm run shot -- achievements --click ".ach-tab:nth-child(3)"
+ *   npm run shot -- battle --at 1600,40      (the far wall)
  *
  * --clip takes x,y,width,height in CSS pixels, for looking at one component
  * rather than the whole screen.
+ *
+ * --at takes x,y in world pixels and teleports the player there before the
+ * shot -- the only way to see the far side of a 3200x1800 map from a script.
  *
  * --click takes CSS selectors separated by ">>" and clicks them in order
  * before the shot, which is the only way to see a state that needs a tab or a
@@ -65,6 +69,18 @@ const height = Number(flag('height', 900))
 const clip = flag('clip')
 const wait = Number(flag('wait', 1500))
 const clicks = (flag('click') ?? '').split('>>').map((c) => c.trim()).filter(Boolean)
+/*
+ * --at x,y puts the player there before the shot, in world coordinates.
+ *
+ * The arena is 3200x1800 and the camera never leaves the character, so most of
+ * the map -- the boundary wall in particular -- cannot be photographed from
+ * where a run starts. Walking there by holding a key for ten seconds is not
+ * something a script should be doing.
+ *
+ * Reaches the game through `window.__arena`, the same dev-only handle bench
+ * and verify use, so this adds nothing to the game itself.
+ */
+const at = (flag('at') ?? '').split(',').map(Number).filter((n) => !Number.isNaN(n))
 
 const { existsSync } = await import('node:fs')
 const executablePath = CHROME_CANDIDATES.find((p) => p && existsSync(p))
@@ -90,6 +106,24 @@ try {
   // The Live2D model and the HUD fade-in both settle after load, and a shot
   // taken mid-animation is not what the screen looks like.
   await new Promise((r) => setTimeout(r, wait))
+
+  if (at.length === 2) {
+    await page.waitForFunction(
+      () => window.__arena?.scene?.getScene('arena')?.world !== undefined,
+      { timeout: 30000 },
+    )
+    await page.evaluate(
+      (x, y) => {
+        const world = window.__arena.scene.getScene('arena').world
+        world.player.x = x
+        world.player.y = y
+      },
+      at[0],
+      at[1],
+    )
+    // One camera update, plus the wave clock's own tick.
+    await new Promise((r) => setTimeout(r, 400))
+  }
 
   for (const selector of clicks) {
     await page.click(selector)
