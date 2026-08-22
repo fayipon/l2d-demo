@@ -42,6 +42,9 @@ export type IconName =
   | 'crosshair'
   | 'scatter'
   | 'eye'
+  | 'axe'
+  | 'bow'
+  | 'flame'
 
 const PATHS: Record<IconName, ReactElement> = {
   book: (
@@ -236,6 +239,28 @@ const PATHS: Record<IconName, ReactElement> = {
       <path d="M12 1.8v3.8M12 18.4v3.8M1.8 12h3.8M18.4 12h3.8" />
       <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
     </>
+  ),
+  /* Melee attack power. An axe head rather than another sword: the plain
+     sword is already the universal attack stat, and two swords side by side on
+     the same strip would be one glyph asked to mean two things. */
+  axe: (
+    <>
+      <path d="M13.5 4.2 6 11.7l2.4 2.4 7.5-7.5a4.4 4.4 0 0 0-2.4-2.4Z" />
+      <path d="M8.4 13.2 4 20.4l7.2-4.4" strokeWidth={1.7} />
+    </>
+  ),
+  /* Ranged attack power. A drawn bow: the crosshair is taken by the range
+     stat, which is a different thing -- how far, not how hard. */
+  bow: (
+    <>
+      <path d="M6.6 3.8a13 13 0 0 1 0 16.4" />
+      <path d="M6.6 3.8 19 12 6.6 20.2" strokeWidth={1.3} />
+      <path d="M9.4 12h9.2" strokeWidth={1.7} />
+    </>
+  ),
+  /* Elemental attack power. */
+  flame: (
+    <path d="M12 2.8c3.4 3.5 5.6 6.2 5.6 9.4a5.6 5.6 0 0 1-11.2 0c0-1.7.8-3.2 2.1-4.7.5 1 1.1 1.7 1.9 2.1.5-2.6.4-4.6 1.6-6.8Z" />
   ),
   /* The vision stat. An iris rather than a lens: the shape has to still read
      as an eye at sixteen pixels on the stat strip. */

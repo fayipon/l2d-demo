@@ -92,9 +92,35 @@ export const ENEMY_KINDS: EnemyKind[] = [
   },
 ]
 
+/**
+ * What kind of attack a weapon makes, and therefore which attack power adds
+ * to it.
+ *
+ * Melee is anything whose reach is arm's length dressed up -- the blades that
+ * fan out of the player and the ring the reaper throws. Ranged is anything
+ * fired down a line. Elemental is neither: damage that arrives as heat or
+ * charge rather than as an object, and it exists as a family before it exists
+ * as a weapon, because the stat that feeds it does.
+ */
+export type WeaponFamily = 'melee' | 'ranged' | 'elemental'
+
+export const FAMILY_LABEL: Record<WeaponFamily, string> = {
+  melee: '近戰',
+  ranged: '遠程',
+  elemental: '元素',
+}
+
+/** Which attack-power stat a family reads, beyond the universal one. */
+export const FAMILY_POWER: Record<WeaponFamily, keyof PlayerStats> = {
+  melee: 'meleePower',
+  ranged: 'rangedPower',
+  elemental: 'elementalPower',
+}
+
 export interface WeaponKind {
   id: string
   label: string
+  family: WeaponFamily
   frame: SpriteFrame
   tint: number
   /** Base shop price at wave 1, before the wave markup. */
@@ -123,6 +149,7 @@ export interface WeaponKind {
 export const WEAPONS: WeaponKind[] = [
   {
     id: 'pistol',
+    family: 'ranged',
     label: '手槍',
     frame: 'bullet',
     tint: 0xfff0f6,
@@ -141,6 +168,7 @@ export const WEAPONS: WeaponKind[] = [
   },
   {
     id: 'shredder',
+    family: 'melee',
     label: '碎裂刃',
     frame: 'blade',
     tint: 0x4fe6c0,
@@ -159,6 +187,7 @@ export const WEAPONS: WeaponKind[] = [
   },
   {
     id: 'shotgun',
+    family: 'ranged',
     label: '散彈槍',
     frame: 'pellet',
     tint: 0xffb267,
@@ -177,6 +206,7 @@ export const WEAPONS: WeaponKind[] = [
   },
   {
     id: 'railgun',
+    family: 'ranged',
     label: '貫穿槍',
     frame: 'beam',
     tint: 0x8ad6ff,
@@ -195,6 +225,7 @@ export const WEAPONS: WeaponKind[] = [
   },
   {
     id: 'dart',
+    family: 'ranged',
     label: '飛針',
     frame: 'bullet',
     tint: 0xd0ff8a,
@@ -213,6 +244,7 @@ export const WEAPONS: WeaponKind[] = [
   },
   {
     id: 'reaper',
+    family: 'melee',
     label: '收割鐮',
     frame: 'blade',
     tint: 0xd18aff,
@@ -303,6 +335,17 @@ export function tierRateScale(tier: number): number {
 }
 
 /** Shop price of a weapon at a tier, before the wave markup. */
+/**
+ * The flat attack power that reaches one weapon.
+ *
+ * The universal stat plus the one for its family, and never any other -- a
+ * melee build's points do nothing for the railgun on the same rack, which is
+ * the entire point of splitting the stat up.
+ */
+export function attackPowerFor(stats: PlayerStats, family: WeaponFamily): number {
+  return stats.attackPower + stats[FAMILY_POWER[family]]
+}
+
 export function weaponPrice(kind: number, tier: number): number {
   return Math.round(WEAPONS[kind].price * Math.pow(1.9, tier - 1))
 }
@@ -406,11 +449,23 @@ export interface PlayerStats {
    *
    * Separate from `damage` on purpose: this is attack power in the ordinary
    * sense -- a number the weapon carries into the fight -- while `damage` is a
-   * percentage on top of it. Order is (weapon + attackPower) * damage, so a
+   * percentage on top of it. Order is (weapon + attack power) * damage, so a
    * percentage upgrade scales what levelling has already added rather than
    * ignoring it.
+   *
+   * This one is the universal half. The three below add on top of it for the
+   * family they name, and a weapon reads exactly two of the four: this, and
+   * its own. Splitting it this way rather than replacing it keeps a build that
+   * mixes families viable -- the alternative is that every point of attack
+   * power is dead weight on half the rack.
    */
   attackPower: number
+  /** Flat damage, melee weapons only. */
+  meleePower: number
+  /** Flat damage, ranged weapons only. */
+  rangedPower: number
+  /** Flat damage, elemental weapons only. */
+  elementalPower: number
   /** Flat. Also the ceiling live hp is clamped to. */
   maxHp: number
   /** HP per second. */
@@ -458,6 +513,9 @@ export interface PlayerStats {
 
 export const BASE_STATS: Readonly<PlayerStats> = {
   attackPower: 0,
+  meleePower: 0,
+  rangedPower: 0,
+  elementalPower: 0,
   maxHp: 100,
   regen: 0,
   lifesteal: 0,
@@ -545,7 +603,10 @@ export type UpgradeGroup = 'offence' | 'defence' | 'utility'
  * has a name when a card exists for it is a stat the player cannot read.
  */
 export const STAT_INFO: Record<UpgradeId, { label: string; group: UpgradeGroup }> = {
-  attackPower: { label: '基礎攻擊', group: 'offence' },
+  attackPower: { label: '所有攻擊力', group: 'offence' },
+  meleePower: { label: '近戰攻擊力', group: 'offence' },
+  rangedPower: { label: '遠程攻擊力', group: 'offence' },
+  elementalPower: { label: '元素攻擊力', group: 'offence' },
   damage: { label: '攻擊力', group: 'offence' },
   attackSpeed: { label: '攻擊速度', group: 'offence' },
   bonusCount: { label: '彈數', group: 'offence' },
@@ -579,6 +640,34 @@ export interface Upgrade {
 
 export const UPGRADES: Upgrade[] = [
   /* --- offence --- */
+  /*
+   * The family cards give more per pick than the universal one does, and they
+   * have to: a point that only counts on half the rack is worth less than a
+   * point that counts everywhere, so at equal steps nobody would ever take
+   * one. Drawn more often as well, since a run that has committed to a family
+   * is the run they are for.
+   */
+  {
+    id: 'meleePower',
+    step: 1.6,
+    effect: '+1.6',
+    detail: '近戰武器的基礎傷害。',
+    weight: 7,
+  },
+  {
+    id: 'rangedPower',
+    step: 1.6,
+    effect: '+1.6',
+    detail: '遠程武器的基礎傷害。',
+    weight: 7,
+  },
+  {
+    id: 'elementalPower',
+    step: 1.6,
+    effect: '+1.6',
+    detail: '元素武器的基礎傷害。',
+    weight: 7,
+  },
   {
     id: 'damage',
     step: 0.15,
@@ -735,6 +824,25 @@ export const LEVEL_BONUS = {
 export const OFFER_COUNT = 3
 
 /**
+ * Whether a card is worth offering to this rack at all.
+ *
+ * A family's attack power is dead weight to a run holding nothing of that
+ * family, and a card that does nothing is worse than one card fewer -- the
+ * same rule the cap already applies to a stat that has topped out. It also
+ * settles the elemental family: there is no elemental weapon in the game yet,
+ * so the card for it simply never comes up, and the day one exists it starts
+ * appearing on its own.
+ */
+function offerableFor(id: UpgradeId, held: readonly { kind: number }[]): boolean {
+  for (const family of Object.keys(FAMILY_POWER) as WeaponFamily[]) {
+    if (id === FAMILY_POWER[family]) {
+      return held.some((slot) => WEAPONS[slot.kind].family === family)
+    }
+  }
+  return true
+}
+
+/**
  * Draws the choices for one level.
  *
  * Weighted, without repeats, and skipping anything already at its cap -- a
@@ -743,11 +851,14 @@ export const OFFER_COUNT = 3
  */
 export function rollUpgradeOffers(
   stats: PlayerStats,
+  held: readonly { kind: number }[],
   random: () => number,
   count = OFFER_COUNT,
 ): UpgradeId[] {
   const pool = UPGRADES.filter(
-    (upgrade) => upgrade.cap === undefined || stats[upgrade.id] < upgrade.cap,
+    (upgrade) =>
+      (upgrade.cap === undefined || stats[upgrade.id] < upgrade.cap) &&
+      offerableFor(upgrade.id, held),
   )
   const picked: UpgradeId[] = []
 

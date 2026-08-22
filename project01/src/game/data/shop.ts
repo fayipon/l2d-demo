@@ -1,9 +1,11 @@
 import {
+  FAMILY_POWER,
   MAX_WEAPON_SLOTS,
   MAX_WEAPON_TIER,
   WEAPONS,
   weaponPrice,
   type PlayerStats,
+  type WeaponFamily,
 } from './content'
 
 /**
@@ -31,7 +33,10 @@ export interface ShopItem {
 
 export const SHOP_ITEMS: ShopItem[] = [
   /* --- offence --- */
-  { id: 'whetstone', label: '磨刀石', detail: '基礎攻擊 +2', price: 24, mods: { attackPower: 2 } },
+  { id: 'whetstone', label: '磨刀石', detail: '所有攻擊力 +2', price: 24, mods: { attackPower: 2 } },
+  { id: 'gauntlet', label: '鐵手甲', detail: '近戰攻擊力 +3', price: 26, mods: { meleePower: 3 } },
+  { id: 'sight', label: '瞄具', detail: '遠程攻擊力 +3', price: 26, mods: { rangedPower: 3 } },
+  { id: 'emberstone', label: '燼石', detail: '元素攻擊力 +3', price: 26, mods: { elementalPower: 3 } },
   { id: 'fury', label: '狂怒符', detail: '攻擊力 +12%', price: 30, mods: { damage: 0.12 } },
   { id: 'trigger', label: '輕扳機', detail: '攻擊速度 +12%', price: 30, mods: { attackSpeed: 0.12 } },
   { id: 'splitter', label: '分裂彈', detail: '彈數 +1', price: 68, mods: { bonusCount: 1 } },
@@ -56,7 +61,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'recklessblade',
     label: '亡命之刃',
-    detail: '基礎攻擊 +5，生命上限 -15',
+    detail: '所有攻擊力 +5，生命上限 -15',
     price: 26,
     mods: { attackPower: 5, maxHp: -15 },
   },
@@ -154,6 +159,22 @@ interface RollContext {
   /** Kinds and tiers the rack could pair a further copy with. A bias, not a
    *  gate -- see below. */
   mergeable: MergeTarget[]
+  /** Which weapon families the rack actually holds. An item that raises a
+   *  family's attack power is worth nothing to a run holding none of it, and
+   *  an item is worse than a card here: the card is one wasted pick, the item
+   *  is coins. */
+  families: WeaponFamily[]
+}
+
+/** Whether an item does anything for this rack. Only the family attack powers
+ *  can fail this; everything else applies to any run. */
+function itemSuits(item: ShopItem, families: WeaponFamily[]): boolean {
+  for (const family of Object.keys(FAMILY_POWER) as WeaponFamily[]) {
+    if (item.mods[FAMILY_POWER[family]] !== undefined && !families.includes(family)) {
+      return false
+    }
+  }
+  return true
 }
 
 /**
@@ -174,6 +195,11 @@ export function rollShop(context: RollContext, random: () => number): ShopOffer[
   const canTakeWeapon = hasRoom
   const offers: ShopOffer[] = []
   const usedItems = new Set<number>()
+  /* Indices into SHOP_ITEMS, so the walk below that avoids repeats still walks
+     a list where every entry is worth buying. */
+  const shelf = SHOP_ITEMS.map((_, index) => index).filter((index) =>
+    itemSuits(SHOP_ITEMS[index], context.families),
+  )
 
   for (let slot = 0; slot < SHOP_SLOTS; slot++) {
     const wantsWeapon = canTakeWeapon && random() < 0.34
@@ -203,10 +229,11 @@ export function rollShop(context: RollContext, random: () => number): ShopOffer[
 
     // Items do not repeat within one layout; a shop showing the same charm
     // twice reads as a bug whatever the odds say.
-    let index = Math.floor(random() * SHOP_ITEMS.length)
-    for (let guard = 0; guard < SHOP_ITEMS.length && usedItems.has(index); guard++) {
-      index = (index + 1) % SHOP_ITEMS.length
+    let cursor = Math.floor(random() * shelf.length)
+    for (let guard = 0; guard < shelf.length && usedItems.has(shelf[cursor]); guard++) {
+      cursor = (cursor + 1) % shelf.length
     }
+    const index = shelf[cursor]
     usedItems.add(index)
     offers.push({
       sort: 'item',

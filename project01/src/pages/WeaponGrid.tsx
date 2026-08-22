@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { Emblem, type EmblemTone } from '../components/Emblem'
 import { Icon } from '../components/icons'
 import {
+  FAMILY_LABEL,
   MAX_WEAPON_SLOTS,
   WEAPONS,
   canMerge,
@@ -181,6 +182,9 @@ export function WeaponGrid({ run, detailed = false }: WeaponGridProps) {
               <span className="grid-tier">{TIER_MARK[held.tier]}</span>
               {detailed ? (
                 <span className="grid-numbers">
+                  {/* The family first, because it decides which attack power
+                      the number beside it is already counting. */}
+                  {FAMILY_LABEL[weapon.family]} ·{' '}
                   {(weapon.damage * tierDamageScale(held.tier)).toFixed(1)} 傷 ·{' '}
                   {(weapon.cooldown / tierRateScale(held.tier)).toFixed(2)}s
                 </span>

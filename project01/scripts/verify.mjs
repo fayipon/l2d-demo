@@ -283,6 +283,134 @@ try {
       'the rack was emptied, which leaves the run unable to kill anything',
     )
 
+    /* ---------- attack power reaches only its own family ---------- */
+
+    /* Measured through a real shot rather than by calling the formula: what
+       matters is the damage an enemy actually takes, and the formula is only
+       one of the places that could get this wrong. */
+    const damageOf = (weaponKind, mods) => {
+      reset()
+      Object.assign(world.player.stats, {
+        attackPower: 0,
+        meleePower: 0,
+        rangedPower: 0,
+        elementalPower: 0,
+        damage: 1,
+        critChance: 0,
+        ...mods,
+      })
+      world.player.weapons.length = 0
+      world.player.weapons.push({ kind: weaponKind, tier: 1, cooldown: 0 })
+      world.spawnEnemy()
+      const target = world.enemies.items.find((e) => e.active)
+      target.arriving = 0
+      target.x = world.player.x + 40
+      target.y = world.player.y
+      target.hp = 100000
+      target.maxHp = 100000
+      const before = target.hp
+      steps(30)
+      // Total dealt over the window, divided by how many shots landed, is not
+      // knowable -- so compare two runs of the same length instead.
+      return before - target.hp
+    }
+
+    // 碎裂刃 is melee, 貫穿槍 is ranged.
+    const meleeBase = damageOf(1, {})
+    const meleeWithMelee = damageOf(1, { meleePower: 10 })
+    const meleeWithRanged = damageOf(1, { rangedPower: 10 })
+    const rangedBase = damageOf(3, {})
+    const rangedWithRanged = damageOf(3, { rangedPower: 10 })
+
+    check(
+      'melee attack power raises a melee weapon',
+      meleeWithMelee > meleeBase,
+      `${meleeBase} -> ${meleeWithMelee} over the same window`,
+    )
+    check(
+      'melee attack power does nothing for a ranged weapon',
+      damageOf(3, { meleePower: 10 }) === rangedBase,
+      'a melee-only stat reached the railgun',
+    )
+    check(
+      'ranged attack power does nothing for a melee weapon',
+      meleeWithRanged === meleeBase,
+      'a ranged-only stat reached the blades',
+    )
+    check(
+      'ranged attack power raises a ranged weapon',
+      rangedWithRanged > rangedBase,
+      `${rangedBase} -> ${rangedWithRanged} over the same window`,
+    )
+    check(
+      'the universal attack power reaches both',
+      damageOf(1, { attackPower: 10 }) > meleeBase &&
+        damageOf(3, { attackPower: 10 }) > rangedBase,
+      'a stat that is supposed to apply everywhere did not',
+    )
+
+    /* A family's card is dead weight to a rack holding nothing of that family,
+       and the elemental one has no weapon in the game to attach to at all. */
+    reset()
+    world.player.weapons.length = 0
+    world.player.weapons.push({ kind: 3, tier: 1, cooldown: 0 }) // 貫穿槍, ranged
+    /* Through real level-ups rather than a hook opened in the world for the
+       benefit of this file: what is under test is what the player is shown,
+       and a private path to the roll could drift from the one they get. */
+    const drawn = new Set()
+    for (let i = 0; i < 400; i++) {
+      world.grantXp(100000)
+      for (const id of world.offers) {
+        drawn.add(id)
+      }
+      world.pendingLevels = 0
+    }
+    check(
+      'a rack with no melee weapon is never offered melee attack power',
+      !drawn.has('meleePower') && !drawn.has('elementalPower'),
+      `offered ${[...drawn].filter((id) => id.endsWith('Power')).join(', ')} to a ranged-only rack`,
+    )
+    check(
+      'the family it does hold is still offered',
+      drawn.has('rangedPower'),
+      'the ranged card never came up in four hundred draws',
+    )
+
+    /* The same rule on the shelf, where getting it wrong costs coins rather
+       than one pick. */
+    reset()
+    world.player.weapons.length = 0
+    world.player.weapons.push({ kind: 3, tier: 1, cooldown: 0 }) // ranged only
+    /* Bought rather than inspected: the script cannot see the item table from
+       in here, and buying everything the shelf offers is the same question
+       asked in the only terms the player has -- if a melee charm was ever on
+       sale, the stat it feeds moves. */
+    world.player.stats.meleePower = 0
+    world.player.stats.rangedPower = 0
+    world.player.stats.elementalPower = 0
+    for (let i = 0; i < 300; i++) {
+      world.status = 'break'
+      world.breakTimeLeft = 0
+      world.openShop()
+      world.player.coins = 99999
+      for (let slot = world.shopOffers.length - 1; slot >= 0; slot--) {
+        if (world.shopOffers[slot].sort === 'item') {
+          world.buy(slot)
+        }
+      }
+    }
+    check(
+      'a ranged-only rack is never sold melee or elemental attack power',
+      world.player.stats.meleePower === 0 && world.player.stats.elementalPower === 0,
+      `after buying every item on three hundred shelves: melee ` +
+        `${world.player.stats.meleePower}, elemental ${world.player.stats.elementalPower}`,
+    )
+    check(
+      'the family it does hold is still on sale',
+      world.player.stats.rangedPower > 0,
+      'the ranged charm never appeared across three hundred shelves',
+    )
+
     game.scene.resume('arena')
     return checks
   })

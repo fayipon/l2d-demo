@@ -15,6 +15,7 @@ import {
 } from '../game/runStore'
 import {
   BASE_STATS,
+  FAMILY_LABEL,
   STAT_INFO,
   WEAPONS,
   getUpgrade,
@@ -82,6 +83,9 @@ const RARITY_BY_TIER: EmblemTone[] = ['common', 'common', 'rare', 'epic', 'legen
    chosen here rather than stored beside its numbers. */
 const STAT_ICON: Record<UpgradeId, IconName> = {
   attackPower: 'sword',
+  meleePower: 'axe',
+  rangedPower: 'bow',
+  elementalPower: 'flame',
   maxHp: 'heart',
   regen: 'sparkle',
   lifesteal: 'droplet',
@@ -115,6 +119,9 @@ const glyphForItem = (mods: Partial<PlayerStats>): IconName =>
  */
 const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
   attackPower: (v) => `+${v.toFixed(1)}`,
+  meleePower: (v) => `+${v.toFixed(1)}`,
+  rangedPower: (v) => `+${v.toFixed(1)}`,
+  elementalPower: (v) => `+${v.toFixed(1)}`,
   maxHp: (v) => String(Math.round(v)),
   regen: (v) => `${v.toFixed(1)}/s`,
   lifesteal: (v) => v.toFixed(1),
@@ -145,6 +152,9 @@ const STAT_VIEWS: StatViews = {
 /** Order on the strip, which is the order they are grouped on the cards. */
 const STAT_ORDER: UpgradeId[] = [
   'attackPower',
+  'meleePower',
+  'rangedPower',
+  'elementalPower',
   'damage',
   'attackSpeed',
   'bonusCount',
@@ -545,7 +555,8 @@ export function GamePage() {
                     >
                       <span className="card-name">{weapon.label}</span>
                       <span className="card-rarity">
-                        武器 {TIER_MARK[offer.tier]} · {RARITY_LABEL[tone]}
+                        {FAMILY_LABEL[weapon.family]}武器 {TIER_MARK[offer.tier]} ·{' '}
+                        {RARITY_LABEL[tone]}
                       </span>
                       <Emblem className="card-art" frame="ring" glyph="swords" tone={tone} />
                       <span className="card-detail">{weapon.detail}</span>

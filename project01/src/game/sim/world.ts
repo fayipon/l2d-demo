@@ -13,6 +13,7 @@ import {
   SPREAD_PER_EXTRA_SHOT,
   WEAPONS,
   armourReduction,
+  attackPowerFor,
   canMerge,
   findWeapon,
   getUpgrade,
@@ -578,7 +579,7 @@ export class World {
     this.pendingLevels -= 1
     // Rolled fresh for the next level in the queue, so two levels taken back
     // to back are two separate decisions rather than one repeated.
-    this.offers = this.pendingLevels > 0 ? rollUpgradeOffers(stats, this.random) : []
+    this.offers = this.pendingLevels > 0 ? rollUpgradeOffers(stats, this.player.weapons, this.random) : []
   }
 
   /* ---------- player ---------- */
@@ -657,6 +658,7 @@ export class World {
         wave: this.wave,
         weaponCount: this.player.weapons.length,
         mergeable: this.mergeTargets(),
+        families: [...new Set(this.player.weapons.map((slot) => WEAPONS[slot.kind].family))],
       },
       this.random,
     )
@@ -1136,7 +1138,9 @@ export class World {
     const weapon = WEAPONS[slot.kind]
     const stats = this.player.stats
     const damage =
-      (weapon.damage + stats.attackPower) * stats.damage * tierDamageScale(slot.tier)
+      (weapon.damage + attackPowerFor(stats, weapon.family)) *
+      stats.damage *
+      tierDamageScale(slot.tier)
     const life = weapon.life * stats.range
 
     /*
@@ -1497,7 +1501,7 @@ export class World {
 
       this.pendingLevels += 1
       if (this.offers.length === 0) {
-        this.offers = rollUpgradeOffers(player.stats, this.random)
+        this.offers = rollUpgradeOffers(player.stats, player.weapons, this.random)
       }
     }
   }
