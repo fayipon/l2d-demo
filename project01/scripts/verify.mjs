@@ -76,6 +76,15 @@ try {
          "it survived", which is the most expensive kind of passing test. */
       world.spawnTimer = 999
       world.waveTimeLeft = 999
+      /* The level too. A check that grants experience to force a card draw
+         leaves the level hundreds high, and the next one's grant then buys no
+         level at all -- so it reads whatever `offers` was left holding by the
+         check before it, which is a stale answer that looks like a real one.
+         Cost one confused diagnosis already. */
+      world.player.level = 1
+      world.player.xp = 0
+      world.player.xpToLevel = 10
+      world.offers = []
     }
     const still = { x: 0, y: 0 }
     const steps = (n) => {
@@ -363,7 +372,12 @@ try {
       for (const id of world.offers) {
         drawn.add(id)
       }
+      /* Cleared, not just unqueued. A level-up only rolls new cards when
+         there are none on the table -- which is right, since offers stand
+         until they are taken -- so leaving them would have every later draw
+         return the first one forever. */
       world.pendingLevels = 0
+      world.offers = []
     }
     check(
       'a rack with no melee weapon is never offered melee attack power',
@@ -409,6 +423,42 @@ try {
       'the family it does hold is still on sale',
       world.player.stats.rangedPower > 0,
       'the ranged charm never appeared across three hundred shelves',
+    )
+
+    /* The elemental family, which had no weapon until the staff and so had a
+       stat nothing could spend on. This is the check that says it is wired all
+       the way through rather than merely declared. */
+    reset()
+    world.player.weapons.length = 0
+    world.player.weapons.push({ kind: 5, tier: 1, cooldown: 0 }) // 魔導杖
+    const elemental = new Set()
+    for (let i = 0; i < 400; i++) {
+      world.grantXp(100000)
+      for (const id of world.offers) {
+        elemental.add(id)
+      }
+      /* Cleared, not just unqueued. A level-up only rolls new cards when
+         there are none on the table -- which is right, since offers stand
+         until they are taken -- so leaving them would have every later draw
+         return the first one forever. */
+      world.pendingLevels = 0
+      world.offers = []
+    }
+    check(
+      'a rack holding the staff is offered elemental attack power',
+      elemental.has('elementalPower') &&
+        !elemental.has('meleePower') &&
+        !elemental.has('rangedPower'),
+      `offered ${[...elemental].filter((id) => id.endsWith('Power')).join(', ')}`,
+    )
+
+    const staffBase = damageOf(5, {})
+    check(
+      'elemental attack power raises the staff and nothing else does',
+      damageOf(5, { elementalPower: 10 }) > staffBase &&
+        damageOf(5, { meleePower: 10 }) === staffBase &&
+        damageOf(5, { rangedPower: 10 }) === staffBase,
+      'the staff read an attack power that is not its own',
     )
 
     game.scene.resume('arena')

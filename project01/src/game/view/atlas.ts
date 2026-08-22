@@ -111,6 +111,30 @@ const SHAPES: ShapeSpec[] = [
     },
   },
   {
+    /*
+     * The fireball. A disc with a tail, drawn pointing along +x so the sprite's
+     * rotation -- which every projectile already gets from its velocity --
+     * points the flame the way it is travelling.
+     *
+     * Larger than the other shots and with the same punched core as the rest,
+     * so it reads as something burning rather than as a bigger pellet.
+     */
+    name: 'fireball',
+    width: 26,
+    height: 18,
+    draw: (ctx, w, h, inset) => {
+      const r = h / 2 - inset
+      const cx = w - r - inset
+      const cy = h / 2
+      ctx.beginPath()
+      ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2)
+      // The tail: two curves meeting at a point at the back.
+      ctx.quadraticCurveTo(cx - r * 0.6, cy + r * 0.85, inset, cy)
+      ctx.quadraticCurveTo(cx - r * 0.6, cy - r * 0.85, cx, cy - r)
+      ctx.closePath()
+    },
+  },
+  {
     // Health bars. Solid and rectangular: it is stretched to whatever width and
     // height a bar needs, and a rim would stretch with it into a smear.
     name: 'bar',
@@ -182,6 +206,18 @@ export function buildAtlas(scene: Phaser.Scene): void {
 
     cursorX += shape.width + PADDING
     rowHeight = Math.max(rowHeight, shape.height)
+  }
+
+  /* The sheet is hand-sized, and a shape that does not fit is silently
+     cropped by the canvas rather than reported by it -- which shows up as one
+     sprite with a shaved edge, at runtime, long after the change that caused
+     it. Cheaper to refuse to boot. */
+  const overflow = placements.filter((p) => p.y + p.height > SHEET_HEIGHT)
+  if (overflow.length > 0) {
+    throw new Error(
+      `the arena atlas is too small for ${overflow.map((p) => p.name).join(', ')} -- ` +
+        `raise SHEET_HEIGHT past ${Math.max(...overflow.map((p) => p.y + p.height))}`,
+    )
   }
 
   const texture = scene.textures.addCanvas(ATLAS_KEY, canvas)

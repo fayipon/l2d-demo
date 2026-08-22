@@ -18,6 +18,7 @@ export type SpriteFrame =
   | 'blade'
   | 'pellet'
   | 'beam'
+  | 'fireball'
   | 'coin'
   | 'bar'
 
@@ -241,6 +242,36 @@ export const WEAPONS: WeaponKind[] = [
     count: 1,
     spread: 0.06,
     life: 0.7,
+  },
+  {
+    /*
+     * The elemental weapon, and the reason that family exists on the stat
+     * block. Slow, heavy and visible in flight: a fireball you can watch cross
+     * the gap is a different thing from a bullet that is simply already there,
+     * and it is what makes the family read as elemental rather than as another
+     * gun with a warm tint.
+     *
+     * Single-target damage lands where the rest of the rack sits -- 14 over
+     * 0.95s is 14.7 a second against the pistol's 14.3 -- with one pierce for
+     * the crowd it is meant to be fired into.
+     */
+    id: 'firestaff',
+    family: 'elemental',
+    label: '魔導杖',
+    frame: 'fireball',
+    tint: 0xff8a3c,
+    price: 38,
+    detail: '射出緩慢的火球，體積大且會穿透一次。',
+    cooldown: 0.95,
+    damage: 14,
+    range: 380,
+    projectileSpeed: 340,
+    projectileRadius: 11,
+    pierce: 1,
+    knockback: 12,
+    count: 1,
+    spread: 0,
+    life: 1.3,
   },
   {
     id: 'reaper',
