@@ -4,6 +4,16 @@
  *
  * The lobby's stage variables are deliberately not in play: two things trying
  * to letterbox the same canvas is how you get a canvas that is fitted twice.
+ *
+ * The panels, plates, bars and frames are the painted kit -- see
+ * ../styles/ui-kit.css. What is left here is layout: where each thing sits, how
+ * big it is, and what its text does. Where a rule below only removes a
+ * gradient or a one-pixel border, that is the kit taking over the job.
+ *
+ * The kit is imported by the page component AFTER this file, not by an @import
+ * at the top of it. Order is the reason: the button reset below sets
+ * `border: none`, and a card is a button, so a frame declared earlier in the
+ * cascade loses its border to it and draws nothing at all.
  */
 .game-root {
   position: fixed;
@@ -36,8 +46,15 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
-  border: none;
   background-color: transparent;
+}
+
+/* The border is reset separately, and not on everything: a card is a button and
+   the painted frame it wears *is* a border. This rule is more specific than the
+   kit's, so without the exclusion the reset wins and the frame draws nothing --
+   which looks like a missing image rather than a cascade problem. */
+.game-overlay button:not([class*='uk-']) {
+  border: none;
 }
 
 .game-overlay svg {
@@ -47,44 +64,40 @@
 
 /* ---------- the character panel ---------- */
 /*
- * The mock leads with who is fighting: a framed portrait, the name, the level,
- * then health and experience. It replaces the bare pair of bars that used to
- * sit in the bottom-left corner -- same two numbers, but attached to somebody.
+ * The kit draws this panel as four pieces stacked in the order they are used --
+ * a portrait beside a name plate, health under them, experience under that --
+ * so the panel is those four at one scale and nothing else. No background, no
+ * border, no blur: every frame brings its own.
  *
- * Ornament is a corner treatment rather than a border image: two gradients
- * clipped to the panel's corners give the mock's engraved-plate look without a
- * PNG to load, scale and eventually replace.
+ * `--uk` is the only size knob. The widths below are the pieces' own source
+ * widths times it, and the small left offsets are the source's own: the plate
+ * and the bars do not start at the same x, and reproducing that is the
+ * difference between a drawn panel and four drawn pieces in a column.
  */
 .pilot {
+  --uk: 0.46;
   position: absolute;
-  top: 1.1rem;
-  left: 1.1rem;
+  top: 0.9rem;
+  left: 0.9rem;
   display: flex;
-  align-items: stretch;
-  gap: 0.75rem;
-  width: min(27rem, 32vw);
-  padding: 0.55rem 0.9rem 0.55rem 0.55rem;
-  border-radius: 0.35rem;
-  background: linear-gradient(135deg, rgba(28, 8, 18, 0.92), rgba(8, 6, 12, 0.86));
-  border: 1px solid rgba(244, 67, 108, 0.28);
-  box-shadow:
-    0 2px 14px rgba(0, 0, 0, 0.6),
-    inset 0 0 1.4rem rgba(244, 67, 108, 0.08);
-  backdrop-filter: blur(5px);
+  flex-direction: column;
+  width: calc(613px * var(--uk));
+}
+
+.pilot-head {
+  display: flex;
+  align-items: center;
+  margin-left: calc(5px * var(--uk));
 }
 
 .pilot-face {
   position: relative;
   flex: 0 0 auto;
-  width: 4.4rem;
-  height: 4.4rem;
+  width: calc(216px * var(--uk));
+  height: calc(213px * var(--uk));
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: 0.25rem;
-  background: radial-gradient(circle at 50% 30%, #34162a, #0b0510);
-  border: 1px solid rgba(255, 199, 74, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.75);
 }
 
 .pilot-face img {
@@ -102,13 +115,23 @@
   color: rgba(255, 255, 255, 0.25);
 }
 
-.pilot-body {
+/* The plate's own drawn interior is the background, so this only has to be the
+   right size and hold two lines. Its left edge tucks under the portrait's
+   right ornament, which is how the source draws them. */
+.pilot-plate {
   flex: 1 1 auto;
   min-width: 0;
+  width: calc(393px * var(--uk));
+  height: calc(141px * var(--uk));
+  margin-left: calc(-8px * var(--uk));
+  /* The plate's drawn left cap tucks behind the portrait, so its interior
+     starts before anything readable should. */
+  padding-left: calc(34px * var(--uk));
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.16rem;
+  gap: 0.05rem;
+  overflow: hidden;
 }
 
 .pilot-name {
@@ -116,10 +139,11 @@
   align-items: center;
   gap: 0.35rem;
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .pilot-sigil {
@@ -135,19 +159,29 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+/*
+ * Both bars are the drawn piece with its middle dropped, so the element's
+ * content box is exactly the channel the fill runs along -- a socket at one
+ * end, rails above and below, and a cap at the other, all of it border. The
+ * fill is a plain block child, which means it needs no positioning at all.
+ *
+ * The channel is thin: twenty-one source pixels of a hundred and sixty. That
+ * is the art, and it is why the readout below is centred on the channel rather
+ * than sitting in it.
+ */
 .pilot-bar {
   position: relative;
   display: block;
-  height: 0.85rem;
-  margin-top: 0.18rem;
-  border-radius: 0.15rem;
-  background: #17070f;
-  border: 1px solid rgba(0, 0, 0, 0.6);
-  overflow: hidden;
+  width: calc(613px * var(--uk));
+  height: calc(160px * var(--uk));
+  margin-top: calc(-3px * var(--uk));
 }
 
 .pilot-bar.is-xp {
-  height: 0.5rem;
+  width: calc(585px * var(--uk));
+  height: calc(102px * var(--uk));
+  margin-left: calc(25px * var(--uk));
+  margin-top: 0;
 }
 
 .pilot-fill {
@@ -158,61 +192,76 @@
   transition: width 0.09s linear;
 }
 
+/* The artist's own red, taken as a slice of the drawn bar and stretched along
+   the channel -- see bar-hp-fill in scripts/uijob.mjs. A gradient mixed by hand
+   to match it would be a gradient mixed by hand to match it. */
 .pilot-bar.is-hp .pilot-fill {
-  background: linear-gradient(90deg, #b8213f, #ff6f8f);
-  box-shadow: 0 0 0.5rem rgba(244, 67, 108, 0.55);
+  background: url('../assets/ui/bar-hp-fill.webp') 0 0 / 100% 100%;
 }
 
+/* No painted equivalent in the kit -- there is one bar drawn full and one drawn
+   empty, and the empty one is this. The violet is the gem's, from the same
+   sheet. */
 .pilot-bar.is-xp .pilot-fill {
-  background: linear-gradient(90deg, #4a2bb8, #8f6bff);
-  box-shadow: 0 0 0.5rem rgba(110, 90, 255, 0.5);
+  background: linear-gradient(90deg, #6a3ad6, #b98bff);
+  box-shadow: 0 0 0.4rem rgba(150, 110, 255, 0.55);
 }
 
-/* Inside the bar as in the mock, which is what lets the panel carry two bars
-   and a label in the height one row of the old layout took. */
+/* Centred on the channel, not inside it: the channel is a few pixels tall at
+   this scale and the numbers have to be readable. Absolute positioning is
+   against the padding box, which for a nine-sliced frame is the channel, so
+   this is the channel's own middle. */
 .pilot-bar-count {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 0.66rem;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  font-size: 0.6rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
 }
 
 .pilot-xp-label {
-  margin: 0.22rem 0 0;
-  font-size: 0.62rem;
+  margin: calc(-14px * var(--uk)) 0 0 calc(120px * var(--uk));
+  font-size: 0.58rem;
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.45);
 }
 
 /* ---------- the purse ---------- */
+/*
+ * The pill is drawn with its coin already in it, so there is no icon element
+ * here any more -- the count is the only thing this contributes. Under the
+ * pilot panel, whose height is now the kit's rather than the old layout's.
+ */
 .purse {
   position: absolute;
-  top: 6.9rem;
-  left: 1.5rem;
+  /* Clear of the pilot panel, whose height is now the kit's: the four pieces
+     stacked at their own proportions come to about 235px at --uk 0.46. */
+  top: 16.2rem;
+  left: 1.1rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
 .purse-row {
+  --uk: 0.42;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 1.05rem;
+  justify-content: center;
+  width: calc(272px * var(--uk));
+  height: calc(73px * var(--uk));
+  font-size: 0.9rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #ffd98a;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
-}
-
-.purse-icon.is-coin {
-  font-size: 1.2rem;
 }
 
 /* This screen has no container-query stage, so the back button is sized in rem
@@ -405,12 +454,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The kit's skull, on the kit's round slot. The diagnostic counter beside it
+   keeps its plain chip: a frame rate is instrumentation, and dressing it up
+   would say it was part of the game. */
+/* On the kit's round slot, which is what the plain chip behind it was doing by
+   hand. */
 .counter-icon {
-  font-size: 1.15rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  background: url('../assets/ui/slot-round.webp') center / contain no-repeat;
 }
 
-.counter-icon.is-kills {
-  color: rgba(255, 255, 255, 0.75);
+.counter-icon.is-kills::before {
+  content: '';
+  width: 78%;
+  height: 78%;
+  background: url('../assets/ui/icon-skull.webp') center / contain no-repeat;
 }
 
 .counter.is-diagnostic {
@@ -612,7 +673,16 @@
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* The kit's widest rule, closing the heading. Not nine-sliced -- see
+   ../styles/ui-kit.css -- so it centres at its own aspect rather than
+   stretching its centre ornament across the screen. */
+.screen-head .ui-rule {
+  width: 26rem;
+  max-width: 60vw;
+  margin: 0.5rem 0 0;
 }
 
 .screen-eyebrow {
@@ -693,38 +763,43 @@
   gap: 1rem;
 }
 
+/*
+ * The kit's medium frame. Rarity used to be the border colour, and the border
+ * is now a painted one that is the same on every card -- so the tone moves
+ * inside: the interior gradient it already had, plus a glow that the hover
+ * state pushes. It still separates three cards at a glance, which was the job.
+ */
 .card {
+  --uk: 0.55;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
-  width: 14.5rem;
-  padding: 1.1rem 1rem 0.9rem;
-  border-radius: 0.4rem;
+  width: 15rem;
+  padding: 0.5rem 0.4rem 0.4rem;
   text-align: center;
   color: inherit;
   font: inherit;
   cursor: pointer;
   background:
     linear-gradient(180deg, var(--tone-top, rgba(30, 12, 22, 0.95)), rgba(8, 4, 12, 0.96));
-  border: 1px solid var(--tone-edge, rgba(255, 255, 255, 0.14));
-  box-shadow:
-    0 6px 22px rgba(0, 0, 0, 0.55),
-    inset 0 0 2rem var(--tone-glow, transparent);
+  box-shadow: inset 0 0 2.4rem var(--tone-glow, transparent);
   transition:
     transform 0.12s ease,
     box-shadow 0.12s ease,
-    border-color 0.12s ease;
+    filter 0.12s ease;
 }
 
 .card:not(:disabled):hover {
   transform: translateY(-4px);
-  border-color: var(--tone-hot, #fff);
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.6),
-    0 0 1.4rem var(--tone-glow, transparent),
-    inset 0 0 2rem var(--tone-glow, transparent);
+    0 0 1.6rem var(--tone-glow, transparent),
+    inset 0 0 2.4rem var(--tone-glow, transparent);
+  /* The frame is one image for every rarity, so the tone cannot brighten it --
+     but a hovered card should still light up, and the whole thing lifting is
+     closer to what the border colour used to do than nothing is. */
+  filter: brightness(1.18);
 }
 
 /* Rarity, which colours the whole card rather than a corner badge: at a
@@ -852,8 +927,14 @@
   color: #ffc74a;
 }
 
+/* The kit's coin rather than the drawn glyph, on this screen only: the price
+   plate sits beside a painted frame and an outline icon next to it reads as a
+   different game. components/icons.tsx still serves the lobby. */
 .card-coin {
-  font-size: 1rem;
+  display: inline-block;
+  width: 1.05rem;
+  height: 1.05rem;
+  background: url('../assets/ui/icon-coin.webp') center / contain no-repeat;
 }
 
 .card-price {
@@ -1051,6 +1132,13 @@
   font-size: 1.2rem;
 }
 
+.reward-icon.is-coin {
+  display: inline-block;
+  width: 1.3rem;
+  height: 1.3rem;
+  background: url('../assets/ui/icon-coin.webp') center / contain no-repeat;
+}
+
 /* ---------- objectives ---------- */
 /*
  * Three numbers the run already keeps. There is no objective system behind
@@ -1060,25 +1148,36 @@
  * Sits on the right, under where the minimap will go, which is where the mock
  * puts it.
  */
+/* The kit's big frame, which carries its own title bar: the deep top border is
+   that bar, and the heading is positioned up into it. Everything the panel used
+   to draw for itself -- gradient, border, shadow -- is in the image now. */
 .goals {
+  --uk: 0.4;
   position: absolute;
   top: 1.4rem;
   right: 1.2rem;
-  width: 15rem;
-  padding: 0.65rem 0.85rem 0.7rem;
-  border-radius: 0.35rem;
-  background: linear-gradient(135deg, rgba(24, 10, 18, 0.9), rgba(8, 6, 12, 0.85));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(5px);
+  width: 17rem;
+  background: rgba(6, 4, 10, 0.72);
 }
 
+/* Up into the frame's own title bar. An absolutely positioned child sits
+   against the padding box, so reaching the border takes the border's height as
+   a negative offset -- the same 103 source pixels the top border is cut at. */
 .goals-title {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(-103px * var(--uk));
+  height: calc(103px * var(--uk));
+  margin: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
   color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 .goals-list {
@@ -1185,32 +1284,32 @@
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
 }
 
-/* Circular, which is what makes it read as a scope rather than as a second
-   screen. The world inside is a rectangle and the corners are simply cut --
-   the map is for direction, and the corners of a 3200x1800 world are the least
-   of what anyone is looking for. */
+/* The kit's ring, which is what the CSS plate here was an approximation of.
+   The map goes in the hole rather than behind the frame -- `--hole-*` are
+   percentages of the ring measured in the pipeline, so nothing here has to
+   know the ornament is 57 source pixels thick. */
 .minimap-plate {
-  width: 10.5rem;
-  height: 10.5rem;
-  border-radius: 50%;
-  overflow: hidden;
-  background: rgba(6, 3, 10, 0.82);
-  border: 1px solid rgba(255, 199, 74, 0.3);
-  box-shadow:
-    0 2px 16px rgba(0, 0, 0, 0.6),
-    inset 0 0 1.6rem rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(4px);
+  position: relative;
+  width: 12.5rem;
 }
 
 .minimap-plate canvas {
+  position: absolute;
+  left: var(--hole-x);
+  top: var(--hole-y);
+  width: var(--hole-w);
+  height: var(--hole-h);
   display: block;
-  width: 100%;
-  height: 100%;
+  border-radius: 50%;
+  background: rgba(6, 3, 10, 0.86);
+  box-shadow: inset 0 0 1.4rem rgba(0, 0, 0, 0.85);
 }
 
-/* Under the minimap rather than in the corner it used to own. */
+/* Under the minimap rather than in the corner it used to own. The ring is
+   wider than the plate it replaced -- its ornament is a third of the piece --
+   so this clears more than it used to. */
 .goals {
-  top: 13.8rem;
+  top: 16.6rem;
 }
 
 /* ---------- the equipment sheet ---------- */
@@ -1594,14 +1693,16 @@
  * is where the merge matters most, since a full rack is what stops weapons
  * being offered at all.
  */
+/* The rule across the top is the kit's smallest ornament rather than a
+   one-pixel line, drawn as a background so the grid keeps three children. */
 .shop-kit {
   display: grid;
   grid-template-columns: 14rem 23rem 17rem;
   gap: 1.6rem;
   align-items: start;
   margin-top: 1.2rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1.6rem;
+  background: url('../assets/ui/rule-sm.webp') top center / auto 0.6rem no-repeat;
 }
 
 /* Each column scrolls on its own rather than the row being clipped: the

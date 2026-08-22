@@ -1,0 +1,49 @@
+/*
+ * The painted UI kit, as the HUD uses it.
+ *
+ * `../assets/ui/kit.css` is generated beside the images and holds one rule per
+ * piece: which file it is, and — for a frame — the nine-slice insets it was cut
+ * with. Nothing in there knows what a health bar is. This file is the other
+ * half: what each piece is for, how big it is, and where the content sits
+ * inside it.
+ *
+ * The one number that matters is `--uk`, the scale. Every generated border
+ * width is that number times the piece's own inset, so setting it once on a
+ * container lands the whole frame at that fraction of the size it was drawn
+ * with its proportions intact. It is set per component below, never globally --
+ * a portrait frame and a card want different sizes and there is no reason for
+ * them to agree.
+ *
+ * Two rules that are easy to get wrong and expensive to debug:
+ *
+ * Everything is `border-box` (set in index.css), so a frame's declared width is
+ * the outside of the ornament and its content box is the hole. That is what
+ * makes `width: calc(<source width>px * var(--uk))` land the piece at exactly
+ * the size it was drawn.
+ *
+ * An absolutely positioned child of a frame is positioned against the padding
+ * box, which for these is the hole. `inset: 0` on a child of a panel puts it
+ * inside the frame, not over it. Putting something in the border — the panel's
+ * drawn title bar is the case that wants it — takes a negative offset.
+ */
+@import '../assets/ui/kit.css';
+
+/*
+ * A rule between sections.
+ *
+ * Not nine-sliced: the middle of the ornament is a centre diamond, and
+ * stretching it is the one thing that makes a drawn rule look generated. It
+ * keeps its aspect and centres in whatever width it is given, which is what a
+ * rule does anyway.
+ */
+.ui-rule {
+  display: block;
+  width: 100%;
+  height: 0.7rem;
+  margin: 0.35rem 0;
+  opacity: 0.85;
+}
+
+.ui-rule.is-wide {
+  height: 1.5rem;
+}

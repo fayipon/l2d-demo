@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 import { buildDigitFont } from './fontjob.mjs'
 import { buildFloorTileset, buildTileSheet } from './tilejob.mjs'
+import { UI_KIT_FILES, buildUiKit } from './uijob.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repo = resolve(root, '..')
@@ -232,6 +233,19 @@ const JOBS = [
       return png
     },
   },
+  {
+    /* The battle HUD's frames, plates, bars and icons. See uijob.mjs -- this
+       one writes a directory rather than a file, and its named output is the
+       stylesheet, because that is the part that can disagree with the crops. */
+    from: resolve(repo, 'DESIGN/game_ui_01.png'),
+    to: resolve(assets, 'ui/kit.css'),
+    alsoWrites: UI_KIT_FILES,
+    build: async () => {
+      const { css, written } = await buildUiKit(resolve(repo, 'DESIGN/game_ui_01.png'), resolve(assets, 'ui'))
+      console.log(`  ${written.length} kit pieces`)
+      return Buffer.from(css, 'utf8')
+    },
+  },
   ...MODELS.flatMap((model) =>
     model.textures.map((texture) => ({
       from: resolve(repo, 'DESIGN/live2d', model.dir, `${texture}.png`),
@@ -261,9 +275,18 @@ for (const job of JOBS) {
   await writeFile(job.to, output)
   before += input.length
   after += output.length
-  const { width, height } = await sharp(output).metadata()
+  /* Not every job's named output is an image -- the UI kit's is the stylesheet
+     it generates beside its pieces -- so the dimensions are reported when there
+     are any and skipped when there are not. */
+  let size = ''
+  try {
+    const { width, height } = await sharp(output).metadata()
+    size = `${width}x${height}`
+  } catch {
+    size = 'generated'
+  }
   console.log(
-    `${relative(root, job.to).replace(/\\/g, '/')}  ${width}x${height}  ` +
+    `${relative(root, job.to).replace(/\\/g, '/')}  ${size}  ` +
     `${kb(input.length)} -> ${kb(output.length)}  ` +
     `(-${((1 - output.length / input.length) * 100).toFixed(1)}%)`,
   )
@@ -277,11 +300,16 @@ console.log(`total  ${kb(before)} -> ${kb(after)}  (-${((1 - after / before) * 1
 // Swapping art leaves the previous output behind, and an unreferenced megabyte
 // is easy to miss in review. Every directory written here holds nothing but
 // this script's output, so anything else in one is stale.
-for (const dir of new Set(JOBS.map((job) => dirname(job.to)))) {
+// A subdirectory that a job writes into is not stale just because its parent
+// holds no job named after it -- the UI kit is a directory of its own.
+const outputDirs = new Set(JOBS.map((job) => dirname(job.to)))
+for (const dir of outputDirs) {
   const produced = new Set(
     JOBS.filter((j) => dirname(j.to) === dir).flatMap((j) => [basename(j.to), ...(j.alsoWrites ?? [])]),
   )
-  const stale = (await readdir(dir)).filter((name) => !produced.has(name))
+  const stale = (await readdir(dir)).filter(
+    (name) => !produced.has(name) && !outputDirs.has(resolve(dir, name)),
+  )
   if (stale.length) {
     console.warn(
       `warning: unreferenced in ${relative(root, dir).replace(/\\/g, '/')} -- ` +

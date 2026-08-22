@@ -12,12 +12,16 @@
  *   npm run shot -- story --out story.png --clip 0,0,400,900
  *   npm run shot -- achievements --click ".ach-tab:nth-child(3)"
  *   npm run shot -- battle --at 1600,40      (the far wall)
+ *   npm run shot -- battle --key i           (the equipment sheet)
  *
  * --clip takes x,y,width,height in CSS pixels, for looking at one component
  * rather than the whole screen.
  *
  * --at takes x,y in world pixels and teleports the player there before the
  * shot -- the only way to see the far side of a 3200x1800 map from a script.
+ *
+ * --key takes keys separated by commas and presses them in order, for a screen
+ * that only a keystroke opens.
  *
  * --click takes CSS selectors separated by ">>" and clicks them in order
  * before the shot, which is the only way to see a state that needs a tab or a
@@ -69,6 +73,7 @@ const height = Number(flag('height', 900))
 const clip = flag('clip')
 const wait = Number(flag('wait', 1500))
 const clicks = (flag('click') ?? '').split('>>').map((c) => c.trim()).filter(Boolean)
+const keys = (flag('key') ?? '').split(',').map((k) => k.trim()).filter(Boolean)
 /*
  * --at x,y puts the player there before the shot, in world coordinates.
  *
@@ -128,6 +133,14 @@ try {
   for (const selector of clicks) {
     await page.click(selector)
     // Long enough for a CSS transition to finish; React has already rerendered.
+    await new Promise((r) => setTimeout(r, 350))
+  }
+
+  /* --key presses keys in order. The equipment sheet has no button -- it opens
+     on I and nothing else -- so a screen that exists only behind a keystroke is
+     otherwise unphotographable. */
+  for (const key of keys) {
+    await page.keyboard.press(key)
     await new Promise((r) => setTimeout(r, 350))
   }
 

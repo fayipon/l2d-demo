@@ -29,6 +29,7 @@ import { recordRun, useLastReward } from '../features/profile'
 import { loadoutFor } from '../game/data/loadouts'
 import { sceneFor } from '../game/data/scenes'
 import './GamePage.css'
+import '../styles/ui-kit.css'
 
 /** Roman numerals for weapon tiers -- short, and unmistakably a rank. */
 const TIER_MARK = ['', 'I', 'II', 'III', 'IV']
@@ -318,37 +319,40 @@ export function GamePage() {
           Hence the fallback rather than a broken frame.
         */}
         <div className="pilot">
-          <span className="pilot-face">
-            {portrait ? (
-              <img src={portrait} alt="" />
-            ) : (
-              <Icon name="person" className="pilot-face-fallback" />
-            )}
+          <div className="pilot-head">
+            <span className="pilot-face uk-portrait-frame">
+              {portrait ? (
+                <img src={portrait} alt="" />
+              ) : (
+                <Icon name="person" className="pilot-face-fallback" />
+              )}
+            </span>
+
+            <div className="pilot-plate uk-name-plate">
+              <p className="pilot-name">
+                {character.name}
+                <Icon name="sigil" className="pilot-sigil" />
+              </p>
+              <p className="pilot-level">LV.{run.level}</p>
+            </div>
+          </div>
+
+          {/* Widths move in 66ms steps because that is how often the scene
+              publishes; the transition is what makes them look continuous. */}
+          <span className="pilot-bar is-hp uk-bar-hp">
+            <i className="pilot-fill" style={{ width: `${hpPercent}%` }} />
+            <b className="pilot-bar-count">
+              {Math.max(0, Math.ceil(run.hp))} / {Math.round(run.maxHp)}
+            </b>
           </span>
 
-          <div className="pilot-body">
-            <p className="pilot-name">
-              {character.name}
-              <Icon name="sigil" className="pilot-sigil" />
-            </p>
-            <p className="pilot-level">LV.{run.level}</p>
+          <span className="pilot-bar is-xp uk-bar-xp">
+            <i className="pilot-fill" style={{ width: `${xpPercent}%` }} />
+          </span>
 
-            {/* Widths move in 66ms steps because that is how often the scene
-                publishes; the transition is what makes them look continuous. */}
-            <span className="pilot-bar is-hp">
-              <i className="pilot-fill" style={{ width: `${hpPercent}%` }} />
-              <b className="pilot-bar-count">
-                {Math.max(0, Math.ceil(run.hp))} / {Math.round(run.maxHp)}
-              </b>
-            </span>
-
-            <p className="pilot-xp-label">
-              EXP {Math.floor(run.xp).toLocaleString()} / {run.xpToLevel.toLocaleString()}
-            </p>
-            <span className="pilot-bar is-xp">
-              <i className="pilot-fill" style={{ width: `${xpPercent}%` }} />
-            </span>
-          </div>
+          <p className="pilot-xp-label">
+            EXP {Math.floor(run.xp).toLocaleString()} / {run.xpToLevel.toLocaleString()}
+          </p>
         </div>
 
         {/* Under the panel, as in the mock. Coins are what the shop will spend,
@@ -357,8 +361,9 @@ export function GamePage() {
             shop spends what this run earned, and showing a five-figure lobby
             total beside it would read as money you could use. */}
         <div className="purse">
-          <span className="purse-row">
-            <Icon name="coin" className="purse-icon is-coin" />
+          {/* The pill is drawn with its coin in it, so the count is all this
+              contributes. */}
+          <span className="purse-row uk-pill-coin">
             <b>{run.coins}</b>
           </span>
         </div>
@@ -406,7 +411,7 @@ export function GamePage() {
           condition -- nothing happens there, and the row simply fills up and
           stays full, which is honest about what it is.
         */}
-        <div className="goals">
+        <div className="goals uk-panel">
           <p className="goals-title">任務目標</p>
           <ul className="goals-list">
             <li className="goal">
@@ -448,7 +453,7 @@ export function GamePage() {
         {/* ---------- counters ---------- */}
         <div className="counters">
           <div className="counter">
-            <Icon name="skull" className="counter-icon is-kills" />
+            <i className="counter-icon is-kills" aria-label="擊殺" />
             <span>{run.kills}</span>
           </div>
           {/* Not decoration: the whole point of the pooling and the grid is that
@@ -487,6 +492,7 @@ export function GamePage() {
                 選擇一項強化
                 {run.pendingLevels > 1 ? ` · 還有 ${run.pendingLevels - 1} 次` : ''}
               </p>
+              <i className="ui-rule is-wide uk-rule-lg" aria-hidden="true" />
             </header>
 
             <div className="card-row">
@@ -501,7 +507,7 @@ export function GamePage() {
                   <button
                     type="button"
                     key={id}
-                    className={`card tone-${tone} group-${group}`}
+                    className={`card uk-frame-md tone-${tone} group-${group}`}
                     onClick={() => requestUpgrade(id)}
                   >
                     <kbd className="card-key">{index + 1}</kbd>
@@ -543,6 +549,7 @@ export function GamePage() {
               <p className="screen-sub">
                 持有 <b>{run.coins}</b> 金幣
               </p>
+              <i className="ui-rule is-wide uk-rule-lg" aria-hidden="true" />
             </header>
 
             {/* Above the shelf, as in the mock: rerolling is something you do
@@ -557,7 +564,7 @@ export function GamePage() {
               <Icon name="sparkle" />
               重骰貨架
               <span className="card-price">
-                <Icon name="coin" className="card-coin" />
+                <i className="card-coin" aria-hidden="true" />
                 {run.rerollPrice}
               </span>
             </button>
@@ -572,7 +579,7 @@ export function GamePage() {
                     <button
                       type="button"
                       key={`w${slot}-${offer.index}-${offer.tier}`}
-                      className={`card is-weapon tone-${tone}${affordable ? '' : ' is-broke'}`}
+                      className={`card uk-frame-md is-weapon tone-${tone}${affordable ? '' : ' is-broke'}`}
                       style={{ '--weapon-tint': hexOf(weapon.tint) } as CSSProperties}
                       onClick={() => requestBuy(slot)}
                       disabled={!affordable}
@@ -585,7 +592,7 @@ export function GamePage() {
                       <Emblem className="card-art" frame="ring" glyph="swords" tone={tone} />
                       <span className="card-detail">{weapon.detail}</span>
                       <span className="card-plate">
-                        <Icon name="coin" className="card-coin" />
+                        <i className="card-coin" aria-hidden="true" />
                         {offer.price}
                       </span>
                     </button>
@@ -597,7 +604,7 @@ export function GamePage() {
                   <button
                     type="button"
                     key={`i${slot}-${item.id}`}
-                    className={`card tone-${tone}${affordable ? '' : ' is-broke'}`}
+                    className={`card uk-frame-md tone-${tone}${affordable ? '' : ' is-broke'}`}
                     onClick={() => requestBuy(slot)}
                     disabled={!affordable}
                   >
@@ -611,7 +618,7 @@ export function GamePage() {
                     />
                     <span className="card-detail">{item.detail}</span>
                     <span className="card-plate">
-                      <Icon name="coin" className="card-coin" />
+                      <i className="card-coin" aria-hidden="true" />
                       {offer.price}
                     </span>
                   </button>
@@ -652,7 +659,7 @@ export function GamePage() {
               <div className="reward-row">
                 {reward.record ? <p className="reward-record">新紀錄</p> : null}
                 <div className="reward-line">
-                  <Icon name="coin" className="reward-icon" />
+                  <i className="reward-icon is-coin" aria-hidden="true" />
                   <b>+{reward.coins}</b>
                 </div>
                 <div className="reward-line">

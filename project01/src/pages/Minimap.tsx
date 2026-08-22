@@ -163,7 +163,7 @@ export function Minimap({ code }: MinimapProps) {
   return (
     <div className="minimap">
       <p className="minimap-title">戰場 {code}</p>
-      <div className="minimap-plate">
+      <div className="minimap-plate uk-ring">
         <canvas ref={canvasRef} width={SIZE} height={SIZE} />
       </div>
     </div>
