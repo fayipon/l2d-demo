@@ -84,10 +84,11 @@ outside, and a minimap shows what the viewport no longer can.
   on this machine is about ±0.4ms, so only interleaved A/B in one sitting
   counts.
 
-## Decisions I Need Confirmed Before Building
+## Decisions Confirmed During The Build
 
-These change the work materially, so they are called out rather than assumed.
-The recommendation is what gets built if nothing is said.
+Every one of these was settled by taking the recommendation, and each is left
+here with its reasoning rather than collapsed into the answer -- the reasoning
+is the part worth reading back if any of them is ever reopened.
 
 - **How vision shrinks the view.** Two readings of "smaller screen area":
   - *Recommended:* a **vignette plus a sight limit** — the world renders at the
@@ -346,7 +347,25 @@ through the harness from step 0.
 - Anything in the lobby.
 
 ## Completion Flow
-- Step 1 lands as its own commit, with no behaviour change beyond the magnet
-  fix, benchmarked before and after. Every later step builds on it, and a
-  bisect through a combined commit would be miserable.
-- Move this plan from PLANS to FINISH, commit and push in the same flow.
+- Step 1 landed as its own commit, benchmarked before and after. Every later
+  step built on it, and a bisect through a combined commit would have been
+  miserable.
+- Moved from PLANS to FINISH. Done.
+
+## What Outlived The Plan
+
+Two things this work left behind that the next piece of arena work should
+start from rather than rebuild:
+
+- `npm run bench` measures the arena under load -- `--spread world` for the
+  camera's case, `--hold KeyD` for the run-away case. Its default load follows
+  the enemy pool, so a bare run measures the ceiling the game can reach.
+- `npm run verify` asserts the arena's rules and exits non-zero. It grew well
+  past this plan: the arrival telegraph, break loot, the merge rule, resale
+  prices, the attack-power families, and armour. Every check in it was
+  confirmed to fail with the guard it covers removed, which took three tries
+  to get honest on the first one -- see the commit for step 2.
+
+The standing lesson from both: a check that passes for the wrong reason is
+more expensive than no check, and the only way to find out which you have is
+to break the thing on purpose and watch it go red.
