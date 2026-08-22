@@ -23,6 +23,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { basename, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
+import { buildDigitFont } from './fontjob.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repo = resolve(root, '..')
@@ -182,6 +183,13 @@ const JOBS = [
     modulate: art.modulate,
     crop: art.crop,
   })),
+  {
+    /* The arena's digits. See fontjob.mjs -- the source is a painted display
+       of every glyph, and this takes the ten the game draws. */
+    from: resolve(repo, 'DESIGN/game_font.png'),
+    to: resolve(assets, 'font-digits.webp'),
+    build: () => buildDigitFont(resolve(repo, 'DESIGN/game_font.png')),
+  },
   ...SPRITES.map((sprite) => ({
     from: resolve(repo, 'DESIGN', sprite.from),
     to: resolve(assets, sprite.out),

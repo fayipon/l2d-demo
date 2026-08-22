@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { SpriteFrame } from '../data/content'
+import digitsUrl from '../../assets/font-digits.webp'
 
 /**
  * The arena's sprite sheet, drawn at boot rather than loaded.
@@ -232,79 +233,62 @@ export function buildAtlas(scene: Phaser.Scene): void {
 /* ---------- damage numbers ---------- */
 
 /**
- * A fixed-width bitmap font of digits, also drawn at boot.
+ * The digits the arena draws damage with.
  *
- * Damage numbers are the one thing on this screen made of text, and there can
- * be dozens on screen at once. A Phaser Text object carries its own canvas and
- * re-renders it whenever the string changes, which at this rate is dozens of
- * canvas rasterisations a second. A bitmap font is one texture and one batch,
- * and the glyphs are already on the machine -- so they get baked into a grid
- * here and handed to Phaser's RetroFont parser, which is exactly the fixed-cell
- * layout this produces.
+ * Painted art, cut out of DESIGN/game_font.png by the asset pipeline -- see
+ * scripts/fontjob.mjs, which is where the geometry below comes from and the
+ * only other place that may know it. It replaces a set of digits this file
+ * used to draw with the system font, which was right while there was no art
+ * and is the wrong answer the moment there is.
  *
- * Its own texture rather than a corner of the sprite atlas, because RetroFont
- * needs a uniform grid and the sprite frames are all different sizes. One
- * extra batch for all the numbers is a fair price.
+ * Fixed-width cells, so a number that changes every frame does not shuffle
+ * sideways as a 1 becomes an 8.
+ *
+ * Loaded rather than drawn, which is the one thing that makes it different
+ * from everything else in this file: the image has to arrive before the font
+ * can be registered, so the scene fetches it in preload and calls
+ * registerDamageFont afterwards.
+ *
+ * Arena-only by construction. It lives under game/view and is loaded by the
+ * arena scene; nothing in the lobby imports either.
  */
 export const FONT_KEY = 'arena-digits'
 
 const DIGITS = '0123456789'
-/*
- * The cell is only a little wider than a digit.
- *
- * RetroFont is fixed-width, so the cell IS the advance: at 20px a bold digit
- * is about 12px across and the rest of the cell became a gap, which made every
- * number read as separated characters rather than one figure.
- */
-const CELL_WIDTH = 13
-const CELL_HEIGHT = 26
 
-export function buildDamageFont(scene: Phaser.Scene): void {
+/** Cell geometry, mirroring what scripts/fontjob.mjs writes. */
+const CELL_WIDTH = 56
+const CELL_HEIGHT = 64
+const CELL_SPACING = 4
+const CELL_MARGIN = 2
+
+/** Handed to the scene's loader. Vite turns the import into a URL. */
+export const FONT_URL = digitsUrl
+
+export function registerDamageFont(scene: Phaser.Scene): void {
   if (scene.cache.bitmapFont.has(FONT_KEY)) {
     return
   }
-
-  const canvas = document.createElement('canvas')
-  canvas.width = CELL_WIDTH * DIGITS.length
-  canvas.height = CELL_HEIGHT
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    throw new Error('no 2D context for the damage font')
-  }
-
-  ctx.font = `700 ${CELL_HEIGHT - 6}px "Segoe UI", system-ui, sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = '#ffffff'
-  for (let i = 0; i < DIGITS.length; i++) {
-    // Centred in its own cell, which is what makes the grid uniform by
-    // construction rather than by hoping the font's metrics cooperate.
-    ctx.fillText(DIGITS[i], i * CELL_WIDTH + CELL_WIDTH / 2, CELL_HEIGHT / 2 + 1)
-  }
-
   if (!scene.textures.exists(FONT_KEY)) {
-    scene.textures.addCanvas(FONT_KEY, canvas)
+    throw new Error('the damage font image was not loaded before it was registered')
   }
 
   scene.cache.bitmapFont.add(
     FONT_KEY,
     Phaser.GameObjects.RetroFont.Parse(scene, {
       image: FONT_KEY,
-      'offset.x': 0,
-      'offset.y': 0,
+      'offset.x': CELL_MARGIN,
+      'offset.y': CELL_MARGIN,
       width: CELL_WIDTH,
       height: CELL_HEIGHT,
       chars: DIGITS,
       charsPerRow: DIGITS.length,
-      'spacing.x': 0,
+      'spacing.x': CELL_SPACING,
       'spacing.y': 0,
       lineSpacing: 0,
     }),
   )
 }
-
-/* Path helpers. Each leaves a path on the context without filling it, so the
-   caller can fill it twice under different composite modes. */
 
 function roundedRect(
   ctx: CanvasRenderingContext2D,

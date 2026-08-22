@@ -4,9 +4,10 @@ import { ENEMY_KINDS, VISION_FADE, WEAPONS, visionRadius } from '../data/content
 import {
   ATLAS_KEY,
   FONT_KEY,
+  FONT_URL,
   VIGNETTE_KEY,
   buildAtlas,
-  buildDamageFont,
+  registerDamageFont,
   buildVignette,
 } from '../view/atlas'
 import { consumeRestart, consumeUpgrade, drainCommands, publishRun } from '../runStore'
@@ -84,8 +85,20 @@ const NUMBER_CAPACITY = 56
 const NUMBER_LIFE = 0.62
 const NUMBER_RISE = -74
 const NUMBER_GRAVITY = 128
-const NUMBER_TINT = 0xffe9f0
-const NUMBER_CRIT_TINT = 0xffd166
+/**
+ * How tall a damage number is drawn, in world pixels.
+ *
+ * The one number to turn. The font is exported at 64 and drawn at this, so the
+ * scale is always down -- an upscaled painted glyph looks like a photograph of
+ * a glyph rather than a glyph. Crits get NUMBER_CRIT_SCALE of it.
+ */
+const NUMBER_SIZE = 26
+const NUMBER_CRIT_SCALE = 1.45
+/* The glyphs are painted red already. Normal hits are left alone, and crits
+   are lifted towards gold -- a tint multiplies, so there is not much room to
+   move a red one, but the metallic highlights take it. */
+const NUMBER_TINT = 0xffffff
+const NUMBER_CRIT_TINT = 0xffcf7a
 
 /**
  * Enemy health bars.
@@ -244,6 +257,10 @@ export class ArenaScene extends Phaser.Scene {
    * before create, so everything after it can assume the texture is there.
    */
   preload(): void {
+    // The painted digits, which have to arrive before create can register them
+    // as a font. Everything else this scene draws with is baked at boot.
+    this.load.image(FONT_KEY, FONT_URL)
+
     if (!this.actor) {
       return
     }
@@ -257,7 +274,7 @@ export class ArenaScene extends Phaser.Scene {
 
   create(): void {
     buildAtlas(this)
-    buildDamageFont(this)
+    registerDamageFont(this)
 
     this.cameras.main.setBackgroundColor('#07030d')
     this.drawFloor()
@@ -310,7 +327,7 @@ export class ArenaScene extends Phaser.Scene {
 
     // Added last, so they draw over everything without needing depth sorting.
     this.numbers = Array.from({ length: NUMBER_CAPACITY }, () => {
-      const text = this.add.bitmapText(0, 0, FONT_KEY, '', 22)
+      const text = this.add.bitmapText(0, 0, FONT_KEY, '', NUMBER_SIZE)
       text.setOrigin(0.5)
       text.visible = false
       return { text, x: 0, y: 0, vy: 0, life: 0 }
@@ -508,7 +525,7 @@ export class ArenaScene extends Phaser.Scene {
       // miss, and there is no such thing here.
       slot.text.setText(String(Math.max(1, Math.round(hit.amount))))
       slot.text.setTint(hit.crit ? NUMBER_CRIT_TINT : NUMBER_TINT)
-      slot.text.setScale(hit.crit ? 1.45 : 1)
+      slot.text.setScale(hit.crit ? NUMBER_CRIT_SCALE : 1)
       slot.text.visible = true
     }
     // Drained. The world appends from zero again on the next step.
