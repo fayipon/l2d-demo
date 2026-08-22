@@ -84,6 +84,9 @@ Document non-obvious lifecycle constraints with short comments.
 ## Documentation Strategy
 If project docs are added later, link to them from this file instead of duplicating long instructions.
 
+Project docs:
+- CLAUDE.md -- current architecture, commands, and the constraints that are load-bearing.
+
 ## Task Workflow Protocol
 For each new implementation request:
 - First create a plan file in PLANS named xxxx.md.
