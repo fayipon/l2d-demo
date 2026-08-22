@@ -9,7 +9,7 @@ import {
   buildDamageFont,
   buildVignette,
 } from '../view/atlas'
-import { consumeRestart, consumeUpgrade, drainShopCommands, publishRun } from '../runStore'
+import { consumeRestart, consumeUpgrade, drainCommands, publishRun } from '../runStore'
 import { rerollPrice } from '../data/shop'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
 
@@ -308,11 +308,13 @@ export class ArenaScene extends Phaser.Scene {
       world.applyUpgrade(chosen)
     }
 
-    for (const command of drainShopCommands()) {
+    for (const command of drainCommands()) {
       if (command.sort === 'buy') {
         world.buy(command.slot)
       } else if (command.sort === 'reroll') {
         world.reroll()
+      } else if (command.sort === 'merge') {
+        world.mergeWeapons(command.from, command.to)
       } else {
         world.leaveShop()
       }

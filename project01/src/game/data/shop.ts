@@ -131,22 +131,27 @@ interface RollContext {
   /** Slots in use, so a full inventory stops being offered weapons it has
    *  nowhere to put. */
   weaponCount: number
-  /** Exactly what a full inventory can still absorb. Kind alone is not
-   *  enough: offering a tier-3 copy to someone holding two tier-1s is a card
-   *  that cannot be bought, which is worse than no card. */
+  /** Kinds and tiers the rack could pair a further copy with. A bias, not a
+   *  gate -- see below. */
   mergeable: MergeTarget[]
 }
 
 /**
  * Lays out one shop.
  *
- * Weapons only appear while there is somewhere for them to go: a free slot, or
- * a kind already held that a copy would fuse with. Otherwise the card would be
- * a purchase the player cannot make, which is worse than one card fewer.
+ * Weapons only appear while there is a free slot. This used to also offer them
+ * to a full rack whenever a copy would have fused on arrival, which was right
+ * while merging was automatic and is a trap now that it is not: the purchase
+ * would find no room, and the player would be looking at a card that does
+ * nothing when clicked.
+ *
+ * With room, half the weapon cards are drawn from what the rack can already
+ * pair with. Merging is the player's move now, and a shelf that never offers
+ * the second half of a pair is a rule with nothing to use it on.
  */
 export function rollShop(context: RollContext, random: () => number): ShopOffer[] {
   const hasRoom = context.weaponCount < MAX_WEAPON_SLOTS
-  const canTakeWeapon = hasRoom || context.mergeable.length > 0
+  const canTakeWeapon = hasRoom
   const offers: ShopOffer[] = []
   const usedItems = new Set<number>()
 
@@ -155,15 +160,17 @@ export function rollShop(context: RollContext, random: () => number): ShopOffer[
     if (wantsWeapon) {
       let index: number
       let tier: number
-      if (hasRoom) {
+      if (context.mergeable.length > 0 && random() < 0.5) {
+        // The other half of a pair the rack is already holding.
+        const target =
+          context.mergeable[Math.floor(random() * context.mergeable.length) % context.mergeable.length]
+        index = target.kind
+        tier = target.tier
+      } else {
         index = Math.floor(random() * WEAPONS.length) % WEAPONS.length
         // Higher tiers show up later, and never above the merge ceiling.
         const ceiling = Math.min(MAX_WEAPON_TIER, 1 + Math.floor((context.wave - 1) / 5))
         tier = 1 + Math.floor(random() * ceiling)
-      } else {
-        const target = context.mergeable[Math.floor(random() * context.mergeable.length) % context.mergeable.length]
-        index = target.kind
-        tier = target.tier
       }
       offers.push({
         sort: 'weapon',

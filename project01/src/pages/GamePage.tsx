@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
 import { Minimap } from './Minimap'
-import { Inventory } from './Inventory'
+import { Inventory, ItemSection, StatSection, WeaponSection, type StatViews } from './Inventory'
 import { Icon, type IconName } from '../components/icons'
 import { Emblem, type EmblemTone } from '../components/Emblem'
 import {
@@ -130,6 +130,16 @@ const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
   lootRange: (v) => `×${v.toFixed(2)}`,
   vision: (v) => `×${v.toFixed(2)}`,
   xpGain: (v) => `×${v.toFixed(2)}`,
+}
+
+/** The three view-side tables the sheet needs, bundled: they always travel
+    together and always describe the same list. */
+const STAT_VIEWS: StatViews = {
+  icon: STAT_ICON,
+  format: STAT_FORMAT,
+  get order() {
+    return STAT_ORDER
+  },
 }
 
 /** Order on the strip, which is the order they are grouped on the cards. */
@@ -430,13 +440,7 @@ export function GamePage() {
         ) : null}
 
         {showSheet ? (
-          <Inventory
-            run={run}
-            statIcon={STAT_ICON}
-            statFormat={STAT_FORMAT}
-            statOrder={STAT_ORDER}
-            onClose={() => setSheetOpen(false)}
-          />
+          <Inventory run={run} views={STAT_VIEWS} onClose={() => setSheetOpen(false)} />
         ) : null}
 
         {/* ---------- level up ---------- */}
@@ -582,20 +586,24 @@ export function GamePage() {
               {run.shop.length === 0 ? <p className="shop-empty">貨架空了。</p> : null}
             </div>
 
+            {/* The same three sections the I sheet shows, because the shop is
+                where they are actually needed: what to buy depends on what is
+                already held, and a full rack has to be merged here rather than
+                discovered to be full after the card is clicked. Laid out as a
+                strip under the shelf rather than as the sheet's three tall
+                columns -- the cards have the height. */}
+            <div className="shop-kit">
+              <WeaponSection run={run} />
+              <StatSection run={run} views={STAT_VIEWS} />
+              <ItemSection run={run} views={STAT_VIEWS} />
+            </div>
+
             <footer className="shop-foot">
               <button type="button" className="shop-go" onClick={requestLeaveShop}>
                 前往第 {run.wave + 1} 波
               </button>
             </footer>
 
-            {run.items.length > 0 ? (
-              <p className="shop-owned">
-                已持有：
-                {run.items
-                  .map((id) => SHOP_ITEMS.find((entry) => entry.id === id)?.label ?? id)
-                  .join('、')}
-              </p>
-            ) : null}
           </div>
         ) : null}
 

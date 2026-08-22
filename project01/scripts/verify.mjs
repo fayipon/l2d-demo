@@ -200,6 +200,56 @@ try {
         'homing cannot cover that inside a 3s break, so it would have been lost',
     )
 
+    /* ---------- the merge rule ---------- */
+
+    /* Every clause of it, because four of the five are refusals and a merge
+       that quietly accepts one of them is a rule the player will learn wrong.
+       The rack is written directly here: going through the shop to arrange a
+       specific pair would be testing the shop. */
+    const rack = world.player.weapons
+    const setRack = (...slots) => {
+      rack.length = 0
+      for (const [kind, tier] of slots) {
+        rack.push({ kind, tier, cooldown: 0 })
+      }
+    }
+
+    setRack([1, 1], [1, 1])
+    const fused = world.mergeWeapons(0, 1)
+    check(
+      'two of the same weapon at the same tier fuse',
+      fused && rack.length === 1 && rack[0].kind === 1 && rack[0].tier === 2,
+      `expected one tier-2 slot, got ${JSON.stringify(rack.map((s) => [s.kind, s.tier]))}`,
+    )
+
+    setRack([1, 1], [1, 2])
+    check(
+      'the same weapon at different tiers does not fuse',
+      !world.mergeWeapons(0, 1) && rack.length === 2,
+      'a tier I fused with a tier II -- the case players expect to work',
+    )
+
+    setRack([1, 1], [3, 1])
+    check(
+      'different weapons at the same tier do not fuse',
+      !world.mergeWeapons(0, 1) && rack.length === 2,
+      'two unrelated weapons fused because their tiers matched',
+    )
+
+    setRack([1, 1])
+    check(
+      'a slot does not fuse with itself',
+      !world.mergeWeapons(0, 0) && rack.length === 1 && rack[0].tier === 1,
+      'dropping a weapon back onto its own slot promoted it for free',
+    )
+
+    setRack([1, 4], [1, 4])
+    check(
+      'the top tier does not fuse further',
+      !world.mergeWeapons(0, 1) && rack.length === 2,
+      'a pair at the ceiling fused past it',
+    )
+
     game.scene.resume('arena')
     return checks
   })

@@ -148,36 +148,50 @@ let restartRequested = false
 let upgradeRequested: UpgradeId | null = null
 
 /**
- * Shop clicks, queued rather than latched.
+ * Player actions, queued rather than latched.
  *
- * A single pending value would drop the second of two clicks landing in the
- * same frame, and buying is the one action where losing an input costs the
- * player money they cannot see leave.
+ * A single pending value would drop the second of two landing in the same
+ * frame, and buying is the one action where losing an input costs the player
+ * money they cannot see leave.
+ *
+ * Not shop-only any more: fusing two weapons is the same shape of thing --
+ * something the HUD asks for and the simulation decides on -- and it can
+ * happen mid-wave, on the equipment sheet.
  */
-type ShopCommand = { sort: 'buy'; slot: number } | { sort: 'reroll' } | { sort: 'leave' }
-const shopQueue: ShopCommand[] = []
+type RunCommand =
+  | { sort: 'buy'; slot: number }
+  | { sort: 'reroll' }
+  | { sort: 'leave' }
+  | { sort: 'merge'; from: number; to: number }
+const commandQueue: RunCommand[] = []
 
 export function requestBuy(slot: number): void {
-  shopQueue.push({ sort: 'buy', slot })
+  commandQueue.push({ sort: 'buy', slot })
 }
 
 export function requestReroll(): void {
-  shopQueue.push({ sort: 'reroll' })
+  commandQueue.push({ sort: 'reroll' })
 }
 
 export function requestLeaveShop(): void {
-  shopQueue.push({ sort: 'leave' })
+  commandQueue.push({ sort: 'leave' })
 }
 
-export function drainShopCommands(): ShopCommand[] {
-  if (shopQueue.length === 0) {
+/** Fuses the weapon in one rack slot into another. The simulation decides
+ *  whether the pair is legal; the HUD only asks. */
+export function requestMerge(from: number, to: number): void {
+  commandQueue.push({ sort: 'merge', from, to })
+}
+
+export function drainCommands(): RunCommand[] {
+  if (commandQueue.length === 0) {
     return EMPTY_COMMANDS
   }
-  return shopQueue.splice(0, shopQueue.length)
+  return commandQueue.splice(0, commandQueue.length)
 }
 
 /** Shared, so the common case of nothing queued allocates nothing. */
-const EMPTY_COMMANDS: ShopCommand[] = []
+const EMPTY_COMMANDS: RunCommand[] = []
 
 export function requestRestart(): void {
   restartRequested = true

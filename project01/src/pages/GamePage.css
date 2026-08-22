@@ -1413,3 +1413,242 @@
   font-size: 0.74rem;
   color: rgba(255, 255, 255, 0.6);
 }
+
+/* ---------- the weapon grid ---------- */
+/*
+ * Six slots, and a weapon is fused by dragging one onto another. See
+ * WeaponGrid.tsx for why this is pointer events rather than native
+ * drag-and-drop.
+ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grid-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  aspect-ratio: 1;
+  padding: 0.3rem;
+  border-radius: 0.35rem;
+  background: rgba(16, 10, 22, 0.85);
+  border: 1px solid color-mix(in srgb, var(--weapon-tint, #fff) 45%, transparent);
+  /* Grabbing a slot must not also select its label or start the browser's own
+     drag of the emblem's SVG. */
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.grid-cell.is-empty {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: transparent;
+  cursor: default;
+}
+
+/* An empty slot is information, not a gap: how much room is left decides
+   whether the next weapon on the shelf is a purchase or a merge. */
+.grid-empty-mark {
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: rotate(45deg);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* The slot being carried: left in place as a hole, so the grid does not
+   reflow under the hand mid-drag. */
+.grid-cell.is-source {
+  opacity: 0.25;
+  border-style: dashed;
+}
+
+/* What this drop would fuse with. Lit before the drop, not after: a rule the
+   player cannot see until they have already failed it is a rule they will
+   think is broken. */
+.grid-cell.is-target {
+  border-color: #7ee0a8;
+  box-shadow: 0 0 0.9rem rgba(126, 224, 168, 0.4);
+}
+
+/* Everything the drag cannot land on steps back, which is what makes the one
+   legal target findable at a glance. */
+.grid-cell.is-dimmed {
+  opacity: 0.4;
+}
+
+.grid-art {
+  font-size: 2.1rem;
+}
+
+.grid-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.grid-tier {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--weapon-tint, rgba(255, 255, 255, 0.6));
+}
+
+.grid-numbers {
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* The carried copy. Fixed to the viewport because the pointer is in viewport
+   coordinates and the grid may be inside a scrolled column. */
+.grid-ghost {
+  position: fixed;
+  z-index: 40;
+  width: 5.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.3rem;
+  border-radius: 0.35rem;
+  background: rgba(24, 14, 30, 0.95);
+  border: 1px solid color-mix(in srgb, var(--weapon-tint, #fff) 70%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  /* Deaf to the pointer, so what is under the cursor is the slot beneath it
+     rather than the thing being carried. */
+  pointer-events: none;
+  transform: scale(1.06);
+}
+
+/* Refused: it falls back into the slot it came from rather than vanishing,
+   which is what says the drop was seen and rejected instead of missed. */
+.grid-ghost.is-returning {
+  transition:
+    left var(--snap-back) ease-in,
+    top var(--snap-back) ease-in;
+  transform: scale(1);
+  opacity: 0.7;
+}
+
+.sheet-note {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ---------- the shop's copy of the kit ---------- */
+/*
+ * The same sections the sheet shows, under the shelf. Shorter and three
+ * abreast, because the cards already own the middle of the screen -- and this
+ * is where the merge matters most, since a full rack is what stops weapons
+ * being offered at all.
+ */
+.shop-kit {
+  display: grid;
+  grid-template-columns: 14rem 23rem 17rem;
+  gap: 1.6rem;
+  align-items: start;
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Each column scrolls on its own rather than the row being clipped: the
+   weapon grid is always six cells and the stats are always sixteen rows, so
+   whichever is taller must not decide how much of the others is visible. */
+.shop-kit .sheet-col {
+  max-height: 29vh;
+  gap: 0.4rem;
+}
+
+/* Thin enough not to become a design element in a 17rem column. */
+.shop-kit .sheet-col::-webkit-scrollbar {
+  width: 4px;
+}
+
+.shop-kit .sheet-col::-webkit-scrollbar-thumb {
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Denser than the sheet's: this is a reference while shopping, not the read
+   you stopped to do. */
+.shop-kit .sheet-stat {
+  padding: 0.08rem 0;
+  font-size: 0.74rem;
+}
+
+/* The group headings go: three of them cost sixty pixels, which is the
+   difference between the whole stat block fitting and its last group living
+   below the fold. The grouping still reads -- the icons keep their group
+   colour, and the blocks keep a gap between them. */
+.shop-kit .sheet-group-name {
+  display: none;
+}
+
+.shop-kit .sheet-group {
+  margin-bottom: 0.6rem;
+}
+
+.shop-kit .sheet-row {
+  padding: 0.45rem 0.6rem;
+}
+
+.shop-kit .sheet-art {
+  font-size: 2.1rem;
+}
+
+.shop-kit .sheet-heading {
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+}
+
+.shop-kit .grid {
+  gap: 0.3rem;
+}
+
+.shop-kit .grid-art {
+  font-size: 1.6rem;
+}
+
+/* Shorter cards, because the shelf is no longer the only thing on this
+   screen. The medallion is what gives, since it is the one part carrying no
+   information the row below it does not already state. */
+.shop .card {
+  width: 13.5rem;
+  padding: 0.9rem 0.9rem 0.75rem;
+}
+
+.shop .card-art {
+  font-size: 3.6rem;
+  margin: 0.35rem 0 0.4rem;
+}
+
+.shop .card-name {
+  font-size: 1.1rem;
+}
+
+/* The shop screen scrolls as a whole rather than pinning its shelf, because
+   at 900px the cards, the kit and the way out do not all fit standing. */
+.shop {
+  justify-content: flex-start;
+  padding: 2.2rem 2rem 1.4rem;
+  overflow-y: auto;
+}

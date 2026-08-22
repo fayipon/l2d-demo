@@ -237,8 +237,53 @@ export const MAX_WEAPON_SLOTS = 6
 /** Tiers a weapon can reach by merging. */
 export const MAX_WEAPON_TIER = 4
 
-/** Copies of one weapon at one tier that fuse into the next. */
-export const MERGE_COUNT = 3
+/**
+ * Copies of one weapon at one tier that fuse into the next.
+ *
+ * Two, and the fusion is something the player does rather than something that
+ * happens to them -- they drag one slot onto another on the equipment sheet.
+ * It was three, and automatic, on the argument that three of a kind at one
+ * tier are strictly worse than one of the next so asking would only be asking
+ * whether the player wants to be stronger.
+ *
+ * That argument holds for the fusion itself and misses what the rack is for.
+ * Six slots are a budget: whether to spend two of them on a pair that becomes
+ * one stronger slot, or keep the pair and fire twice, is the decision -- and
+ * an automatic merge takes it away before it can be made. At two the pair is
+ * common enough for the choice to come up most waves.
+ */
+export const MERGE_COUNT = 2
+
+/** One slot of the rack, as far as the merge rule is concerned. */
+export interface MergeCandidate {
+  kind: number
+  tier: number
+}
+
+/**
+ * Whether two rack slots may be fused.
+ *
+ * Lives here rather than in the simulation because both need it and they need
+ * the same answer: the simulation to decide, and the equipment sheet to light
+ * up the slots a dragged weapon could land on -- which it has to know before
+ * the drop, not after. Two copies of a rule this fiddly would disagree the
+ * first time either moved.
+ *
+ * Every clause is a refusal a player will meet. Same weapon, same tier, not
+ * itself, and not already at the ceiling: a blade and a lance never fuse, and
+ * neither do a tier I and a tier II of the same blade, which is the case that
+ * looks like it ought to work.
+ */
+export function canMerge(a: MergeCandidate | undefined, b: MergeCandidate | undefined): boolean {
+  return (
+    a !== undefined &&
+    b !== undefined &&
+    a !== b &&
+    a.kind === b.kind &&
+    a.tier === b.tier &&
+    a.tier < MAX_WEAPON_TIER
+  )
+}
 
 /**
  * What a tier is worth.

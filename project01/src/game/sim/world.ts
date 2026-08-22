@@ -13,6 +13,7 @@ import {
   SPREAD_PER_EXTRA_SHOT,
   WEAPONS,
   armourReduction,
+  canMerge,
   findWeapon,
   getUpgrade,
   healthScale,
@@ -660,7 +661,9 @@ export class World {
     )
   }
 
-/** Kind-and-tier pairs the player is one copy short of fusing. */
+  /** Kind-and-tier pairs a further copy would be able to fuse with. Used to
+   *  bias the shelf towards weapons the rack can actually do something with,
+   *  not to decide whether a weapon may be offered at all. */
   private mergeTargets(): MergeTarget[] {
     const counts = new Map<string, number>()
     for (const slot of this.player.weapons) {
@@ -731,62 +734,48 @@ export class World {
   }
 
   /**
-   * Adds a weapon, then fuses whatever that made possible.
+   * Adds a weapon to the rack, or refuses when there is no room.
    *
-   * Merging happens here rather than in a screen of its own because it has no
-   * decision in it: three of a kind at one tier are strictly worse than one of
-   * the next, so asking would only be asking whether the player wants to be
-   * stronger.
+   * It used to fuse whatever the new copy completed, which is what made room
+   * on a full rack. Merging is the player's move now -- see MERGE_COUNT -- so
+   * a full rack is simply full, and the shop stops offering weapons until
+   * something is fused to clear a slot.
    */
   addWeapon(kind: number, tier = 1): boolean {
     const weapons = this.player.weapons
-    weapons.push({ kind, tier, cooldown: 0 })
-    this.mergeWeapons()
-
-    // The merge is what makes room when the rack is full, so the check has to
-    // come after it. If nothing fused, the copy goes back rather than leaving
-    // a seventh slot the rest of the code does not expect.
-    if (weapons.length > MAX_WEAPON_SLOTS) {
-      const added = weapons.findIndex((slot) => slot.kind === kind && slot.tier === tier)
-      weapons.splice(added >= 0 ? added : weapons.length - 1, 1)
+    if (weapons.length >= MAX_WEAPON_SLOTS) {
       return false
     }
+    weapons.push({ kind, tier, cooldown: 0 })
     return true
   }
 
-  private mergeWeapons(): void {
+  /**
+   * Fuses one slot into another.
+   *
+   * The rule, and every part of it is a refusal the interface has to be able
+   * to show: same weapon, same tier, not itself, and not already at the
+   * ceiling. A blade and a lance do not fuse however many you hold; nor do a
+   * tier I and a tier II of the same blade, which is the case players expect
+   * to work and is exactly why it returns a flag rather than failing quietly.
+   *
+   * The survivor keeps the destination slot's position, so the rack does not
+   * reshuffle under the hand that just dropped something on it.
+   */
+  mergeWeapons(from: number, to: number): boolean {
     const weapons = this.player.weapons
-    let merged = true
-
-    // Repeats, because one fusion can complete another: three tier-1 make a
-    // tier-2, which may be the third tier-2 waiting to become a tier-3.
-    while (merged) {
-      merged = false
-      const counts = new Map<string, number[]>()
-      for (let i = 0; i < weapons.length; i++) {
-        const key = `${weapons[i].kind}:${weapons[i].tier}`
-        const list = counts.get(key)
-        if (list) {
-          list.push(i)
-        } else {
-          counts.set(key, [i])
-        }
-      }
-
-      for (const [key, indices] of counts) {
-        const [kind, tier] = key.split(':').map(Number)
-        if (indices.length < MERGE_COUNT || tier >= MAX_WEAPON_TIER) {
-          continue
-        }
-        // Removed from the back so the earlier indices stay valid.
-        for (let n = MERGE_COUNT - 1; n >= 0; n--) {
-          weapons.splice(indices[n], 1)
-        }
-        weapons.push({ kind, tier: tier + 1, cooldown: 0 })
-        merged = true
-        break
-      }
+    const source = weapons[from]
+    const target = weapons[to]
+    if (from === to || !canMerge(source, target)) {
+      return false
     }
+
+    target.tier += 1
+    // The cooldown restarts with the new weapon rather than carrying over a
+    // timer that belonged to a slower version of it.
+    target.cooldown = 0
+    weapons.splice(from, 1)
+    return true
   }
 
   private endWave(): void {
