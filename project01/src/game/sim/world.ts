@@ -321,6 +321,16 @@ export class World {
   /** Contact hits taken, for the flawless-run record. */
   hitsTaken = 0
   /**
+   * Volleys fired this run.
+   *
+   * Output for the view rather than state the simulation uses: the scene plays
+   * an attack pose when this moves. A counter and not an event, because the
+   * scene looks once a frame while the world fires up to sixty times a second
+   * -- what a pose needs to know is "since I last looked", which is exactly
+   * what comparing a number gives.
+   */
+  volleys = 0
+  /**
    * Runs finished. The HUD banks a result when this changes, which is what
    * stops a rerender from paying the same run twice.
    */
@@ -1086,6 +1096,7 @@ export class World {
         continue
       }
       this.fire(slot, Math.atan2(target.y - player.y, target.x - player.x))
+      this.volleys += 1
       slot.cooldown =
         weapon.cooldown / (player.stats.attackSpeed * tierRateScale(slot.tier))
     }

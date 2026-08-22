@@ -291,7 +291,7 @@ export function GamePage() {
 
   return (
     <div className="game-root">
-      <GameCanvas loadout={loadout} />
+      <GameCanvas loadout={loadout} characterId={character.id} />
 
       <div className="game-overlay">
         {/* ---------- who is fighting ---------- */}

@@ -12,6 +12,7 @@ import {
 import { consumeRestart, consumeUpgrade, drainCommands, publishRun } from '../runStore'
 import { rerollPrice } from '../data/shop'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
+import { actorFor, type ActorAnim, type ActorSheet } from '../data/actors'
 
 /**
  * The window onto the world, and the size the canvas is scaled to fit.
@@ -185,6 +186,18 @@ export class ArenaScene extends Phaser.Scene {
    *  where they were going rather than snapping to a default. */
   private facing = 0
 
+  /** Drawn art for this character, or null for one who has none. */
+  private readonly actor: ActorSheet | null
+  /** What the player sprite is playing, so a pose that has not changed is not
+   *  restarted from its first frame sixty times a second. */
+  private actorAnim: ActorAnim = 'idle'
+  /* Watched rather than pushed. The simulation reports what happened by
+     counting it and the scene notices the count move; a callback per event
+     would put a view concern inside the world. */
+  private lastVolleys = 0
+  private lastHits = 0
+  private lastLevel = 0
+
   private vignette!: Phaser.GameObjects.Image
   /** The radius the vignette texture was baked at, so it is only redrawn when
    *  the stat actually moves rather than every frame. */
@@ -219,9 +232,27 @@ export class ArenaScene extends Phaser.Scene {
    */
   private readonly loadout: ArenaLoadout
 
-  constructor(loadout: ArenaLoadout = DEFAULT_LOADOUT) {
+  constructor(loadout: ArenaLoadout = DEFAULT_LOADOUT, characterId = '') {
     super('arena')
     this.loadout = loadout
+    this.actor = actorFor(characterId)
+  }
+
+  /**
+   * The sheet has to be fetched, which nothing else in this scene does -- the
+   * atlas and the digits are drawn at boot. Phaser runs preload to completion
+   * before create, so everything after it can assume the texture is there.
+   */
+  preload(): void {
+    if (!this.actor) {
+      return
+    }
+    this.load.spritesheet(this.actor.key, this.actor.url, {
+      frameWidth: this.actor.frameWidth,
+      frameHeight: this.actor.frameHeight,
+      margin: this.actor.margin,
+      spacing: this.actor.spacing,
+    })
   }
 
   create(): void {
@@ -260,8 +291,22 @@ export class ArenaScene extends Phaser.Scene {
     this.barTints = new Int32Array(this.enemySprites.length).fill(-1)
     this.projectileFrames = new Int8Array(this.projectileSprites.length).fill(-1)
 
-    this.playerSprite = this.add.sprite(this.world.player.x, this.world.player.y, ATLAS_KEY, 'player')
-    this.playerSprite.setTint(PLAYER_TINT)
+    if (this.actor) {
+      this.buildActorAnimations(this.actor)
+      this.playerSprite = this.add.sprite(this.world.player.x, this.world.player.y, this.actor.key)
+      // Scaled by height alone, so a pose that reaches wider than the others --
+      // the attack row carries a sword swing well past the shoulder -- is not
+      // squeezed to match one that does not.
+      this.playerSprite.setScale(this.actor.displayHeight / this.actor.frameHeight)
+      this.playerSprite.play(`${this.actor.key}-idle`)
+    } else {
+      this.playerSprite = this.add.sprite(this.world.player.x, this.world.player.y, ATLAS_KEY, 'player')
+      this.playerSprite.setTint(PLAYER_TINT)
+    }
+    this.actorAnim = 'idle'
+    this.lastVolleys = this.world.volleys
+    this.lastHits = this.world.hitsTaken
+    this.lastLevel = this.world.player.level
 
     // Added last, so they draw over everything without needing depth sorting.
     this.numbers = Array.from({ length: NUMBER_CAPACITY }, () => {
@@ -430,6 +475,20 @@ export class ArenaScene extends Phaser.Scene {
     }
     this.moveInput.x = x
     this.moveInput.y = y
+
+    /*
+     * Which way the player is pointing, held through a stop so a character who
+     * lets go of the keys keeps facing where they were going rather than
+     * snapping to a default.
+     *
+     * This was meant to land when the minimap was built and did not -- the
+     * field was declared, published and read, and never once assigned, so the
+     * arrow on the map pointed east for every run since. Nothing failed: a
+     * number that is always zero is a perfectly good number.
+     */
+    if (x !== 0 || y !== 0) {
+      this.facing = Math.atan2(y, x)
+    }
   }
 
   /* ---------- damage numbers ---------- */
@@ -661,7 +720,14 @@ export class ArenaScene extends Phaser.Scene {
 
     this.playerSprite.x = player.x
     this.playerSprite.y = player.y
-    this.playerSprite.setTint(player.dodgeFlash > 0 ? DODGE_TINT : PLAYER_TINT)
+    if (this.actor) {
+      this.syncActor(this.actor)
+      // Drawn art brings its own colour. The only tint left on it is the one
+      // that says a hit was dodged rather than missed.
+      this.playerSprite.setTint(player.dodgeFlash > 0 ? DODGE_TINT : 0xffffff)
+    } else {
+      this.playerSprite.setTint(player.dodgeFlash > 0 ? DODGE_TINT : PLAYER_TINT)
+    }
     // Blinks through the invulnerability window, which is the only signal that
     // a second hit did not just fail to register.
     this.playerSprite.visible = player.invuln <= 0 || Math.floor(player.invuln * 20) % 2 === 0
@@ -686,6 +752,83 @@ export class ArenaScene extends Phaser.Scene {
       this.vignette?.setTexture(VIGNETTE_KEY)
     }
     return radius
+  }
+
+  /**
+   * One Phaser animation per row of the sheet.
+   *
+   * Registered on the global animation manager, which outlives the scene, so a
+   * restart would try to register them a second time and Phaser would warn on
+   * every key. Hence the check rather than a blind create.
+   */
+  private buildActorAnimations(actor: ActorSheet): void {
+    for (const [name, spec] of Object.entries(actor.animations)) {
+      const key = `${actor.key}-${name}`
+      if (this.anims.exists(key)) {
+        continue
+      }
+      const first = spec.row * actor.columns
+      this.anims.create({
+        key,
+        frames: this.anims.generateFrameNumbers(actor.key, {
+          start: first,
+          end: first + actor.columns - 1,
+        }),
+        frameRate: spec.frameRate,
+        repeat: spec.repeat,
+      })
+    }
+  }
+
+  /**
+   * Which pose the player is in.
+   *
+   * A priority order rather than a state machine, because the priorities are
+   * the whole rule: levelling outranks being hit, being hit interrupts a
+   * swing, and a swing only starts from rest. Everything one-shot falls back
+   * to idle when Phaser reports it finished, rather than on a timer kept here
+   * that would have to agree with the frame rate.
+   */
+  private syncActor(actor: ActorSheet): void {
+    const world = this.world
+    const sprite = this.playerSprite
+
+    let next: ActorAnim | null = null
+    if (world.player.level !== this.lastLevel) {
+      next = 'levelup'
+    } else if (world.hitsTaken !== this.lastHits) {
+      next = 'hurt'
+    } else if (world.volleys !== this.lastVolleys && this.actorAnim === 'idle') {
+      /* Only from rest. A dart fires six times a second, and restarting the
+         swing on every volley would hold it on its first frame forever. */
+      next = 'attack'
+    }
+
+    /* Advanced whether or not the pose changed, or the frame after a one-shot
+       finishes would replay whatever happened while it was running. */
+    this.lastVolleys = world.volleys
+    this.lastHits = world.hitsTaken
+    this.lastLevel = world.player.level
+
+    if (next && next !== this.actorAnim) {
+      this.actorAnim = next
+      sprite.play(`${actor.key}-${next}`, true)
+    } else if (this.actorAnim !== 'idle' && !sprite.anims.isPlaying) {
+      this.actorAnim = 'idle'
+      sprite.play(`${actor.key}-idle`)
+    }
+
+    /* Turned to face the way they are going, off the same value the minimap's
+       arrow reads.
+
+       The sheet is drawn facing right -- the attack row throws its arc to that
+       side -- so the flip is for travelling left, and only past a quarter of
+       the way round: a character who mirrors on the first pixel of sideways
+       movement flickers while walking a diagonal. */
+    const facing = Math.cos(this.facing)
+    if (Math.abs(facing) > 0.25) {
+      sprite.setFlipX(facing < 0)
+    }
   }
 
   private makeSprites(count: number, frame: string, tint: number): Phaser.GameObjects.Sprite[] {

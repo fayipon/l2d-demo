@@ -72,6 +72,102 @@ const MODELS = [
   { dir: 'rice', textures: ['Rice.2048/texture_00', 'Rice.2048/texture_01'] },
 ]
 
+/**
+ * Character sprite sheets for the arena.
+ *
+ * The source is one image of labelled rows -- 待機 / 攻擊 / 升級 / 受傷, six
+ * frames each -- with a decorative plaque down the left edge that is not art,
+ * and cells that are not on a round pitch. This measures nothing at runtime:
+ * the geometry below was read off the source's own alpha, once, and is the
+ * only place it is written down.
+ *
+ * The source also carries a faint plate behind every pose -- part of the
+ * contact sheet's presentation, not of the art. It is nearly invisible on the
+ * grey it was drawn against and reads as a dark box on the arena floor, so
+ * anything under SPRITE_ALPHA_FLOOR is cleared before slicing. The plate sits
+ * at an alpha of 1 to 7; the effects' outer glow is well above it, so the
+ * cut takes the box and leaves the light.
+ *
+ * Frames are re-laid with a gutter between them. Two different things need it.
+ * The game runs with linear filtering, so a sampler at a frame's edge reaches
+ * into whatever is next to it; and lossy WebP has no notion of frames at all,
+ * so it will happily spread one pose's red into another's. Neither shows up
+ * until something is on screen and moving.
+ */
+const SPRITES = [
+  {
+    out: 'actor-haru.webp',
+    from: 'game_char_sprite_01.png',
+    /* The grid, in source pixels. The left edge clears the label plaque, which
+       runs to x=60 and overlaps where a uniform first cell would start. */
+    grid: { left: 61, top: 14, right: 1524, bottom: 979, cols: 6, rows: 4 },
+  },
+]
+
+/** Output geometry, shared by every sheet so the loader has one set of
+ *  numbers to be told. Mirrored in game/data/actors.ts, which is the only
+ *  other place that may know them. */
+const SPRITE_FRAME = 128
+const SPRITE_MARGIN = 2
+const SPRITE_SPACING = 4
+/** Alpha at or below this is presentation rather than art. See above. */
+const SPRITE_ALPHA_FLOOR = 8
+
+async function buildSpriteSheet(spec) {
+  const { left, top, right, bottom, cols, rows } = spec.grid
+  const cw = (right - left) / cols
+  const chh = (bottom - top) / rows
+  const source = resolve(repo, 'DESIGN', spec.from)
+
+  /* Cleared once, on the source, rather than per cell: doing it after the
+     resize would be too late, because resampling turns a cleared edge and its
+     neighbour back into a value just above the floor. */
+  const raw = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  for (let i = 3; i < raw.data.length; i += raw.info.channels) {
+    if (raw.data[i] <= SPRITE_ALPHA_FLOOR) {
+      raw.data[i] = 0
+    }
+  }
+  const cleaned = await sharp(raw.data, {
+    raw: { width: raw.info.width, height: raw.info.height, channels: raw.info.channels },
+  })
+    .png()
+    .toBuffer()
+
+  const cells = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = Math.round(left + c * cw)
+      const y = Math.round(top + r * chh)
+      const width = Math.round(left + (c + 1) * cw) - x
+      const height = Math.round(top + (r + 1) * chh) - y
+      /* Fitted inside the frame rather than stretched to it: the source cells
+         are slightly wider than tall, and squaring them would make the
+         character subtly fatter in a way that is hard to see and impossible to
+         unsee. */
+      const cell = await sharp(cleaned)
+        .extract({ left: x, top: y, width, height })
+        .resize(SPRITE_FRAME, SPRITE_FRAME, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .png()
+        .toBuffer()
+      cells.push({
+        input: cell,
+        left: SPRITE_MARGIN + c * (SPRITE_FRAME + SPRITE_SPACING),
+        top: SPRITE_MARGIN + r * (SPRITE_FRAME + SPRITE_SPACING),
+      })
+    }
+  }
+
+  const sheetWidth = SPRITE_MARGIN * 2 + cols * SPRITE_FRAME + (cols - 1) * SPRITE_SPACING
+  const sheetHeight = SPRITE_MARGIN * 2 + rows * SPRITE_FRAME + (rows - 1) * SPRITE_SPACING
+  return sharp({
+    create: { width: sheetWidth, height: sheetHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite(cells)
+    .webp(TEXTURE_WEBP)
+    .toBuffer()
+}
+
 const JOBS = [
   ...BACKGROUNDS.map((bg) => ({
     from: resolve(repo, 'DESIGN', bg.from),
@@ -85,6 +181,11 @@ const JOBS = [
     webp: BACKGROUND_WEBP,
     modulate: art.modulate,
     crop: art.crop,
+  })),
+  ...SPRITES.map((sprite) => ({
+    from: resolve(repo, 'DESIGN', sprite.from),
+    to: resolve(assets, sprite.out),
+    build: () => buildSpriteSheet(sprite),
   })),
   ...MODELS.flatMap((model) =>
     model.textures.map((texture) => ({
@@ -111,7 +212,7 @@ for (const job of JOBS) {
   if (job.modulate) {
     pipeline = pipeline.modulate(job.modulate)
   }
-  const output = await pipeline.webp(job.webp).toBuffer()
+  const output = job.build ? await job.build() : await pipeline.webp(job.webp).toBuffer()
   await writeFile(job.to, output)
   before += input.length
   after += output.length

@@ -15,6 +15,9 @@ interface GameCanvasProps {
    *  not change character halfway through, and re-reading it would mean
    *  re-creating the game. */
   loadout?: ArenaLoadout
+  /** Who is fighting, for the drawn art in game/data/actors. Read once at
+   *  mount for the same reason. */
+  characterId?: string
 }
 
 /**
@@ -31,12 +34,13 @@ interface GameCanvasProps {
  * belongs in the scene, not in React. React mounts this and gets out of the
  * way -- a re-render here would tear down the whole game.
  */
-export function GameCanvas({ loadout = DEFAULT_LOADOUT }: GameCanvasProps) {
+export function GameCanvas({ loadout = DEFAULT_LOADOUT, characterId = '' }: GameCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   /* Held in a ref so the effect below can stay keyed on nothing: a prop in the
      dependency array would tear down and rebuild the whole game the first time
      the parent re-rendered with a fresh object. */
   const loadoutRef = useRef(loadout)
+  const characterRef = useRef(characterId)
 
   useEffect(() => {
     const host = hostRef.current
@@ -62,7 +66,7 @@ export function GameCanvas({ loadout = DEFAULT_LOADOUT }: GameCanvasProps) {
       // once there is pixel art in here.
       pixelArt: false,
       // An instance, not the class, so the loadout can be handed to it.
-      scene: [new ArenaScene(loadoutRef.current)],
+      scene: [new ArenaScene(loadoutRef.current, characterRef.current)],
     })
 
     if (import.meta.env.DEV) {
