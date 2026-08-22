@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
+import { Minimap } from './Minimap'
 import { Icon, type IconName } from '../components/icons'
 import { Emblem, type EmblemTone } from '../components/Emblem'
 import {
@@ -317,6 +318,8 @@ export function GamePage() {
             </>
           )}
         </div>
+
+        <Minimap />
 
         {/* ---------- what the run is for ---------- */}
         {/*

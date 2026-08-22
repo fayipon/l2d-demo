@@ -1124,3 +1124,57 @@
   max-width: 46rem;
   text-align: center;
 }
+
+/* ---------- minimap ---------- */
+/*
+ * A canvas in a round plate, top-right, with the objectives panel hanging
+ * under it as in the mock. See Minimap.tsx for why this is DOM rather than
+ * drawn in the scene.
+ */
+.minimap {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.minimap-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+/* Circular, which is what makes it read as a scope rather than as a second
+   screen. The world inside is a rectangle and the corners are simply cut --
+   the map is for direction, and the corners of a 3200x1800 world are the least
+   of what anyone is looking for. */
+.minimap-plate {
+  width: 10.5rem;
+  height: 10.5rem;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(6, 3, 10, 0.82);
+  border: 1px solid rgba(255, 199, 74, 0.3);
+  box-shadow:
+    0 2px 16px rgba(0, 0, 0, 0.6),
+    inset 0 0 1.6rem rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.minimap-plate canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Under the minimap rather than in the corner it used to own. */
+.goals {
+  top: 13.8rem;
+}

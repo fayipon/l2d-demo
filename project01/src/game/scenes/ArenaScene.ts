@@ -26,6 +26,27 @@ export const VIEW_HEIGHT = 720
 
 export { WORLD_WIDTH, WORLD_HEIGHT }
 
+/**
+ * Copies the live entities' positions into a flat buffer, and returns how many
+ * landed there.
+ *
+ * Flat pairs rather than objects because the only consumer is a canvas loop,
+ * and a buffer that is written in place fifteen times a second must not be
+ * allocating an array of points each time to do it.
+ */
+function pack(items: readonly { active: boolean; x: number; y: number }[], into: Float32Array): number {
+  let count = 0
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.active) {
+      into[count * 2] = item.x
+      into[count * 2 + 1] = item.y
+      count++
+    }
+  }
+  return count
+}
+
 /** Never run more than this many simulation steps for one rendered frame. */
 const MAX_STEPS_PER_FRAME = 5
 
@@ -151,6 +172,19 @@ export class ArenaScene extends Phaser.Scene {
   private barFills: Phaser.GameObjects.Sprite[] = []
   private barTints = new Int32Array(0)
 
+  /**
+   * The minimap's feed, filled in place on each publish.
+   *
+   * Allocated once at the pool's capacity and handed to the HUD by reference.
+   * Fifteen times a second, a fresh pair of arrays would be 1400 floats of
+   * garbage per publish for a canvas that reads them and forgets them.
+   */
+  private radar = new Float32Array(0)
+  private loot = new Float32Array(0)
+  /** Held from the last non-zero input, so a standing player keeps pointing
+   *  where they were going rather than snapping to a default. */
+  private facing = 0
+
   private vignette!: Phaser.GameObjects.Image
   /** The radius the vignette texture was baked at, so it is only redrawn when
    *  the stat actually moves rather than every frame. */
@@ -217,6 +251,9 @@ export class ArenaScene extends Phaser.Scene {
       // repositioning as it empties.
       sprite.setOrigin(0, 0.5)
     }
+
+    this.radar = new Float32Array(this.world.enemies.capacity * 2)
+    this.loot = new Float32Array(this.world.pickups.capacity * 2)
 
     this.enemyFrames = new Int8Array(this.enemySprites.length).fill(-1)
     this.enemyTints = new Int32Array(this.enemySprites.length).fill(-1)
@@ -695,6 +732,16 @@ export class ArenaScene extends Phaser.Scene {
       items: [...world.ownedItems],
       shop: world.shopOffers,
       rerollPrice: rerollPrice(world.wave, world.rerolls),
+      /* Positions for the minimap, packed as flat x,y pairs. Arriving enemies
+         are included deliberately: the telegraph is a warning, and a warning
+         the map hides is half a warning. */
+      radar: this.radar,
+      radarCount: pack(world.enemies.items, this.radar),
+      loot: this.loot,
+      lootCount: pack(world.pickups.items, this.loot),
+      x: player.x,
+      y: player.y,
+      facing: this.facing,
     })
   }
 

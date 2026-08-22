@@ -50,6 +50,32 @@ export interface RunSnapshot {
   /** Laid out only while the status is 'shop'. */
   shop: ShopOffer[]
   rerollPrice: number
+
+  /* ---------- the minimap's feed ---------- */
+  /**
+   * Live positions, as flat x,y pairs, with a count of how many of the buffer
+   * is in use.
+   *
+   * The one thing here that is reused rather than replaced. Everything else in
+   * this snapshot is copied because the HUD compares by identity and would
+   * never see a value mutated in place -- but these are read by a canvas that
+   * draws imperatively on every publish rather than by anything that diffs
+   * them, and the snapshot object around them is still new each time, so the
+   * redraw always happens. Copying 1400 floats fifteen times a second to
+   * satisfy a rule that does not apply here would be a garbage generator
+   * dressed as consistency.
+   */
+  radar: Float32Array
+  radarCount: number
+  loot: Float32Array
+  lootCount: number
+  /** Where the player is in the world, which is the only thing that makes the
+   *  numbers above mean anything. */
+  x: number
+  y: number
+  /** Which way they are pointing, in radians. Held from the last real input,
+   *  so a standing player keeps facing where they were going. */
+  facing: number
 }
 
 const EMPTY: RunSnapshot = {
@@ -74,6 +100,13 @@ const EMPTY: RunSnapshot = {
   items: [],
   shop: [],
   rerollPrice: 0,
+  radar: new Float32Array(0),
+  radarCount: 0,
+  loot: new Float32Array(0),
+  lootCount: 0,
+  x: 0,
+  y: 0,
+  facing: 0,
 }
 
 let snapshot: RunSnapshot = EMPTY
