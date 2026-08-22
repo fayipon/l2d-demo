@@ -8,10 +8,17 @@ import sharp from 'sharp'
  * draws -- damage, and nothing else. The rest of the sheet is left where it is
  * rather than exported against a use that does not exist.
  *
- * Laid out as fixed-width cells, which is a choice and not a limitation of the
- * loader. Numbers that change every frame must not shuffle sideways as a 1
- * becomes an 8, so the advance is constant and each digit is centred in it --
- * tabular figures, the same reason the HUD's CSS asks for them.
+ * Proportionally spaced, which took a second attempt. The first version laid
+ * the digits out in fixed-width cells and let the loader advance by the cell:
+ * tabular figures, on the argument that a number changing every frame must not
+ * shuffle sideways as a 1 becomes an 8. That argument is sound for a HUD
+ * readout and wrong for damage, which appears, drifts and dies -- and it made
+ * "11" look like two separate numbers, because a 1 is two thirds the width of
+ * the cell it sat in and wore the difference as air on both sides.
+ *
+ * So each digit is now cut to its own ink and carries its own advance, and the
+ * font ships as BMFont XML rather than as a fixed grid. TRACKING is the gap
+ * between glyphs and the one number to turn if it wants to be tighter still.
  *
  * The plate behind the glyphs is cleared the same way the character sheet's
  * is: the alpha histogram is two peaks, 63% at or below 31 and 31% at or above
@@ -38,59 +45,58 @@ const DIGIT_COLUMNS = [
 const ALPHA_FLOOR = 31
 
 /**
- * Cell geometry of the output.
+ * Height of a glyph in the exported sheet.
  *
- * Exported taller than anything draws it -- the numbers run at 26 and crits at
- * half again -- so the scale is always down. An upscaled painted glyph looks
- * like a photograph of a glyph.
+ * Taller than anything draws it -- damage runs at 26 and crits at half again
+ * -- so every draw scales down. An upscaled painted glyph looks like a
+ * photograph of a glyph.
  */
-export const DIGIT_CELL = { width: 56, height: 64, spacing: 4, margin: 2 }
+const GLYPH_HEIGHT = 64
+
+/** Gap between one glyph's ink and the next, at GLYPH_HEIGHT. */
+const TRACKING = 3
+
+/** Gutter in the packed sheet, so linear filtering and lossy WebP cannot
+ *  reach from one glyph into its neighbour. Nothing to do with TRACKING. */
+const GUTTER = 4
+const MARGIN = 2
 
 export async function buildDigitFont(source) {
   const raw = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-  for (let i = 3; i < raw.data.length; i += raw.info.channels) {
+  const { width: srcW, channels } = raw.info
+  for (let i = 3; i < raw.data.length; i += channels) {
     if (raw.data[i] <= ALPHA_FLOOR) {
       raw.data[i] = 0
     }
   }
   const cleaned = await sharp(raw.data, {
-    raw: { width: raw.info.width, height: raw.info.height, channels: raw.info.channels },
+    raw: { width: srcW, height: raw.info.height, channels },
   })
     .png()
     .toBuffer()
 
   const bandHeight = DIGIT_BAND.bottom - DIGIT_BAND.top + 1
-  /* Every digit is cut at the full height of the band rather than trimmed to
-     its own ink. They share a baseline in the source, and trimming each to
-     itself would throw that away and put a 7 and a 4 at different heights. */
-  const scale = DIGIT_CELL.height / bandHeight
+  const scale = GLYPH_HEIGHT / bandHeight
 
-  const cells = []
+  /* Each digit is cut at the full height of the band and only trimmed
+     sideways. They share a baseline in the source, and trimming each to its
+     own ink vertically would throw that away and stand a 7 taller than a 4. */
+  const glyphs = []
+  let cursor = MARGIN
   for (const [index, [left, right]] of DIGIT_COLUMNS.entries()) {
-    const width = right - left + 1
-    const glyph = await sharp(cleaned)
-      .extract({ left, top: DIGIT_BAND.top, width, height: bandHeight })
-      .resize({ height: DIGIT_CELL.height })
+    const width = Math.round((right - left + 1) * scale)
+    const image = await sharp(cleaned)
+      .extract({ left, top: DIGIT_BAND.top, width: right - left + 1, height: bandHeight })
+      .resize({ width, height: GLYPH_HEIGHT })
       .png()
       .toBuffer()
-    const drawn = Math.round(width * scale)
-    cells.push({
-      input: glyph,
-      left:
-        DIGIT_CELL.margin +
-        index * (DIGIT_CELL.width + DIGIT_CELL.spacing) +
-        Math.round((DIGIT_CELL.width - drawn) / 2),
-      top: DIGIT_CELL.margin,
-    })
+    glyphs.push({ code: 48 + index, image, x: cursor, width })
+    cursor += width + GUTTER
   }
 
-  const sheetWidth =
-    DIGIT_CELL.margin * 2 +
-    DIGIT_COLUMNS.length * DIGIT_CELL.width +
-    (DIGIT_COLUMNS.length - 1) * DIGIT_CELL.spacing
-  const sheetHeight = DIGIT_CELL.margin * 2 + DIGIT_CELL.height
-
-  return sharp({
+  const sheetWidth = cursor - GUTTER + MARGIN
+  const sheetHeight = GLYPH_HEIGHT + MARGIN * 2
+  const png = await sharp({
     create: {
       width: sheetWidth,
       height: sheetHeight,
@@ -98,7 +104,23 @@ export async function buildDigitFont(source) {
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
-    .composite(cells)
+    .composite(glyphs.map((g) => ({ input: g.image, left: g.x, top: MARGIN })))
     .webp({ quality: 94, alphaQuality: 100, effort: 6 })
     .toBuffer()
+
+  const chars = glyphs
+    .map(
+      (g) =>
+        `    <char id="${g.code}" x="${g.x}" y="${MARGIN}" width="${g.width}" ` +
+        `height="${GLYPH_HEIGHT}" xoffset="0" yoffset="0" xadvance="${g.width + TRACKING}"/>`,
+    )
+    .join('\n')
+
+  const xml =
+    `<?xml version="1.0"?>\n<font>\n` +
+    `  <info face="arena-digits" size="${GLYPH_HEIGHT}"/>\n` +
+    `  <common lineHeight="${GLYPH_HEIGHT}" base="${GLYPH_HEIGHT}"/>\n` +
+    `  <chars count="${glyphs.length}">\n${chars}\n  </chars>\n</font>\n`
+
+  return { png, xml }
 }

@@ -3,11 +3,11 @@ import { ARRIVAL_SECONDS, STEP_SECONDS, WORLD_HEIGHT, WORLD_WIDTH, World } from 
 import { ENEMY_KINDS, VISION_FADE, WEAPONS, visionRadius } from '../data/content'
 import {
   ATLAS_KEY,
+  FONT_DATA_URL,
+  FONT_IMAGE_URL,
   FONT_KEY,
-  FONT_URL,
   VIGNETTE_KEY,
   buildAtlas,
-  registerDamageFont,
   buildVignette,
 } from '../view/atlas'
 import { consumeRestart, consumeUpgrade, drainCommands, publishRun } from '../runStore'
@@ -259,7 +259,7 @@ export class ArenaScene extends Phaser.Scene {
   preload(): void {
     // The painted digits, which have to arrive before create can register them
     // as a font. Everything else this scene draws with is baked at boot.
-    this.load.image(FONT_KEY, FONT_URL)
+    this.load.bitmapFont(FONT_KEY, FONT_IMAGE_URL, FONT_DATA_URL)
 
     if (!this.actor) {
       return
@@ -274,7 +274,6 @@ export class ArenaScene extends Phaser.Scene {
 
   create(): void {
     buildAtlas(this)
-    registerDamageFont(this)
 
     this.cameras.main.setBackgroundColor('#07030d')
     this.drawFloor()

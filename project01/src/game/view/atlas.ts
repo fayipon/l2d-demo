@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { SpriteFrame } from '../data/content'
 import digitsUrl from '../../assets/font-digits.webp'
+import digitsFntUrl from '../../assets/font-digits.fnt?url'
 
 /**
  * The arena's sprite sheet, drawn at boot rather than loaded.
@@ -254,41 +255,16 @@ export function buildAtlas(scene: Phaser.Scene): void {
  */
 export const FONT_KEY = 'arena-digits'
 
-const DIGITS = '0123456789'
-
-/** Cell geometry, mirroring what scripts/fontjob.mjs writes. */
-const CELL_WIDTH = 56
-const CELL_HEIGHT = 64
-const CELL_SPACING = 4
-const CELL_MARGIN = 2
-
-/** Handed to the scene's loader. Vite turns the import into a URL. */
-export const FONT_URL = digitsUrl
-
-export function registerDamageFont(scene: Phaser.Scene): void {
-  if (scene.cache.bitmapFont.has(FONT_KEY)) {
-    return
-  }
-  if (!scene.textures.exists(FONT_KEY)) {
-    throw new Error('the damage font image was not loaded before it was registered')
-  }
-
-  scene.cache.bitmapFont.add(
-    FONT_KEY,
-    Phaser.GameObjects.RetroFont.Parse(scene, {
-      image: FONT_KEY,
-      'offset.x': CELL_MARGIN,
-      'offset.y': CELL_MARGIN,
-      width: CELL_WIDTH,
-      height: CELL_HEIGHT,
-      chars: DIGITS,
-      charsPerRow: DIGITS.length,
-      'spacing.x': CELL_SPACING,
-      'spacing.y': 0,
-      lineSpacing: 0,
-    }),
-  )
-}
+/**
+ * The two files the loader needs, handed over by the scene's preload.
+ *
+ * Proportional, not a fixed grid. The metrics live beside the image as BMFont
+ * XML because both come out of the same measuring pass in the pipeline --
+ * mirroring them into a table here is how a table goes stale, and a font whose
+ * advances disagree with its glyphs does not fail, it just looks wrong.
+ */
+export const FONT_IMAGE_URL = digitsUrl
+export const FONT_DATA_URL = digitsFntUrl
 
 function roundedRect(
   ctx: CanvasRenderingContext2D,

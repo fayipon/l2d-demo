@@ -185,10 +185,20 @@ const JOBS = [
   })),
   {
     /* The arena's digits. See fontjob.mjs -- the source is a painted display
-       of every glyph, and this takes the ten the game draws. */
+       of every glyph, and this takes the ten the game draws.
+
+       Two files: the packed glyphs and the BMFont XML that says how wide each
+       one is. The metrics are written beside the image rather than mirrored
+       into TypeScript, because they are generated from the same measurement
+       in the same pass and a hand-copied table is a table that goes stale. */
     from: resolve(repo, 'DESIGN/game_font.png'),
     to: resolve(assets, 'font-digits.webp'),
-    build: () => buildDigitFont(resolve(repo, 'DESIGN/game_font.png')),
+    alsoWrites: ['font-digits.fnt'],
+    build: async () => {
+      const { png, xml } = await buildDigitFont(resolve(repo, 'DESIGN/game_font.png'))
+      await writeFile(resolve(assets, 'font-digits.fnt'), xml)
+      return png
+    },
   },
   ...SPRITES.map((sprite) => ({
     from: resolve(repo, 'DESIGN', sprite.from),
@@ -234,11 +244,16 @@ for (const job of JOBS) {
 
 console.log(`total  ${kb(before)} -> ${kb(after)}  (-${((1 - after / before) * 100).toFixed(1)}%)`)
 
+// A job may write more than the file it is named for -- the digit font emits
+// its metrics beside its image -- so those are declared rather than inferred,
+// and a file nobody claims is stale by definition.
 // Swapping art leaves the previous output behind, and an unreferenced megabyte
 // is easy to miss in review. Every directory written here holds nothing but
 // this script's output, so anything else in one is stale.
 for (const dir of new Set(JOBS.map((job) => dirname(job.to)))) {
-  const produced = new Set(JOBS.filter((j) => dirname(j.to) === dir).map((j) => basename(j.to)))
+  const produced = new Set(
+    JOBS.filter((j) => dirname(j.to) === dir).flatMap((j) => [basename(j.to), ...(j.alsoWrites ?? [])]),
+  )
   const stale = (await readdir(dir)).filter((name) => !produced.has(name))
   if (stale.length) {
     console.warn(
