@@ -2,7 +2,7 @@
 <font>
   <info face="arena-digits" size="64"/>
   <common lineHeight="64" base="64"/>
-  <chars count="10">
+  <chars count="11">
     <char id="48" x="2" y="2" width="48" height="64" xoffset="0" yoffset="0" xadvance="51"/>
     <char id="49" x="54" y="2" width="34" height="64" xoffset="0" yoffset="0" xadvance="37"/>
     <char id="50" x="92" y="2" width="47" height="64" xoffset="0" yoffset="0" xadvance="50"/>
@@ -13,5 +13,6 @@
     <char id="55" x="340" y="2" width="45" height="64" xoffset="0" yoffset="0" xadvance="48"/>
     <char id="56" x="389" y="2" width="45" height="64" xoffset="0" yoffset="0" xadvance="48"/>
     <char id="57" x="438" y="2" width="45" height="64" xoffset="0" yoffset="0" xadvance="48"/>
+    <char id="43" x="487" y="2" width="33" height="64" xoffset="0" yoffset="0" xadvance="36"/>
   </chars>
 </font>

@@ -41,6 +41,22 @@ const DIGIT_COLUMNS = [
   [1122, 1211],
 ]
 
+/**
+ * Symbols cut from other rows of the sheet, as `[left, top, width, height]`
+ * around their own ink.
+ *
+ * The digits are all cut at the full height of their band, because they share
+ * a baseline there and trimming each to its own ink would stand a 7 taller
+ * than a 4. A symbol from another row has no such baseline to preserve -- the
+ * punctuation row sits at its own height -- so each one is taken tight and
+ * placed into the band by hand, centred on the digits' middle. Which is where
+ * a plus belongs anyway.
+ *
+ * The plus is here because the arena heals now, and "+12" in the painted font
+ * is worth more than a green 12 that could be either.
+ */
+const SYMBOLS = [{ code: 43, rect: [1171, 680, 66, 80] }]
+
 /** Alpha at or below this is the plate rather than a glyph. */
 const ALPHA_FLOOR = 31
 
@@ -91,6 +107,23 @@ export async function buildDigitFont(source) {
       .png()
       .toBuffer()
     glyphs.push({ code: 48 + index, image, x: cursor, width })
+    cursor += width + GUTTER
+  }
+
+  /* Each symbol is composited into a band of the digits' height before it is
+     scaled, so it lands at the same size and on the same middle as they do. */
+  for (const { code, rect } of SYMBOLS) {
+    const [left, top, w, h] = rect
+    const cut = await sharp(cleaned).extract({ left, top, width: w, height: h }).png().toBuffer()
+    const banded = await sharp({
+      create: { width: w, height: bandHeight, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    })
+      .composite([{ input: cut, left: 0, top: Math.round((bandHeight - h) / 2) }])
+      .png()
+      .toBuffer()
+    const width = Math.round(w * scale)
+    const image = await sharp(banded).resize({ width, height: GLYPH_HEIGHT }).png().toBuffer()
+    glyphs.push({ code, image, x: cursor, width })
     cursor += width + GUTTER
   }
 

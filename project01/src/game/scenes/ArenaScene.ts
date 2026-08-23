@@ -125,6 +125,27 @@ const NUMBER_TINT = 0xffffff
 const NUMBER_CRIT_TINT = 0xffcf7a
 
 /**
+ * Healing numbers.
+ *
+ * The same pool and the same font as damage, turned green and given a plus.
+ * They rise slower and live longer than a hit does, which is the difference
+ * being drawn: a hit is a thing that happened, a heal is a thing that is going
+ * on.
+ *
+ * The glyphs are painted red, and a tint multiplies -- so a pure green tint
+ * would leave almost nothing. This is a pale mint that keeps the metal and
+ * still reads as the opposite of damage.
+ */
+const HEAL_TINT = 0x9effc0
+const HEAL_RISE = -46
+const HEAL_LIFE = 0.85
+const HEAL_SCALE = 0.78
+/** How long the player glows for a heal, in seconds. */
+const HEAL_FLASH = 0.3
+/** What the player is tinted while they do. */
+const HEAL_PLAYER_TINT = 0x8fffb4
+
+/**
  * Enemy health bars.
  *
  * Only drawn for an enemy that has actually been hit. Most of a crowd is at
@@ -222,6 +243,9 @@ export class ArenaScene extends Phaser.Scene {
   /** Held from the last non-zero input, so a standing player keeps pointing
    *  where they were going rather than snapping to a default. */
   private facing = 0
+  /** Seconds left on the heal glow. Counted down on real time, like the
+   *  damage numbers, because it is one of them. */
+  private healFlash = 0
 
   /** Drawn art for this character, or null for one who has none. */
   private readonly actor: ActorSheet | null
@@ -573,9 +597,48 @@ export class ArenaScene extends Phaser.Scene {
     }
     // Drained. The world appends from zero again on the next step.
     world.hitCount = 0
+
+    /*
+     * Healing, through the same pool of numbers and deliberately not through a
+     * second one. A heal and a hit are the same event to the eye -- a number
+     * over somebody -- and what separates them is which way they go and what
+     * colour they are.
+     *
+     * The plus is a real glyph in the painted font, cut from the sheet's
+     * punctuation row. A green number with no sign is a number that could be
+     * either, and the arena already shows a lot of numbers.
+     */
+    for (let i = 0; i < world.healCount; i++) {
+      const heal = world.heals[i]
+      const slot = this.numbers[this.numberCursor]
+      this.numberCursor = (this.numberCursor + 1) % this.numbers.length
+
+      slot.x = heal.x + (Math.random() - 0.5) * 10
+      /* Above the player rather than at them, and rising slower than damage
+         does. Damage is something that just happened; healing is something
+         that is going on. */
+      slot.y = heal.y - 26
+      slot.vy = HEAL_RISE
+      slot.life = HEAL_LIFE
+      slot.text.setText(`+${Math.round(heal.amount)}`)
+      slot.text.setTint(HEAL_TINT)
+      slot.text.setScale(HEAL_SCALE)
+      slot.text.visible = true
+    }
+    if (world.healCount > 0) {
+      // The player glows for as long as the number is up, so the two read as
+      // one event rather than as a number that appeared over somebody.
+      this.healFlash = HEAL_FLASH
+    }
+    world.healCount = 0
   }
 
   private stepNumbers(dt: number): void {
+    // Real time, not simulation time -- the glow belongs to the numbers, and
+    // they fade on the clock the player is watching rather than on the step.
+    if (this.healFlash > 0) {
+      this.healFlash -= dt
+    }
     for (const slot of this.numbers) {
       if (slot.life <= 0) {
         continue
@@ -786,13 +849,23 @@ export class ArenaScene extends Phaser.Scene {
 
     this.playerSprite.x = player.x
     this.playerSprite.y = player.y
+    /* Dodge wins over heal: one says a hit was avoided and the other says a
+       point came back, and the first is the one worth interrupting for. Both
+       are a tint rather than a second sprite, so they cannot both be shown and
+       the order has to be decided rather than left to whichever runs last. */
+    const healing = this.healFlash > 0
     if (this.actor) {
       this.syncActor(this.actor)
-      // Drawn art brings its own colour. The only tint left on it is the one
-      // that says a hit was dodged rather than missed.
-      this.playerSprite.setTint(player.dodgeFlash > 0 ? DODGE_TINT : 0xffffff)
+      // Drawn art brings its own colour. The only tints left on it are the one
+      // that says a hit was dodged rather than missed, and the one that says
+      // health is coming back.
+      this.playerSprite.setTint(
+        player.dodgeFlash > 0 ? DODGE_TINT : healing ? HEAL_PLAYER_TINT : 0xffffff,
+      )
     } else {
-      this.playerSprite.setTint(player.dodgeFlash > 0 ? DODGE_TINT : PLAYER_TINT)
+      this.playerSprite.setTint(
+        player.dodgeFlash > 0 ? DODGE_TINT : healing ? HEAL_PLAYER_TINT : PLAYER_TINT,
+      )
     }
     // Blinks through the invulnerability window, which is the only signal that
     // a second hit did not just fail to register.

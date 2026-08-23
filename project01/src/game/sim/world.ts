@@ -207,6 +207,15 @@ const BREAK_LOOT_MULTIPLIER = 10
 const HIT_EVENT_CAPACITY = 64
 
 /**
+ * Healing events between frames.
+ *
+ * Far smaller than the hit pool: healing is pooled into whole points before it
+ * is reported, so even a lifesteal build cannot produce more than a handful of
+ * these in a frame.
+ */
+const HEAL_EVENT_CAPACITY = 8
+
+/**
  * 'break' is the few seconds after a wave while the floor is being hoovered
  * up; 'shop' is the pause after it, which waits for the player rather than a
  * clock. Splitting them is what lets the coins arrive before there is
@@ -285,6 +294,14 @@ export interface HitEvent {
   y: number
   amount: number
   crit: boolean
+}
+
+/** Whole points of health restored, at the player. No crit flag: nothing
+ *  criticals a heal, and a field that is always false is a field to delete. */
+export interface HealEvent {
+  x: number
+  y: number
+  amount: number
 }
 
 export interface PlayerState {
@@ -394,6 +411,27 @@ export class World {
     crit: false,
   }))
   hitCount = 0
+
+  /**
+   * Healing since the scene last drained it, in the same shape and for the
+   * same reason as the hits above.
+   *
+   * Accumulated rather than reported per tick. Regeneration is a fraction of a
+   * point sixty times a second; a number per step would be sixty "+0" a second
+   * over the player's head, which is not a readout, it is a smear. So healing
+   * pools and an event is emitted only when a whole point has arrived --
+   * lifesteal, regeneration and the heal a level brings, all through the same
+   * pool, because they are all the same thing happening to the player and
+   * three separate streams of numbers would be three answers to one question.
+   */
+  readonly heals: HealEvent[] = Array.from({ length: HEAL_EVENT_CAPACITY }, () => ({
+    x: 0,
+    y: 0,
+    amount: 0,
+  }))
+  healCount = 0
+  /** Fractions of a point healed but not yet worth showing. */
+  private healPool = 0
 
   /** Public so the HUD can count the gap between waves down, same as it counts
    *  the wave itself. */
@@ -643,6 +681,8 @@ export class World {
     this.hitsTaken = 0
     this.shake = 0
     this.hitCount = 0
+    this.healCount = 0
+    this.healPool = 0
     this.misses = 0
     this.shopOffers = []
     this.rerolls = 0
@@ -667,9 +707,49 @@ export class World {
     if (player.dodgeFlash > 0) {
       player.dodgeFlash -= dt
     }
-    if (stats.regen > 0 && player.hp < stats.maxHp) {
-      player.hp = Math.min(stats.maxHp, player.hp + stats.regen * dt)
+    if (stats.regen > 0) {
+      this.heal(stats.regen * dt)
     }
+  }
+
+  /**
+   * Restores health and reports it, which is the only way health should ever
+   * go up.
+   *
+   * Everything that heals comes through here -- regeneration, lifesteal, the
+   * ceiling a level raises -- so there is one clamp, one pool and one place
+   * that decides what the player is shown. Writing `player.hp` directly still
+   * works and is still wrong: it heals silently, and healing the player
+   * without telling them is indistinguishable from not healing them.
+   *
+   * Returns what was actually restored, which is less than what was asked for
+   * at full health and nothing at all when dead.
+   */
+  private heal(amount: number): number {
+    const player = this.player
+    if (amount <= 0 || this.status === 'dead') {
+      return 0
+    }
+    const before = player.hp
+    player.hp = Math.min(player.stats.maxHp, player.hp + amount)
+    const given = player.hp - before
+    if (given <= 0) {
+      return 0
+    }
+
+    /* Pooled to whole points. A fraction of a point is real healing and is
+       kept -- it is only the *reporting* that waits for it to add up to
+       something worth a number. */
+    this.healPool += given
+    if (this.healPool >= 1 && this.healCount < this.heals.length) {
+      const whole = Math.floor(this.healPool)
+      this.healPool -= whole
+      const event = this.heals[this.healCount++]
+      event.x = player.x
+      event.y = player.y
+      event.amount = whole
+    }
+    return given
   }
 
   /* ---------- the director ---------- */
@@ -1429,8 +1509,8 @@ export class World {
       event.crit = crit
     }
 
-    if (stats.lifesteal > 0 && player.hp < stats.maxHp) {
-      player.hp = Math.min(stats.maxHp, player.hp + stats.lifesteal)
+    if (stats.lifesteal > 0) {
+      this.heal(stats.lifesteal)
     }
 
     // Positional knockback rather than velocity: enemies here have no velocity
@@ -1589,7 +1669,7 @@ export class World {
        * recompute rather than assumed, because STA is not the only thing that
        * can move maxHp.
        */
-      const before = player.stats.maxHp
+      const ceilingBefore = player.stats.maxHp
       const growth = this.loadout.growth
       {
         this.attributes = clampAttributes({
@@ -1602,7 +1682,7 @@ export class World {
         })
       }
       this.recomputeStats()
-      player.hp = Math.min(player.stats.maxHp, player.hp + Math.max(0, player.stats.maxHp - before))
+      this.heal(Math.max(0, player.stats.maxHp - ceilingBefore))
     }
   }
 }

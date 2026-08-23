@@ -85,6 +85,12 @@ try {
       world.attributes = { str: 20, agi: 20, dex: 20, sta: 20, int: 20, luk: 20 }
       world.ownedItems.length = 0
       world.recomputeStats()
+      /* The fractions of a point healed but not yet announced. They survive on
+         purpose across a run -- that is what makes a slow trickle eventually
+         show a number -- so a check that starts with someone else's leftovers
+         reads a "+1" it did not cause. */
+      world.healPool = 0
+      world.healCount = 0
     }
     const still = { x: 0, y: 0 }
     const steps = (n) => {
@@ -793,6 +799,62 @@ try {
         .filter((key) => Math.abs(skilledOnce[key] - world.player.stats[key]) >= 1e-9)
         .map((key) => `${key} ${skilledOnce[key]} -> ${world.player.stats[key]}`)
         .join(', '),
+    )
+
+    world.loadout.skills = realSkills
+    reset()
+
+    /* ---------- healing says so ---------- */
+
+    /* Every point restored is reported. Healing the player without telling
+       them is indistinguishable from not healing them, and `heal` is the one
+       path that can say it -- writing player.hp directly still compiles and is
+       the mistake this check exists to notice. */
+    reset()
+    world.loadout.skills = []
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.ownedItems.length = 0
+    world.recomputeStats()
+    world.player.stats.regen = 6
+    world.player.hp = 10
+    world.healCount = 0
+    steps(30)
+    const healed = world.player.hp - 10
+    const reported = Array.from({ length: world.healCount }, (_, i) => world.heals[i].amount)
+      .reduce((a, n) => a + n, 0)
+    check(
+      'healing is reported, not silent',
+      world.healCount > 0 && Math.abs(reported - Math.floor(healed)) <= 1,
+      `restored ${healed.toFixed(2)} and reported ${reported} across ${world.healCount} events`,
+    )
+
+    /* Pooled to whole points. Sixty events a second saying nothing is not a
+       readout, so a fraction of a point is kept and not shown. */
+    reset()
+    world.loadout.skills = []
+    world.recomputeStats()
+    world.player.stats.regen = 0.5
+    world.player.hp = 10
+    world.healCount = 0
+    steps(30)
+    check(
+      'a fraction of a point is healed but not announced',
+      world.healCount === 0 && world.player.hp > 10,
+      `${world.healCount} events for ${(world.player.hp - 10).toFixed(2)} restored in half a second`,
+    )
+
+    /* And nothing is reported at full health, where nothing happened. */
+    reset()
+    world.loadout.skills = []
+    world.recomputeStats()
+    world.player.stats.regen = 20
+    world.player.hp = world.player.stats.maxHp
+    world.healCount = 0
+    steps(30)
+    check(
+      'a heal at full health reports nothing',
+      world.healCount === 0,
+      `${world.healCount} events while already full`,
     )
 
     world.loadout.skills = realSkills
