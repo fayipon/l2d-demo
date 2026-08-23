@@ -202,3 +202,25 @@ errors; both screens shot.
 Balance, again. Regeneration at 2.65/s after three items is either irrelevant or
 decisive against a wave-scaled crowd and there is no way to know which without
 playing it. Three numbers in one file is the mitigation, not an answer.
+
+### And then the fiction came out
+
+The plan kept the four written skills — 緋刃 Lv.6/10, 落月斬 冷卻 12 秒, and the
+rest — on the argument that removing them was a bigger job than this one. They
+went the next day anyway, and the argument for going was the one already in the
+file: two sets of numbers for one character, one of them invented, and the
+invented half is the one people read before choosing. The stat block went for
+exactly that reason, and leaving the skills was the same mistake a second time.
+
+So `Character.skills` and `CharacterSkill` are gone from `features/character.ts`
+— 88 lines of it — and the skill tab is the class skills alone. The card is the
+one the fiction was wearing, which was always the better half of it. Two lines
+did not survive with it: a passive has no rank to show and nothing to wait for,
+so the level slot says 生效中 and the cooldown line is gone.
+
+The icon and colour come from the skill's *effect*, not from a table keyed by
+skill id — the same arrangement the shop's medallions use, so a new skill of an
+existing kind is drawn sensibly without a second list to keep in step.
+
+Three of the four characters have no skills yet, so the tab says so rather than
+being empty: a blank panel reads as a screen that failed to load.

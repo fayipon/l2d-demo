@@ -2,14 +2,31 @@ import { useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Live2DStage, type Live2DStageHandle } from '../pixi/Live2DStage'
 import { StageShell } from '../components/StageShell'
-import { Icon } from '../components/icons'
+import { Icon, type IconName } from '../components/icons'
 import { useSelectedCharacter } from '../app/selectedCharacterContext'
 import { ROSTER } from '../features/character'
 import { arenaProfile } from '../features/arenaProfile'
+import type { SkillEffect } from '../game/data/skills'
 import { savePortrait, usePortraits } from '../features/portraits'
 import './CharacterPage.css'
 
 type PanelTab = 'stats' | 'skills'
+
+/**
+ * How a skill is drawn, chosen by what it does rather than looked up by id.
+ *
+ * The same arrangement the shop cards use for their medallions: data/skills.ts
+ * stays free of view concerns, and a new skill of an existing kind gets a
+ * sensible icon without a second table to forget to update. A genuinely new
+ * kind needs a new effect shape anyway, and that is the moment to pick it one.
+ *
+ * Everything is passive so far, so everything is green. The tone exists to be
+ * spent when something is not.
+ */
+const SKILL_LOOK: Record<SkillEffect['sort'], { icon: IconName; tone: string }> = {
+  itemBonus: { icon: 'shield', tone: 'passive' },
+  regenFrom: { icon: 'heart', tone: 'passive' },
+}
 
 export function CharacterPage() {
   const stageRef = useRef<Live2DStageHandle>(null)
@@ -232,51 +249,47 @@ export function CharacterPage() {
             ) : (
               <>
                 {/*
-                  The two lists are not the same kind of thing and are labelled
-                  apart rather than merged. These are the passives the arena
-                  actually reads; the ones below are written fiction with levels
-                  and cooldowns that nothing in the game has ever heard of.
+                  The class skills, and only them.
 
-                  Merging them would hide which is which, and deleting the
-                  fiction is a bigger job than this one -- three characters'
-                  worth of it, and a screen built around the shape. It goes when
-                  there is enough of the real thing to replace all of it.
+                  Four named ones per character used to sit here with levels
+                  and cooldowns -- 緋刃 Lv.6/10, 落月斬 冷卻 12 秒 -- and not one
+                  of them existed. It was the same problem the stat block had
+                  before it: two sets of numbers for one character, one of them
+                  invented, and the invented half is the one people read before
+                  choosing. So the fiction is gone and what is left is what the
+                  arena reads.
+
+                  The card is the one the fiction was wearing, which was always
+                  the better half of it. The level and the cooldown are the two
+                  lines that went: a passive has no rank to show and nothing to
+                  wait for.
                 */}
                 {profile.skills.length > 0 ? (
-                  <div className="class-skills">
-                    <p className="class-skills-head">職業技能 · 生效中</p>
-                    <ul className="class-skill-list">
-                      {profile.skills.map((skill) => (
-                        <li className="class-skill" key={skill.id}>
-                          <span className="class-skill-name">{skill.name}</span>
-                          <span className="class-skill-kind">{skill.kind}</span>
-                          <p className="class-skill-detail">{skill.description}</p>
+                  <ul className="skill-list">
+                    {profile.skills.map((skill) => {
+                      const look = SKILL_LOOK[skill.effect.sort]
+                      return (
+                        <li className="skill" key={skill.id}>
+                          <span className={`skill-icon tone-${look.tone}`}>
+                            <Icon name={look.icon} />
+                          </span>
+                          <div className="skill-body">
+                            <div className="skill-head">
+                              <span className="skill-name">{skill.name}</span>
+                              <span className={`skill-kind tone-${look.tone}`}>{skill.kind}</span>
+                              <span className="skill-lv">生效中</span>
+                            </div>
+                            <p className="skill-desc">{skill.description}</p>
+                          </div>
                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-
-                <ul className="skill-list">
-                  {character.skills.map((skill) => (
-                  <li className="skill" key={skill.id}>
-                    <span className={`skill-icon tone-${skill.tone}`}>
-                      <Icon name={skill.icon} />
-                    </span>
-                    <div className="skill-body">
-                      <div className="skill-head">
-                        <span className="skill-name">{skill.name}</span>
-                        <span className={`skill-kind tone-${skill.tone}`}>{skill.kind}</span>
-                        <span className="skill-lv">Lv.{skill.level}/{skill.levelCap}</span>
-                      </div>
-                      <p className="skill-desc">{skill.description}</p>
-                      {skill.cooldown ? (
-                        <span className="skill-cd">冷卻 {skill.cooldown}</span>
-                      ) : null}
-                    </div>
-                  </li>
-                  ))}
-                </ul>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  /* Only Haru has any yet, and an empty panel that says nothing
+                     reads as a screen that failed to load. */
+                  <p className="skill-empty">這名角色的職業技能尚未實裝。</p>
+                )}
               </>
             )}
           </div>
