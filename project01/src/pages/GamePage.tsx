@@ -97,6 +97,7 @@ const STAT_ICON: Record<UpgradeId, IconName> = {
   lootRange: 'coin',
   vision: 'eye',
   xpGain: 'exp',
+  coinRate: 'coin',
 }
 
 /* An item's glyph is the glyph of the first stat it moves, so a new shop entry
@@ -133,6 +134,9 @@ const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
   lootRange: (v) => `×${v.toFixed(2)}`,
   vision: (v) => `×${v.toFixed(2)}`,
   xpGain: (v) => `×${v.toFixed(2)}`,
+  /* A percentage, and allowed past a hundred: over that it stops being the
+     chance of a drop and becomes how many drops. */
+  coinRate: (v) => `${Math.round(v * 100)}%`,
 }
 
 /** The three view-side tables the sheet needs, bundled: they always travel
@@ -166,6 +170,7 @@ const STAT_ORDER: UpgradeId[] = [
   'lootRange',
   'vision',
   'xpGain',
+  'coinRate',
 ]
 
 /**

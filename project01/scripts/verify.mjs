@@ -911,6 +911,36 @@ try {
     /* Measured by killing things, not by reading the constant. What is under
        test is the roll in the death path, and a check that read `coinChance`
        back would pass whether or not anything used it. */
+    /* Coins per kill, averaged. Below a rate of one it is the fraction of
+       kills that pay; above it, it is how many times over. One helper for both
+       because they are one number -- which is the thing under test. */
+    const coinsPerKill = (rate) => {
+      reset()
+      world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+      world.recomputeStats()
+      /* Set after the recompute and protected from the next one: `kill` grants
+         experience before it pays out, a level rebuilds the whole stat block,
+         and six hundred kills is a lot of levels. Without this the loop
+         measures the base rate however it is set, which is a check that passes
+         while testing nothing. */
+      world.player.xpToLevel = 1e9
+      world.player.stats.coinRate = rate
+      let coins = 0
+      const runs = 600
+      for (let i = 0; i < runs; i++) {
+        world.pickups.releaseAll()
+        world.spawnEnemy()
+        const victim = world.enemies.items.find((e) => e.active)
+        victim.arriving = 0
+        victim.drop = 1
+        victim.hp = 0
+        world.kill(victim)
+        coins += world.pickups.used
+      }
+      world.pickups.releaseAll()
+      return coins / runs
+    }
+
     const dropRateAt = (luk) => {
       reset()
       world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk }
@@ -1033,6 +1063,66 @@ try {
       'contact damage rises with the wave and stops',
       Math.abs(early - 1) < 1e-6 && late > early && Math.abs(absurd - 3.5) < 1e-6,
       `x${early.toFixed(2)} at wave 1, x${late.toFixed(2)} at 30, x${absurd.toFixed(2)} at 200`,
+    )
+
+    /* ---------- the rate past a hundred percent ---------- */
+
+    /*
+     * One number that means two things, and the boundary between them is the
+     * part worth checking: a stat that behaved differently on either side of
+     * one would be two stats sharing a name.
+     *
+     * Averaged over six hundred kills of a one-coin enemy, so the number that
+     * comes back is the rate itself.
+     */
+    const halfRate = coinsPerKill(0.5)
+    check(
+      'under one, the rate is the chance of being paid',
+      Math.abs(halfRate - 0.5) < 0.09,
+      `0.5 paid ${halfRate.toFixed(2)} coins a kill`,
+    )
+
+    const onceRate = coinsPerKill(1)
+    check(
+      'at one, every kill pays exactly once',
+      onceRate === 1,
+      `1.0 paid ${onceRate.toFixed(2)} coins a kill`,
+    )
+
+    const doubleRate = coinsPerKill(2)
+    check(
+      'at two, every kill pays double',
+      doubleRate === 2,
+      `2.0 paid ${doubleRate.toFixed(2)} coins a kill`,
+    )
+
+    const halfAgain = coinsPerKill(1.5)
+    check(
+      'and one and a half pays once, then again half the time',
+      halfAgain > 1.35 && halfAgain < 1.65,
+      `1.5 paid ${halfAgain.toFixed(2)} coins a kill`,
+    )
+
+    /* The multiplier is on the whole drop, not on one coin of it: a brute worth
+       four pays eight at double, which is the only reading of "twice the
+       coins" that a player would recognise. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.recomputeStats()
+    world.player.stats.coinRate = 2
+    world.pickups.releaseAll()
+    world.spawnEnemy()
+    const fat = world.enemies.items.find((e) => e.active)
+    fat.arriving = 0
+    fat.drop = 4
+    fat.hp = 0
+    world.kill(fat)
+    const fatCoins = world.pickups.used
+    world.pickups.releaseAll()
+    check(
+      'the multiplier applies to the whole drop',
+      fatCoins === 8,
+      `a four-coin kill at 200% paid ${fatCoins}`,
     )
 
     game.scene.resume('arena')

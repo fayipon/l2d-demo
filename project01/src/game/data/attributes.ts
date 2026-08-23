@@ -95,14 +95,15 @@ export const PER_POINT = {
   /** LUK. Raises what the shop is willing to put on the shelf. */
   shopLuck: 1,
   /**
-   * LUK. Added to the chance a kill drops anything at all.
+   * LUK. Added to `coinRate`, on a base of 0.45.
    *
-   * A kill is no longer guaranteed to pay, and this is the stat that buys the
-   * guarantee back: at 0 it is BASE_COIN_CHANCE, and 255 points take it to
-   * within a few percent of certain. Which makes LUK the only attribute that
-   * changes how often something happens rather than how large it is.
+   * A kill is not guaranteed to pay, and this is the stat that buys the
+   * guarantee back: 255 points take 45% to within a few percent of certain.
+   * Which makes LUK the only attribute that changes how *often* something
+   * happens rather than how large it is -- until the rate passes one, past
+   * which it changes how much. See `PlayerStats.coinRate`.
    */
-  coinChance: 0.002,
+  coinRate: 0.002,
 } as const
 
 /** Everything the six produce: the stat-block half, and the two that are not
@@ -113,9 +114,6 @@ export interface DerivedAttributes {
   accuracy: number
   /** Handed to the shop's roll. */
   shopLuck: number
-  /** Added to the base chance a kill drops coins. Clamped with the base, not
-   *  here -- the base is content and this is only what the attribute adds. */
-  coinChance: number
 }
 
 export function deriveAttributes(attributes: Attributes): DerivedAttributes {
@@ -130,10 +128,10 @@ export function deriveAttributes(attributes: Attributes): DerivedAttributes {
       maxHp: sta * PER_POINT.maxHp,
       armour: sta * PER_POINT.armour,
       critChance: luk * PER_POINT.critChance,
+      coinRate: luk * PER_POINT.coinRate,
     },
     accuracy: dex * PER_POINT.accuracy,
     shopLuck: luk * PER_POINT.shopLuck,
-    coinChance: luk * PER_POINT.coinChance,
   }
 }
 

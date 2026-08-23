@@ -11,7 +11,6 @@ import {
   BASE_LOOT_RANGE,
   BASE_MOVE_SPEED,
   BASE_STATS,
-  BASE_COIN_CHANCE,
   DODGE_CAP,
   ENEMY_KINDS,
   MAX_WEAPON_SLOTS,
@@ -391,8 +390,6 @@ export class World {
   accuracy = 0
   /** From LUK, handed to the shop's roll. */
   shopLuck = 0
-  /** Chance a kill drops its coins. Base plus LUK, clamped to one. */
-  coinChance = BASE_COIN_CHANCE
 
   /** Shots that missed, for the HUD -- a hit that does nothing and says
    *  nothing is a bug report. */
@@ -640,7 +637,6 @@ export class World {
     Object.assign(this.player.stats, stats)
     this.accuracy = derived.accuracy
     this.shopLuck = derived.shopLuck
-    this.coinChance = Math.min(1, BASE_COIN_CHANCE + derived.coinChance)
     this.player.hp = Math.min(this.player.hp, stats.maxHp)
   }
 
@@ -1583,19 +1579,28 @@ export class World {
     this.grantXp(ENEMY_KINDS[enemy.kind].xp)
 
     /*
-     * Rolled once for the kill, not once per coin.
+     * How many times the kill pays, from one number that means two things.
      *
-     * Per coin would turn a four-coin brute into an average of two, which is a
-     * quieter version of the same payout and not what a chance is for. Once for
-     * the kill means a brute either pays properly or pays nothing, and the run
-     * feels the difference -- which is the point of the stat that raises it.
+     * Below one, `coinRate` is the chance of being paid at all; above one it
+     * is a multiplier. The whole part is paid every time and the fraction is
+     * rolled once -- so 0.45 pays 45% of the time, 1.0 always pays, 1.5 pays
+     * once and then again half the time, and 2.0 always pays double. The stat
+     * never crosses a boundary where it changes meaning, which is the point of
+     * it being one number rather than a chance with a bonus bolted on.
+     *
+     * Rolled once for the kill, not once per coin. Per coin would turn a
+     * four-coin brute into an average of two, which is a quieter version of the
+     * same payout and not what a chance is for: a brute pays properly or it
+     * pays nothing, and the run feels the difference.
      */
-    if (this.random() >= this.coinChance) {
-      this.enemies.release(enemy)
-      return
+    const rate = Math.max(0, this.player.stats.coinRate)
+    let payouts = Math.floor(rate)
+    if (this.random() < rate - payouts) {
+      payouts += 1
     }
 
-    for (let i = 0; i < enemy.drop; i++) {
+    const coins = enemy.drop * payouts
+    for (let i = 0; i < coins; i++) {
       const drop = this.pickups.spawn()
       if (!drop) {
         break

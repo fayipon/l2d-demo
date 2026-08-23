@@ -142,6 +142,7 @@ const MOD_TEXT: Partial<Record<UpgradeId, (value: number) => string>> = {
   lootRange: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
   vision: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
   xpGain: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
+  coinRate: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
   critChance: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
   critDamage: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
   dodge: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,

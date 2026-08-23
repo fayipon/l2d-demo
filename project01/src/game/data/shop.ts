@@ -57,6 +57,21 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'lodestone', label: '磁石', detail: '拾取範圍 +40%', price: 18, mods: { lootRange: 0.4 } },
   { id: 'lantern', label: '提燈', detail: '視野 +25%', price: 24, mods: { vision: 0.25 } },
   { id: 'tome', label: '智慧之書', detail: '經驗加成 +25%', price: 42, mods: { xpGain: 0.25 } },
+  /*
+   * Coin rate, which is the one stat on the shelf that changes meaning as it
+   * grows. Under 100% these buy the chance of being paid; over it they buy a
+   * second and a third payout -- see PlayerStats.coinRate.
+   *
+   * Priced above their apparent worth on purpose. Coins are experience as well
+   * as money, so a rate item pays for itself twice and compounds into every
+   * other purchase, which is the one thing on this shelf that does.
+   *
+   * The charm is the staple and the pouch is the one worth saving for: the
+   * cheap one alone takes a run from 45% to 70%, and three of them past the
+   * boundary where the stat stops being a chance.
+   */
+  { id: 'charm', label: '幸運符', detail: '金幣掉落 +25%', price: 30, mods: { coinRate: 0.25 } },
+  { id: 'pouch', label: '賞金袋', detail: '金幣掉落 +55%', price: 62, mods: { coinRate: 0.55 } },
 
   /* --- trades --- */
   {
@@ -86,6 +101,21 @@ export const SHOP_ITEMS: ShopItem[] = [
     detail: '吸血 +0.25/命中，攻擊速度 -10%',
     price: 38,
     mods: { lifesteal: 0.25, attackSpeed: -0.1 },
+  },
+  /*
+   * Greed, and the price is health rather than coins.
+   *
+   * The straight coin items are cheap enough to be an easy yes, so the trade
+   * has to charge something the shelf cannot sell back. Three of a maximum
+   * health of twenty-six is more than a tenth of the bar at the point in a run
+   * where anybody is buying this.
+   */
+  {
+    id: 'greedseal',
+    label: '貪婪之印',
+    detail: '金幣掉落 +80%，生命上限 -3',
+    price: 46,
+    mods: { coinRate: 0.8, maxHp: -3 },
   },
   /*
    * The one thing in the game that takes vision away, and the reason the stat

@@ -562,6 +562,20 @@ export interface PlayerStats {
    */
   vision: number
   /**
+   * How much a kill pays, as a rate rather than a chance.
+   *
+   * Below one it is the chance of being paid at all: at 0.45 most kills drop
+   * their coins and some drop nothing. At one every kill pays. *Above* one it
+   * stops being a chance and starts being a multiplier -- 2.0 drops twice the
+   * coins every time, and 1.5 drops the usual amount and then again half the
+   * time.
+   *
+   * One number across the whole range rather than a chance and a bonus bolted
+   * together, so a run that stacks it never crosses a boundary where the stat
+   * changes meaning. See `World.kill`.
+   */
+  coinRate: number
+  /**
    * Multiplies all experience, from both kills and coins.
    *
    * The one stat that compounds: it buys levels, and levels buy every other
@@ -571,6 +585,26 @@ export interface PlayerStats {
    */
   xpGain: number
 }
+
+/**
+ * Where the coin rate starts.
+ *
+ * A kill used to pay every time, which made the drop a tax on walking over
+ * there rather than a thing that happened. Below one it becomes an event: most
+ * kills pay, some do not, and a run notices when a long stretch of them does
+ * not.
+ *
+ * It is also the only place LUK reaches that is a *frequency* rather than a
+ * size -- see PER_POINT.coinChance, which takes this to within a few percent of
+ * certain at the attribute cap. That is what makes the stat worth buying for a
+ * player who is already critting: it stops asking how big and starts asking how
+ * often.
+ *
+ * Coins are experience as well as money, so this slows levelling by roughly
+ * what it slows earning. Deliberate, and the curve to watch if a run starts
+ * feeling flat.
+ */
+export const BASE_COIN_CHANCE = 0.45
 
 export const BASE_STATS: Readonly<PlayerStats> = {
   attackPower: 0,
@@ -594,6 +628,7 @@ export const BASE_STATS: Readonly<PlayerStats> = {
   lootRange: 1,
   vision: 1,
   xpGain: 1,
+  coinRate: BASE_COIN_CHANCE,
 }
 
 export const BASE_MOVE_SPEED = 232
@@ -629,25 +664,6 @@ export function visionRadius(stats: PlayerStats): number {
  */
 export const DODGE_CAP = 0.6
 
-/**
- * The chance a kill drops its coins at all.
- *
- * A kill used to pay every time, which made the drop a tax on walking over
- * there rather than a thing that happened. Below one it becomes an event: most
- * kills pay, some do not, and a run notices when a long stretch of them does
- * not.
- *
- * It is also the only place LUK reaches that is a *frequency* rather than a
- * size -- see PER_POINT.coinChance, which takes this to within a few percent of
- * certain at the attribute cap. That is what makes the stat worth buying for a
- * player who is already critting: it stops asking how big and starts asking how
- * often.
- *
- * Coins are experience as well as money, so this slows levelling by roughly
- * what it slows earning. Deliberate, and the curve to watch if a run starts
- * feeling flat.
- */
-export const BASE_COIN_CHANCE = 0.45
 
 /**
  * Armour is points on a diminishing curve, not a flat percentage.
@@ -723,5 +739,6 @@ export const STAT_INFO: Record<UpgradeId, { label: string; group: UpgradeGroup }
   moveSpeed: { label: '移動速度', group: 'utility' },
   lootRange: { label: '拾取範圍', group: 'utility' },
   vision: { label: '視野', group: 'utility' },
+  coinRate: { label: '金幣掉落', group: 'utility' },
   xpGain: { label: '經驗加成', group: 'utility' },
 }

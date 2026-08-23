@@ -1349,7 +1349,11 @@
   grid-template-columns: 20rem 24rem 20rem;
   gap: 1.4rem;
   align-items: start;
-  max-height: 60vh;
+  /* Raised from 60vh when the coin-rate stat took the utility group past the
+     fold. Twenty stats in three groups is what the column holds now, and a
+     stat a player has to scroll to find is a stat they will not know they
+     have. */
+  max-height: 68vh;
 }
 
 .sheet-col {
@@ -1357,7 +1361,11 @@
   flex-direction: column;
   gap: 0.55rem;
   min-width: 0;
-  max-height: 60vh;
+  /* Raised from 60vh when the coin-rate stat took the utility group past the
+     fold. Twenty stats in three groups is what the column holds now, and a
+     stat a player has to scroll to find is a stat they will not know they
+     have. */
+  max-height: 68vh;
   overflow-y: auto;
   padding-right: 0.3rem;
 }
