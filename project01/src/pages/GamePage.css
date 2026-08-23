@@ -225,43 +225,61 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
 }
 
-.pilot-xp-label {
-  margin: calc(-14px * var(--uk)) 0 0 calc(120px * var(--uk));
-  font-size: 0.58rem;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.45);
-}
-
 /* ---------- the purse ---------- */
 /*
- * The pill is drawn with its coin already in it, so there is no icon element
- * here any more -- the count is the only thing this contributes. Under the
- * pilot panel, whose height is now the kit's rather than the old layout's.
+ * Coins and experience, as the kit's pair of medallions.
+ *
+ * The sheet also draws a pill for each with the icon already set into it, and
+ * this used to use the coin one. The medallions won because these two numbers
+ * are read as a pair and one of them is "12 / 40": a pill is a fixed shape with
+ * a fixed amount of room in it, and the two would have had to disagree about
+ * how wide they were.
+ *
+ * Under the pilot panel, whose height is the kit's now rather than the old
+ * layout's -- four pieces at their own proportions come to about 235px at
+ * --uk 0.46.
  */
 .purse {
   position: absolute;
-  /* Clear of the pilot panel, whose height is now the kit's: the four pieces
-     stacked at their own proportions come to about 235px at --uk 0.46. */
-  top: 16.2rem;
-  left: 1.1rem;
+  top: 15.6rem;
+  left: 1.2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.45rem;
 }
 
 .purse-row {
-  --uk: 0.42;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: calc(272px * var(--uk));
-  height: calc(73px * var(--uk));
-  font-size: 0.9rem;
+  gap: 0.55rem;
+  font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #ffd98a;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.purse-icon {
+  flex: 0 0 auto;
+  width: 2.45rem;
+  height: 2.45rem;
+  background: center / contain no-repeat;
+}
+
+.purse-icon.is-coin {
+  background-image: url('../assets/ui/icon-coin.webp');
+}
+
+/* Violet, and read as experience rather than as a second currency because it
+   is the only thing on the panel counting towards something -- the number
+   beside it is a fraction. */
+.purse-icon.is-exp {
+  background-image: url('../assets/ui/icon-gem.webp');
+}
+
+.purse-row:last-child {
+  color: #d9c2ff;
+  font-size: 0.8rem;
 }
 
 /* This screen has no container-query stage, so the back button is sized in rem
@@ -784,6 +802,22 @@
   cursor: pointer;
   background:
     linear-gradient(180deg, var(--tone-top, rgba(30, 12, 22, 0.95)), rgba(8, 4, 12, 0.96));
+  /*
+   * Filled to the border box, not the padding box, which is the opposite of
+   * what the kit sets for a frame and is right here.
+   *
+   * The frame's top slice is deeper than the rail drawn in it -- the centre
+   * diamond reaches the full depth and the rail does not -- so with the
+   * interior stopping at the padding box there is a see-through strip between
+   * the ornament and the card, all the way across. Running the interior under
+   * the border closes it: the ornament draws over the top, and what shows
+   * through the gaps in it is the card rather than the screen behind.
+   *
+   * The radius is what keeps that from squaring off the corners, where the
+   * ornament's silhouette is spikes rather than a box.
+   */
+  background-clip: border-box;
+  border-radius: calc(26px * var(--uk));
   box-shadow: inset 0 0 2.4rem var(--tone-glow, transparent);
   transition:
     transform 0.12s ease,

@@ -58,8 +58,8 @@ const SCALE_VAR = '--uk'
  * through, which is what a hollow frame wants -- and what the two bars want,
  * because their middle is the part that has to move.
  *
- * Only what the HUD actually uses is cut. The sheet also holds a gem pill, a
- * gem icon, three round buttons, a second round slot, corner ornaments and a
+ * Only what the HUD actually uses is cut. The sheet also holds two currency
+ * pills, three round buttons, a second round slot, corner ornaments and a
  * flourish, and every one of them would be bytes in the bundle with nothing
  * pointing at it -- `kit.css` names every file, so the bundler cannot drop the
  * ones nobody wants. Adding one back is a line here.
@@ -80,8 +80,6 @@ const PIECES = [
   { name: 'bar-hp-fill', rect: [398, 330, 8, 21] },
   { name: 'bar-xp', rect: [40, 416, 585, 102], slice: [34, 39, 40, 103] },
 
-  { name: 'pill-coin', rect: [1148, 89, 272, 73], slice: [9, 70, 10, 66], solid: true },
-
   /* The big frame carries its own title bar -- that is what the deep top inset
      is. The three full-screen overlays all have a heading already, so the
      heading moves into the border. */
@@ -95,7 +93,13 @@ const PIECES = [
      rather than behind it. */
   { name: 'ring', rect: [20, 519, 334, 342], hole: [57, 67, 220, 218] },
   { name: 'slot-round', rect: [37, 864, 144, 147] },
+  /* The two currencies the HUD counts: coins, and experience towards the next
+     level. The sheet draws a pill for each as well, with the icon already set
+     into it, but a pill is a fixed shape with a fixed amount of room in it and
+     these two numbers are read side by side -- the medallion plus a number of
+     its own is the pair that lines up. */
   { name: 'icon-coin', rect: [1208, 426, 105, 105] },
+  { name: 'icon-gem', rect: [1209, 541, 103, 104] },
   { name: 'icon-skull', rect: [1207, 654, 111, 111] },
 
   /* Rules and flourishes. Deliberately not nine-sliced: the middle of a rule is

@@ -223,3 +223,20 @@ output is not an image, and a subdirectory that is itself a job's output.
   corners are distorted at either size. No console errors.
 - `src/assets/ui/` is about 310 kB across fifteen pieces; the largest is the panel at
   48 kB.
+
+### Two after the first look
+
+**Coins and experience are the medallions, not the pill.** The purse was the
+kit's coin pill, and experience was a caption under its own bar. They are now
+the pair of round medallions with a number each: the two are read together, and
+one of them is a fraction -- a pill is a fixed shape with a fixed amount of room
+in it, so the two would have had to disagree about how wide they were. The coin
+pill leaves the cut; the gem icon joins it, and the count stays fifteen pieces.
+
+**The cards had a see-through strip under their top rail.** The frame's top
+slice is deeper than the rail drawn in it -- the centre diamond reaches the full
+depth and the rail does not -- so with the interior clipped to the padding box
+there was a gap all the way across between the ornament and the card. The card's
+interior now runs under the border instead, with a radius so that does not
+square off corners whose silhouette is spikes. The ornament draws over it, and
+what shows through the gaps in the ornament is the card rather than the screen.

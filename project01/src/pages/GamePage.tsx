@@ -350,9 +350,6 @@ export function GamePage() {
             <i className="pilot-fill" style={{ width: `${xpPercent}%` }} />
           </span>
 
-          <p className="pilot-xp-label">
-            EXP {Math.floor(run.xp).toLocaleString()} / {run.xpToLevel.toLocaleString()}
-          </p>
         </div>
 
         {/* Under the panel, as in the mock. Coins are what the shop will spend,
@@ -360,11 +357,20 @@ export function GamePage() {
             diagnostics. The account's balance is deliberately not here: the
             shop spends what this run earned, and showing a five-figure lobby
             total beside it would read as money you could use. */}
+        {/* The two numbers a run accumulates, as the kit's pair of medallions.
+            Experience moved here from a caption under its own bar: the bar says
+            how far along the level is, and this says the count -- which is the
+            same relationship coins have to nothing, so they read as a pair. */}
         <div className="purse">
-          {/* The pill is drawn with its coin in it, so the count is all this
-              contributes. */}
-          <span className="purse-row uk-pill-coin">
+          <span className="purse-row">
+            <i className="purse-icon is-coin" aria-label="金幣" />
             <b>{run.coins}</b>
+          </span>
+          <span className="purse-row">
+            <i className="purse-icon is-exp" aria-label="經驗" />
+            <b>
+              {Math.floor(run.xp).toLocaleString()} / {run.xpToLevel.toLocaleString()}
+            </b>
           </span>
         </div>
 
