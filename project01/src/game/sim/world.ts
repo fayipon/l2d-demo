@@ -153,6 +153,25 @@ const BREAK_SECONDS = 3
 const PLAYER_INVULN = 0.55
 
 /**
+ * How often regeneration actually arrives, in seconds.
+ *
+ * The stat is still health per second and every label that quotes it still
+ * means it -- what changed is the delivery. Trickled in sixty times a second it
+ * was a bar that crept, and the readout above it was a "+1" every second or so
+ * that never stopped: a number that is always on screen has stopped being an
+ * event and become part of the background.
+ *
+ * Five seconds is long enough that a tick is something you notice and wait for,
+ * and short enough that it still arrives inside a fight rather than only
+ * between them. It also gives the number something to say -- at Haru's opening
+ * rate a tick is five points rather than one.
+ *
+ * Lifesteal is deliberately not on this clock. It is a reward for hitting
+ * something and it has to land when the hit does.
+ */
+const REGEN_INTERVAL = 5
+
+/**
  * How many of each may be alive at once.
  *
  * The enemy figure is the real ceiling on how big a wave can get: once the
@@ -432,6 +451,8 @@ export class World {
   healCount = 0
   /** Fractions of a point healed but not yet worth showing. */
   private healPool = 0
+  /** Seconds since regeneration last paid out. See REGEN_INTERVAL. */
+  regenTimer = 0
 
   /** Public so the HUD can count the gap between waves down, same as it counts
    *  the wave itself. */
@@ -683,6 +704,7 @@ export class World {
     this.hitCount = 0
     this.healCount = 0
     this.healPool = 0
+    this.regenTimer = 0
     this.misses = 0
     this.shopOffers = []
     this.rerolls = 0
@@ -707,8 +729,20 @@ export class World {
     if (player.dodgeFlash > 0) {
       player.dodgeFlash -= dt
     }
+    /* Banked and paid out on the interval, not per step. The rate is unchanged
+       -- a tick is worth REGEN_INTERVAL seconds of it -- so nothing that quotes
+       the stat has to be re-worded. */
     if (stats.regen > 0) {
-      this.heal(stats.regen * dt)
+      this.regenTimer += dt
+      if (this.regenTimer >= REGEN_INTERVAL) {
+        this.regenTimer -= REGEN_INTERVAL
+        this.heal(stats.regen * REGEN_INTERVAL)
+      }
+    } else {
+      /* Held at zero while there is nothing to give, so a run that buys
+         regeneration halfway through a wave does not get a tick it did not
+         wait for. */
+      this.regenTimer = 0
     }
   }
 

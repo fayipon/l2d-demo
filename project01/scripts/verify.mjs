@@ -91,6 +91,7 @@ try {
          reads a "+1" it did not cause. */
       world.healPool = 0
       world.healCount = 0
+      world.regenTimer = 0
     }
     const still = { x: 0, y: 0 }
     const steps = (n) => {
@@ -818,7 +819,11 @@ try {
     world.player.stats.regen = 6
     world.player.hp = 10
     world.healCount = 0
-    steps(30)
+    /* One interval and two frames. Regeneration pays out on a clock now, so
+       half a second of it is nothing at all -- and 300 steps of 1/60 come to
+       4.999999999999998, which is the kind of thing that makes a check fail
+       for a reason that has nothing to do with what it is testing. */
+    steps(60 * 5 + 2)
     const healed = world.player.hp - 10
     const reported = Array.from({ length: world.healCount }, (_, i) => world.heals[i].amount)
       .reduce((a, n) => a + n, 0)
@@ -833,14 +838,35 @@ try {
     reset()
     world.loadout.skills = []
     world.recomputeStats()
-    world.player.stats.regen = 0.5
+    world.player.stats.regen = 0.1
     world.player.hp = 10
     world.healCount = 0
-    steps(30)
+    // Two intervals of a rate too slow to add up to a point in either of them.
+    steps(60 * 10)
     check(
       'a fraction of a point is healed but not announced',
       world.healCount === 0 && world.player.hp > 10,
-      `${world.healCount} events for ${(world.player.hp - 10).toFixed(2)} restored in half a second`,
+      `${world.healCount} events for ${(world.player.hp - 10).toFixed(2)} restored over ten seconds`,
+    )
+
+    /* The clock itself. Nothing arrives before the interval is up, and what
+       arrives then is worth the whole of it -- which is the difference between
+       a tick and a trickle, and the only part of this a player sees. */
+    reset()
+    world.loadout.skills = []
+    world.recomputeStats()
+    world.player.stats.regen = 2
+    world.player.stats.maxHp = 500
+    world.player.hp = 100
+    world.healCount = 0
+    steps(60 * 4)
+    const beforeTick = world.player.hp
+    steps(60 * 1 + 2)
+    check(
+      'regeneration arrives on the interval rather than every step',
+      beforeTick === 100 && world.player.hp - beforeTick >= 9.9,
+      `${(beforeTick - 100).toFixed(2)} restored in the first four seconds, ` +
+        `${(world.player.hp - beforeTick).toFixed(2)} on the fifth`,
     )
 
     /* And nothing is reported at full health, where nothing happened. */
@@ -850,7 +876,7 @@ try {
     world.player.stats.regen = 20
     world.player.hp = world.player.stats.maxHp
     world.healCount = 0
-    steps(30)
+    steps(60 * 6)
     check(
       'a heal at full health reports nothing',
       world.healCount === 0,
