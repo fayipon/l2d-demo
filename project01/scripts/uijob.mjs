@@ -59,7 +59,8 @@ const SCALE_VAR = '--uk'
  * because their middle is the part that has to move.
  *
  * Only what the HUD actually uses is cut. The sheet also holds two currency
- * pills, three round buttons, a second round slot, corner ornaments and a
+ * pills, a second bar, three round buttons, a second round slot, corner
+ * ornaments and a
  * flourish, and every one of them would be bytes in the bundle with nothing
  * pointing at it -- `kit.css` names every file, so the bundler cannot drop the
  * ones nobody wants. Adding one back is a line here.
@@ -70,15 +71,17 @@ const PIECES = [
      name plate, a health bar under them, an experience bar under that. */
   { name: 'portrait-frame', rect: [20, 46, 216, 213], slice: [25, 29, 25, 27], solid: true },
   { name: 'name-plate', rect: [236, 72, 393, 141], slice: [28, 39, 22, 9], solid: true },
-  /* The bars are hollow on purpose. The kit draws the health bar full, so the
-     middle -- the lit red -- is exactly the part a bar cannot have baked in;
-     dropping it leaves the socket, the rails and the caps as a frame, and the
-     fill goes behind at whatever width the run says. `bar-hp-fill` is a strip
-     of that same lit red, taken from the middle of the drawn bar and repeated,
-     so the fill is the artist's colour and not an approximation of it. */
+  /* The health bar is hollow on purpose. The kit draws it full, so the middle
+     -- the lit red -- is exactly the part a bar cannot have baked in; dropping
+     it leaves the orb, the rails and the cap as a frame, and the fill goes
+     behind at whatever width the run says. `bar-hp-fill` is a strip of that
+     same lit red, taken from the middle of the drawn bar and repeated, so the
+     fill is the artist's colour and not an approximation of it.
+
+     The kit's second, smaller bar is not cut. It was the experience bar until
+     experience became a medallion with a count of its own. */
   { name: 'bar-hp', rect: [15, 256, 613, 160], slice: [74, 42, 65, 138] },
   { name: 'bar-hp-fill', rect: [398, 330, 8, 21] },
-  { name: 'bar-xp', rect: [40, 416, 585, 102], slice: [34, 39, 40, 103] },
 
   /* The big frame carries its own title bar -- that is what the deep top inset
      is. The three full-screen overlays all have a heading already, so the

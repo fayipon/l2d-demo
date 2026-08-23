@@ -40,15 +40,6 @@
   background: url('./bar-hp-fill.webp') center / contain no-repeat;
   aspect-ratio: 8 / 21;
 }
-.uk-bar-xp {
-  border-style: solid;
-  border-color: transparent;
-  border-width: calc(34px * var(--uk, 1)) calc(39px * var(--uk, 1)) calc(40px * var(--uk, 1)) calc(103px * var(--uk, 1));
-  border-image-source: url('./bar-xp.webp');
-  border-image-slice: 34 39 40 103;
-  border-image-repeat: stretch;
-  background-clip: padding-box;
-}
 .uk-panel {
   border-style: solid;
   border-color: transparent;

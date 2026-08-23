@@ -240,3 +240,8 @@ there was a gap all the way across between the ornament and the card. The card's
 interior now runs under the border instead, with a radius so that does not
 square off corners whose silhouette is spikes. The ornament draws over it, and
 what shows through the gaps in the ornament is the card rather than the screen.
+
+**And the experience bar came out.** Once experience was a medallion carrying
+`2 / 10`, the bar under the health bar was a second, quieter way of saying the
+same thing. The kit's smaller bar leaves the cut with it -- thirteen pieces and
+a fill strip now, 281 kB.

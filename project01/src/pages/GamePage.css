@@ -160,14 +160,19 @@
 }
 
 /*
- * Both bars are the drawn piece with its middle dropped, so the element's
- * content box is exactly the channel the fill runs along -- a socket at one
- * end, rails above and below, and a cap at the other, all of it border. The
- * fill is a plain block child, which means it needs no positioning at all.
+ * The health bar is the drawn piece with its middle dropped, so the element's
+ * content box is exactly the channel the fill runs along -- the orb at one end,
+ * rails above and below, and a cap at the other, all of it border. The fill is
+ * a plain block child, which means it needs no positioning at all.
  *
  * The channel is thin: twenty-one source pixels of a hundred and sixty. That
- * is the art, and it is why the readout below is centred on the channel rather
- * than sitting in it.
+ * is the art, and it is why the readout is centred on the channel rather than
+ * sitting in it.
+ *
+ * There is no experience bar any more. The kit draws a second, smaller one and
+ * this panel carried it until experience became a medallion with a count of its
+ * own -- at which point the bar was a second way of saying the same thing, and
+ * the quieter of the two.
  */
 .pilot-bar {
   position: relative;
@@ -175,13 +180,6 @@
   width: calc(613px * var(--uk));
   height: calc(160px * var(--uk));
   margin-top: calc(-3px * var(--uk));
-}
-
-.pilot-bar.is-xp {
-  width: calc(585px * var(--uk));
-  height: calc(102px * var(--uk));
-  margin-left: calc(25px * var(--uk));
-  margin-top: 0;
 }
 
 .pilot-fill {
@@ -197,14 +195,6 @@
    to match it would be a gradient mixed by hand to match it. */
 .pilot-bar.is-hp .pilot-fill {
   background: url('../assets/ui/bar-hp-fill.webp') 0 0 / 100% 100%;
-}
-
-/* No painted equivalent in the kit -- there is one bar drawn full and one drawn
-   empty, and the empty one is this. The violet is the gem's, from the same
-   sheet. */
-.pilot-bar.is-xp .pilot-fill {
-  background: linear-gradient(90deg, #6a3ad6, #b98bff);
-  box-shadow: 0 0 0.4rem rgba(150, 110, 255, 0.55);
 }
 
 /* Centred on the channel, not inside it: the channel is a few pixels tall at
@@ -236,12 +226,12 @@
  * how wide they were.
  *
  * Under the pilot panel, whose height is the kit's now rather than the old
- * layout's -- four pieces at their own proportions come to about 235px at
+ * layout's -- portrait, plate and the health bar come to about 185px at
  * --uk 0.46.
  */
 .purse {
   position: absolute;
-  top: 15.6rem;
+  top: 12.3rem;
   left: 1.2rem;
   display: flex;
   flex-direction: column;

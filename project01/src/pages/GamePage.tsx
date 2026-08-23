@@ -269,7 +269,6 @@ export function GamePage() {
   }, [overlayUp])
 
   const hpPercent = run.maxHp > 0 ? (run.hp / run.maxHp) * 100 : 0
-  const xpPercent = run.xpToLevel > 0 ? (run.xp / run.xpToLevel) * 100 : 0
   const choosing = run.pendingLevels > 0
 
   /*
@@ -345,11 +344,6 @@ export function GamePage() {
               {Math.max(0, Math.ceil(run.hp))} / {Math.round(run.maxHp)}
             </b>
           </span>
-
-          <span className="pilot-bar is-xp uk-bar-xp">
-            <i className="pilot-fill" style={{ width: `${xpPercent}%` }} />
-          </span>
-
         </div>
 
         {/* Under the panel, as in the mock. Coins are what the shop will spend,
