@@ -1294,10 +1294,18 @@
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
 }
 
-/* The kit's ring, which is what the CSS plate here was an approximation of.
-   The map goes in the hole rather than behind the frame -- `--hole-*` are
-   percentages of the ring measured in the pipeline, so nothing here has to
-   know the ornament is 57 source pixels thick. */
+/*
+ * The kit's ring, with the map in its hole.
+ *
+ * A circle is the right window now that the map is one: what it shows is what
+ * the player can see times a margin, and what the player can see is a radius.
+ * Fitting the whole 16:9 world into a circle threw away the corners of the
+ * world to show the corners of a circle; a circular window on a circular
+ * quantity throws away nothing.
+ *
+ * `--hole-*` are percentages of the ring measured in the pipeline, so nothing
+ * here has to know the ornament is 57 source pixels thick.
+ */
 .minimap-plate {
   position: relative;
   width: 12.5rem;
@@ -1311,8 +1319,7 @@
   height: var(--hole-h);
   display: block;
   border-radius: 50%;
-  background: rgba(6, 3, 10, 0.86);
-  box-shadow: inset 0 0 1.4rem rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 0 1.2rem rgba(0, 0, 0, 0.75);
 }
 
 /* Under the minimap rather than in the corner it used to own. The ring is

@@ -251,3 +251,35 @@ put two unrelated answers in one column -- which fight this is, and how far into
 it you are -- and only one of them ever changes. The minimap is the panel that
 is about the place, so `SCENE 1-1 · 血色祭壇` is its header now, and the clock has
 the middle of the screen back.
+
+### The minimap became an instrument
+
+Three changes, in the order they were asked for.
+
+**Pale ground on a dark field.** A near-black map inside a near-black HUD on a
+near-black arena was three dark things stacked, and the dots were the only
+thing on it with any contrast -- so it read as a scatter of dots rather than a
+picture of a place. The arena is now filled pale with a lit edge, the enemy dots
+are red circles rather than dark-red squares, and the grid came off: at this
+scale the floor's 64px ruling is a grey wash, and every tenth line read as graph
+paper.
+
+**Bounded by vision, which reverses what the file used to say.** Its old comment
+argued that vision already takes the screen away and taking the map with it
+would make every point of the stat a catastrophe rather than a trade. What that
+produced was a whole-world map that never changed -- a picture, not an
+instrument -- and a stat whose only expression was the dark closing in. The map
+is now a window on the world, `VISION_MARGIN` (1.4) wider than what the player
+can actually see, centred on them and sliding under them. Buy vision and the
+window opens. Near a wall the ground stops inside it, which is the only thing on
+the map that says which way is out.
+
+The margin is the whole value: at 1.0 the map would show exactly the lit circle
+and be a smaller copy of the screen. The ring drawn on it is the line between
+the two, and it lands in the same place every frame because the window is that
+circle times a constant.
+
+**Circular frame, kept.** It was squared off for a round of this and put back.
+Fitting a 16:9 world into a circle threw away the corners of the world to show
+the corners of a circle -- but the map is not the world any more, it is a radius,
+and a circular window on a circular quantity throws away nothing.

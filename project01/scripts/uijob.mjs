@@ -60,8 +60,7 @@ const SCALE_VAR = '--uk'
  *
  * Only what the HUD actually uses is cut. The sheet also holds two currency
  * pills, a second bar, three round buttons, a second round slot, corner
- * ornaments and a
- * flourish, and every one of them would be bytes in the bundle with nothing
+ * ornaments and a flourish, and every one of them would be bytes in the bundle with nothing
  * pointing at it -- `kit.css` names every file, so the bundler cannot drop the
  * ones nobody wants. Adding one back is a line here.
  */
@@ -91,9 +90,10 @@ const PIECES = [
   { name: 'slot-square', rect: [234, 869, 150, 136], slice: [17, 22, 19, 21], solid: true },
 
   /* Pictures rather than frames: they are used at one size and have nothing to
-     stretch. The ring's hole is measured, not guessed -- the minimap canvas is
-     positioned into it as a percentage, so the map sits inside the frame
-     rather than behind it. */
+     stretch. The ring is the minimap's, and it is hollow -- its hole is
+     measured rather than guessed, so the map is positioned into the frame as a
+     percentage and nothing downstream has to know the ornament is 57 source
+     pixels thick. */
   { name: 'ring', rect: [20, 519, 334, 342], hole: [57, 67, 220, 218] },
   { name: 'slot-round', rect: [37, 864, 144, 147] },
   /* The two currencies the HUD counts: coins, and experience towards the next
