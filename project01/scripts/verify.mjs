@@ -649,6 +649,155 @@ try {
       `wave 1 reached tier ${unlucky} at 0 luck and tier ${lucky} at 255`,
     )
 
+    /* ---------- class skills ---------- */
+
+    /*
+     * Haru's two, driven through the shop rather than through the recompute.
+     *
+     * The skills are swapped onto the loadout by hand here, because the world
+     * is built once with whichever character the page loaded and these need
+     * both answers -- with the skill and without it -- from the same run.
+     */
+    const bulwark = {
+      id: 'bulwark',
+      name: '防禦專精',
+      kind: '被動',
+      description: '',
+      effect: { sort: 'itemBonus', stats: ['armour', 'maxHp'], multiplier: 2 },
+    }
+    const mending = {
+      id: 'mending',
+      name: '自然回復',
+      kind: '被動',
+      description: '',
+      effect: { sort: 'regenFrom', base: 0.2, fromArmour: 0.04, fromMaxHp: 0.004 },
+    }
+    const realSkills = world.loadout.skills
+
+    /* An item with armour on it, found by buying until one turns up. The shelf
+       is rolled, so the check asks for what it needs rather than assuming slot
+       zero is a charm. */
+    const withSkills = (skills, itemId) => {
+      world.loadout.skills = skills
+      reset()
+      world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+      world.ownedItems.length = 0
+      world.ownedItems.push(itemId)
+      world.recomputeStats()
+      return { ...world.player.stats }
+    }
+
+    const plainWard = withSkills([], 'ward')
+    const bulwarkWard = withSkills([bulwark], 'ward')
+    check(
+      "an item's armour is doubled for the class that masters it",
+      bulwarkWard.armour === plainWard.armour * 2 && plainWard.armour > 0,
+      `護符 gave ${plainWard.armour} armour plain and ${bulwarkWard.armour} with 防禦專精`,
+    )
+
+    const plainHeart = withSkills([], 'ironheart')
+    const bulwarkHeart = withSkills([bulwark], 'ironheart')
+    check(
+      "an item's health is doubled too",
+      bulwarkHeart.maxHp - 100 === (plainHeart.maxHp - 100) * 2 && plainHeart.maxHp > 100,
+      `鐵心 gave ${plainHeart.maxHp - 100} health plain and ${bulwarkHeart.maxHp - 100} mastered`,
+    )
+
+    /* 重甲 is armour and a movement penalty in one item. Only the armour half
+       is the skill's business, and an item that quietly doubled its drawback
+       too would be a skill that punishes the build it is for. */
+    const plainPlate = withSkills([], 'heavyplate')
+    const bulwarkPlate = withSkills([bulwark], 'heavyplate')
+    check(
+      "an item's other modifiers are left alone",
+      bulwarkPlate.armour === plainPlate.armour * 2 &&
+        bulwarkPlate.moveSpeed === plainPlate.moveSpeed,
+      `move speed went ${plainPlate.moveSpeed} -> ${bulwarkPlate.moveSpeed} alongside the armour`,
+    )
+
+    /* From an attribute, not from an item. STA feeds both of these and the
+       skill has nothing to do with it -- "from items" has to mean from items,
+       or the skill is just a stat bonus with a story. */
+    world.loadout.skills = [bulwark]
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 100, int: 0, luk: 0 }
+    world.ownedItems.length = 0
+    world.recomputeStats()
+    check(
+      'armour and health from attributes are not doubled',
+      Math.abs(world.player.stats.armour - 16) < 1e-9 &&
+        Math.abs(world.player.stats.maxHp - 260) < 1e-9,
+      `100 STA gave ${world.player.stats.armour} armour and ${world.player.stats.maxHp} health`,
+    )
+
+    /* Regeneration reads the finished block, so it moves when either of its two
+       inputs does. */
+    world.loadout.skills = [mending]
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.ownedItems.length = 0
+    world.recomputeStats()
+    const bareRegen = world.player.stats.regen
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 100, int: 0, luk: 0 }
+    world.recomputeStats()
+    const staRegen = world.player.stats.regen
+    check(
+      'regeneration rises with armour and health',
+      staRegen > bareRegen && bareRegen > 0,
+      `${bareRegen.toFixed(2)}/s at nothing, ${staRegen.toFixed(2)}/s at 100 STA`,
+    )
+
+    world.loadout.skills = []
+    world.recomputeStats()
+    check(
+      'a class without the skill regenerates nothing',
+      world.player.stats.regen === 0,
+      `${world.player.stats.regen}/s with no skills at all`,
+    )
+
+    /*
+     * The two compound, and this is the check that says the order is right.
+     *
+     * Regeneration is computed after the items, so it reads the armour that
+     * mastery has already doubled. Run the other way round it still works,
+     * still looks right, and quietly is not the class -- which is exactly the
+     * kind of thing that survives a code review and not a test.
+     */
+    const mendOnly = withSkills([mending], 'ward')
+    const both = withSkills([bulwark, mending], 'ward')
+    const bonus = both.regen - mendOnly.regen
+    check(
+      'mastery feeds regeneration, not just the armour number',
+      bonus > 0 && Math.abs(bonus - (both.armour - mendOnly.armour) * 0.04) < 1e-9,
+      `the same 護符 gave ${mendOnly.regen.toFixed(2)}/s alone and ` +
+        `${both.regen.toFixed(2)}/s with 防禦專精 -- the doubled armour is ` +
+        `worth ${bonus.toFixed(2)}/s and should be`,
+    )
+
+    /* And the block still rebuilds to the same thing twice, now that two more
+       writers are in it. */
+    world.loadout.skills = [bulwark, mending]
+    reset()
+    world.ownedItems.length = 0
+    world.ownedItems.push('ward', 'ironheart')
+    world.recomputeStats()
+    const skilledOnce = { ...world.player.stats }
+    world.recomputeStats()
+    world.recomputeStats()
+    check(
+      'the block still rebuilds identically with skills in it',
+      Object.keys(skilledOnce).every(
+        (key) => Math.abs(skilledOnce[key] - world.player.stats[key]) < 1e-9,
+      ),
+      Object.keys(skilledOnce)
+        .filter((key) => Math.abs(skilledOnce[key] - world.player.stats[key]) >= 1e-9)
+        .map((key) => `${key} ${skilledOnce[key]} -> ${world.player.stats[key]}`)
+        .join(', '),
+    )
+
+    world.loadout.skills = realSkills
+    reset()
+
     game.scene.resume('arena')
     return checks
   })

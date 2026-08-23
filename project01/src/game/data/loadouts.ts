@@ -1,5 +1,6 @@
 import type { PlayerStats } from './content'
 import type { Attributes } from './attributes'
+import { HARU_SKILLS, NO_SKILLS, type ClassSkill } from './skills'
 
 /**
  * What each lobby character brings into the arena.
@@ -39,6 +40,15 @@ export interface ArenaLoadout {
    * attribute for. Added to the block the same way an item's modifiers are.
    */
   mods: Partial<PlayerStats>
+  /**
+   * The class's passives, which the recompute reads.
+   *
+   * Held here rather than in a second table keyed by character id, because a
+   * second table is a second place a character can be described and the two
+   * can disagree. The skills themselves are declared in data/skills.ts; this
+   * says which character has which.
+   */
+  skills: readonly ClassSkill[]
   /** Weapon id the run opens with. */
   weapon: string
   /** Shown on the character screen and on the arena's own start. */
@@ -51,6 +61,7 @@ export const ARENA_LOADOUTS: Record<string, ArenaLoadout> = {
     start: { str: 34, agi: 12, dex: 14, sta: 32, int: 8, luk: 10 },
     growth: { str: 1.6, agi: 0.4, dex: 0.5, sta: 1.5, int: 0.2, luk: 0.3 },
     mods: { moveSpeed: -0.1 },
+    skills: HARU_SKILLS,
     weapon: 'shredder',
     trait: '緋月劍士：近身作戰能力強，但腳步沉重。',
   },
@@ -59,6 +70,7 @@ export const ARENA_LOADOUTS: Record<string, ArenaLoadout> = {
     start: { str: 10, agi: 36, dex: 30, sta: 10, int: 8, luk: 16 },
     growth: { str: 0.3, agi: 1.8, dex: 1.4, sta: 0.4, int: 0.2, luk: 0.4 },
     mods: { moveSpeed: 0.22, lootRange: 0.35 },
+    skills: NO_SKILLS,
     weapon: 'dart',
     trait: '晨風信使：極快且難以命中，但相當脆弱。',
   },
@@ -67,6 +79,7 @@ export const ARENA_LOADOUTS: Record<string, ArenaLoadout> = {
     start: { str: 8, agi: 14, dex: 16, sta: 20, int: 34, luk: 18 },
     growth: { str: 0.2, agi: 0.5, dex: 0.6, sta: 0.9, int: 1.9, luk: 0.4 },
     mods: { xpGain: 0.3, regen: 0.5, range: 0.15 },
+    skills: NO_SKILLS,
     weapon: 'pistol',
     trait: '書庫看守：成長最快，起手最弱。',
   },
@@ -75,6 +88,7 @@ export const ARENA_LOADOUTS: Record<string, ArenaLoadout> = {
     start: { str: 12, agi: 18, dex: 32, sta: 8, int: 10, luk: 30 },
     growth: { str: 0.3, agi: 0.6, dex: 1.7, sta: 0.2, int: 0.3, luk: 1.4 },
     mods: { critDamage: 0.5 },
+    skills: NO_SKILLS,
     weapon: 'railgun',
     trait: '銀鈴守望：暴擊為主，防禦幾乎沒有。',
   },
@@ -91,6 +105,7 @@ export const DEFAULT_LOADOUT: ArenaLoadout = {
   start: { str: 16, agi: 20, dex: 23, sta: 17, int: 15, luk: 19 },
   growth: { str: 0.6, agi: 0.8, dex: 1, sta: 0.7, int: 0.6, luk: 0.6 },
   mods: {},
+  skills: NO_SKILLS,
   weapon: 'pistol',
   trait: '',
 }

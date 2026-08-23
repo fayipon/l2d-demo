@@ -931,6 +931,11 @@ export class ArenaScene extends Phaser.Scene {
       fps: Math.round(this.game.loop.actualFps),
       attributes: { ...world.attributes },
       misses: world.misses,
+      /* The list itself, not a copy of its numbers: a skill is a constant for
+         the length of a run, and what the sheet needs from it -- the name, the
+         description -- never changes. What does change is the stat it feeds,
+         and that is already in the block. */
+      skills: world.skills,
       stats: { ...player.stats },
       weapons: player.weapons.map((slot) => ({ kind: slot.kind, tier: slot.tier })),
       items: [...world.ownedItems],

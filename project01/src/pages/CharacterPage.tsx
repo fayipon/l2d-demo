@@ -230,8 +230,35 @@ export function CharacterPage() {
                 <p className="char-bio">{character.bio}</p>
               </>
             ) : (
-              <ul className="skill-list">
-                {character.skills.map((skill) => (
+              <>
+                {/*
+                  The two lists are not the same kind of thing and are labelled
+                  apart rather than merged. These are the passives the arena
+                  actually reads; the ones below are written fiction with levels
+                  and cooldowns that nothing in the game has ever heard of.
+
+                  Merging them would hide which is which, and deleting the
+                  fiction is a bigger job than this one -- three characters'
+                  worth of it, and a screen built around the shape. It goes when
+                  there is enough of the real thing to replace all of it.
+                */}
+                {profile.skills.length > 0 ? (
+                  <div className="class-skills">
+                    <p className="class-skills-head">職業技能 · 生效中</p>
+                    <ul className="class-skill-list">
+                      {profile.skills.map((skill) => (
+                        <li className="class-skill" key={skill.id}>
+                          <span className="class-skill-name">{skill.name}</span>
+                          <span className="class-skill-kind">{skill.kind}</span>
+                          <p className="class-skill-detail">{skill.description}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <ul className="skill-list">
+                  {character.skills.map((skill) => (
                   <li className="skill" key={skill.id}>
                     <span className={`skill-icon tone-${skill.tone}`}>
                       <Icon name={skill.icon} />
@@ -248,8 +275,9 @@ export function CharacterPage() {
                       ) : null}
                     </div>
                   </li>
-                ))}
-              </ul>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         </div>

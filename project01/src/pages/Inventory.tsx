@@ -57,7 +57,34 @@ export function StatSection({ run, views }: { run: RunSnapshot; views: StatViews
       <h3 className="sheet-heading">屬性</h3>
 
       {/*
-        The six primaries first, because everything under them is computed from
+        The class's passives above everything, because they change what the
+        numbers under them mean rather than being one of them. The regeneration
+        one quotes what it is currently worth: a passive whose value moves with
+        the build is a passive worth watching, and one that only said 隨護甲提升
+        would be asking the player to do the arithmetic.
+      */}
+      {run.skills.length > 0 ? (
+        <div className="sheet-group group-skill">
+          <p className="sheet-group-name">職業技能</p>
+          <ul className="sheet-skills">
+            {run.skills.map((skill) => (
+              <li className="sheet-skill" key={skill.id}>
+                <span className="sheet-skill-name">{skill.name}</span>
+                <span className="sheet-skill-kind">{skill.kind}</span>
+                <p className="sheet-skill-detail">{skill.description}</p>
+                {skill.effect.sort === 'regenFrom' ? (
+                  <b className="sheet-skill-value">
+                    目前 {run.stats.regen.toFixed(1)} /秒
+                  </b>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {/*
+        The six primaries next, because everything under them is computed from
         them. A level adds to these and the block below follows -- showing the
         derived numbers alone would be showing the result and hiding the rule.
 

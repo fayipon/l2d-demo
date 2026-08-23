@@ -11,6 +11,7 @@ import {
   type UpgradeId,
 } from '../game/data/content'
 import { ARENA_LOADOUTS, DEFAULT_LOADOUT, loadoutFor } from '../game/data/loadouts'
+import type { ClassSkill } from '../game/data/skills'
 import {
   ATTRIBUTES,
   ATTRIBUTE_CAP,
@@ -68,6 +69,10 @@ export interface ProfileAttribute {
 }
 
 export interface ArenaProfile {
+  /** The class's real passives, straight off the loadout. Not to be confused
+   *  with `Character.skills`, which is the fictional list this screen has
+   *  shown since before the arena had any. */
+  skills: readonly ClassSkill[]
   attributes: ProfileAttribute[]
   rows: ProfileRow[]
   mods: ProfileMod[]
@@ -213,6 +218,7 @@ export function arenaProfile(characterId: string): ArenaProfile {
   }))
 
   return {
+    skills: loadout.skills,
     attributes,
     rows,
     mods,

@@ -353,9 +353,17 @@ export class World {
   accuracy = 0
   /** From LUK, handed to the shop's roll. */
   shopLuck = 0
+
   /** Shots that missed, for the HUD -- a hit that does nothing and says
    *  nothing is a bug report. */
   misses = 0
+
+  /** The class's passives. Exposed because the equipment sheet lists them; the
+   *  loadout they come from stays private, since nothing outside it has any
+   *  business with the rest of a loadout mid-run. */
+  get skills() {
+    return this.loadout.skills
+  }
 
   /** The shop laid out for this break. Empty while fighting. */
   shopOffers: ShopOffer[] = []
@@ -513,10 +521,56 @@ export class World {
     add(this.loadout.mods)
     const derived = deriveAttributes(this.attributes)
     add(derived.stats)
+
+    /*
+     * Items, through whatever the class does to them.
+     *
+     * An `itemBonus` skill scales the named stats here and nowhere else, which
+     * is the whole meaning of "from items": the same armour arriving from an
+     * attribute or from the base block goes in untouched a few lines above.
+     * This is only a small change because the recompute already knew which
+     * source each number came from.
+     */
     for (const id of this.ownedItems) {
       const item = SHOP_ITEMS.find((entry) => entry.id === id)
-      if (item) {
-        add(item.mods)
+      if (!item) {
+        continue
+      }
+      let mods = item.mods
+      for (const skill of this.loadout.skills) {
+        if (skill.effect.sort !== 'itemBonus') {
+          continue
+        }
+        const scaled: Partial<PlayerStats> = { ...mods }
+        for (const key of skill.effect.stats) {
+          if (scaled[key] !== undefined) {
+            scaled[key] = (scaled[key] as number) * skill.effect.multiplier
+          }
+        }
+        mods = scaled
+      }
+      add(mods)
+    }
+
+    /*
+     * And last, the skills that read the finished block.
+     *
+     * Last is not a detail. `regenFrom` reads the armour and health that the
+     * loop above has just doubled, which is what makes Haru's two skills
+     * compound rather than merely coexist -- defence buys defence. Run before
+     * the items, this would still work, still look right, and quietly not be
+     * the class.
+     *
+     * Added to `regen` rather than replacing it, because an item sells the
+     * same stat and a skill that silently cancelled a purchase is a skill that
+     * makes an item worthless without saying so.
+     */
+    for (const skill of this.loadout.skills) {
+      if (skill.effect.sort === 'regenFrom') {
+        stats.regen +=
+          skill.effect.base +
+          stats.armour * skill.effect.fromArmour +
+          stats.maxHp * skill.effect.fromMaxHp
       }
     }
 

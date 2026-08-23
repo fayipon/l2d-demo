@@ -1913,3 +1913,62 @@
 .sheet-group.group-primary .sheet-group-name {
   color: rgba(255, 199, 74, 0.85);
 }
+
+/* ---------- class skills, on the sheet ---------- */
+/*
+ * Above the primaries, because a passive changes what the numbers under it
+ * mean rather than being one of them. Two of them at most so far, so this is a
+ * list rather than the two-column grid the attributes use -- each one needs a
+ * line of prose and that does not halve.
+ */
+.sheet-skills {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sheet-skill {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.sheet-skill-name {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffd98a;
+}
+
+.sheet-skill-kind {
+  padding: 0.02rem 0.3rem;
+  border-radius: 0.2rem;
+  background: rgba(255, 217, 138, 0.14);
+  font-size: 0.6rem;
+  color: rgba(255, 217, 138, 0.75);
+}
+
+.sheet-skill-detail {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Only the one that moves prints a value; a flat multiplier has nothing to
+   report that its description has not already said. */
+.sheet-skill-value {
+  justify-self: end;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: #5ce6a0;
+}
+
+.sheet-group.group-skill .sheet-group-name {
+  color: rgba(255, 217, 138, 0.85);
+}

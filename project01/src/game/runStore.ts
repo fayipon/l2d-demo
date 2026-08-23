@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { PlayerStats } from './data/content'
 import { ZERO_ATTRIBUTES, type Attributes } from './data/attributes'
+import { NO_SKILLS, type ClassSkill } from './data/skills'
 import { BASE_STATS } from './data/content'
 import type { ShopOffer } from './data/shop'
 import type { RunStatus } from './sim/world'
@@ -42,6 +43,8 @@ export interface RunSnapshot {
   attributes: Attributes
   /** Shots that missed the enemy's evasion. Zero until something evades. */
   misses: number
+  /** The class's passives, for the sheet to list. Constant for the run. */
+  skills: readonly ClassSkill[]
   /** A copy, not the live block -- the HUD compares snapshots by identity and
    *  would never see a stat that was mutated in place. */
   stats: PlayerStats
@@ -97,6 +100,7 @@ const EMPTY: RunSnapshot = {
   fps: 0,
   attributes: { ...ZERO_ATTRIBUTES },
   misses: 0,
+  skills: NO_SKILLS,
   stats: { ...BASE_STATS },
   weapons: [],
   items: [],

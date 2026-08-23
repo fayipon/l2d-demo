@@ -639,3 +639,65 @@
 .char-attr .char-stat-bar {
   grid-column: 1 / -1;
 }
+
+/* ---------- class skills ---------- */
+/*
+ * Above the written skill list and visibly a different thing. These two are
+ * read by the arena; the four below them are fiction with levels and cooldowns
+ * that nothing has ever heard of, and the gold heading is the whole of the
+ * distinction until there is enough of the real thing to replace all of it.
+ */
+.class-skills {
+  margin: 0 0 1.6cqh;
+  padding: 1.2cqh 1.4cqw;
+  border-radius: 0.6cqh;
+  background: rgba(255, 199, 74, 0.05);
+  border: 1px solid rgba(255, 199, 74, 0.22);
+}
+
+.class-skills-head {
+  margin: 0 0 0.8cqh;
+  font-size: 1.5cqh;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(255, 217, 138, 0.9);
+}
+
+.class-skill-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9cqh;
+}
+
+.class-skill {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 0.6cqw;
+}
+
+.class-skill-name {
+  font-size: 1.9cqh;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+
+.class-skill-kind {
+  padding: 0.1cqh 0.5cqw;
+  border-radius: 0.3cqh;
+  background: rgba(255, 217, 138, 0.16);
+  font-size: 1.3cqh;
+  color: rgba(255, 217, 138, 0.8);
+}
+
+.class-skill-detail {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 1.6cqh;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
