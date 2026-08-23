@@ -612,6 +612,26 @@ export function visionRadius(stats: PlayerStats): number {
 export const DODGE_CAP = 0.6
 
 /**
+ * The chance a kill drops its coins at all.
+ *
+ * A kill used to pay every time, which made the drop a tax on walking over
+ * there rather than a thing that happened. Below one it becomes an event: most
+ * kills pay, some do not, and a run notices when a long stretch of them does
+ * not.
+ *
+ * It is also the only place LUK reaches that is a *frequency* rather than a
+ * size -- see PER_POINT.coinChance, which takes this to within a few percent of
+ * certain at the attribute cap. That is what makes the stat worth buying for a
+ * player who is already critting: it stops asking how big and starts asking how
+ * often.
+ *
+ * Coins are experience as well as money, so this slows levelling by roughly
+ * what it slows earning. Deliberate, and the curve to watch if a run starts
+ * feeling flat.
+ */
+export const BASE_COIN_CHANCE = 0.45
+
+/**
  * Armour is points on a diminishing curve, not a flat percentage.
  *
  * Flat subtraction makes weak enemies harmless the moment armour passes their

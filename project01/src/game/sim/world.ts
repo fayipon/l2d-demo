@@ -11,6 +11,7 @@ import {
   BASE_LOOT_RANGE,
   BASE_MOVE_SPEED,
   BASE_STATS,
+  BASE_COIN_CHANCE,
   DODGE_CAP,
   ENEMY_KINDS,
   MAX_WEAPON_SLOTS,
@@ -389,6 +390,8 @@ export class World {
   accuracy = 0
   /** From LUK, handed to the shop's roll. */
   shopLuck = 0
+  /** Chance a kill drops its coins. Base plus LUK, clamped to one. */
+  coinChance = BASE_COIN_CHANCE
 
   /** Shots that missed, for the HUD -- a hit that does nothing and says
    *  nothing is a bug report. */
@@ -636,6 +639,7 @@ export class World {
     Object.assign(this.player.stats, stats)
     this.accuracy = derived.accuracy
     this.shopLuck = derived.shopLuck
+    this.coinChance = Math.min(1, BASE_COIN_CHANCE + derived.coinChance)
     this.player.hp = Math.min(this.player.hp, stats.maxHp)
   }
 
@@ -1574,6 +1578,19 @@ export class World {
     // and collecting are different actions and both should count -- otherwise
     // a wave spent clearing a crowd out of reach pays nothing.
     this.grantXp(ENEMY_KINDS[enemy.kind].xp)
+
+    /*
+     * Rolled once for the kill, not once per coin.
+     *
+     * Per coin would turn a four-coin brute into an average of two, which is a
+     * quieter version of the same payout and not what a chance is for. Once for
+     * the kill means a brute either pays properly or pays nothing, and the run
+     * feels the difference -- which is the point of the stat that raises it.
+     */
+    if (this.random() >= this.coinChance) {
+      this.enemies.release(enemy)
+      return
+    }
 
     for (let i = 0; i < enemy.drop; i++) {
       const drop = this.pickups.spawn()

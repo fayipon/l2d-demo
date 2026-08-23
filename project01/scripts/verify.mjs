@@ -886,6 +886,74 @@ try {
     world.loadout.skills = realSkills
     reset()
 
+    /* ---------- a kill does not always pay ---------- */
+
+    /* Measured by killing things, not by reading the constant. What is under
+       test is the roll in the death path, and a check that read `coinChance`
+       back would pass whether or not anything used it. */
+    const dropRateAt = (luk) => {
+      reset()
+      world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk }
+      world.recomputeStats()
+      let paid = 0
+      const runs = 400
+      for (let i = 0; i < runs; i++) {
+        world.pickups.releaseAll()
+        world.spawnEnemy()
+        const victim = world.enemies.items.find((e) => e.active)
+        victim.arriving = 0
+        victim.hp = 0
+        world.kill(victim)
+        if (world.pickups.used > 0) {
+          paid += 1
+        }
+      }
+      world.pickups.releaseAll()
+      return paid / runs
+    }
+
+    const unluckyDrops = dropRateAt(0)
+    check(
+      'a kill is not guaranteed to drop coins',
+      unluckyDrops > 0.3 && unluckyDrops < 0.6,
+      `${(unluckyDrops * 100).toFixed(0)}% of four hundred kills paid at 0 LUK`,
+    )
+
+    const luckyDrops = dropRateAt(255)
+    check(
+      'luck buys the guarantee back',
+      luckyDrops > unluckyDrops && luckyDrops > 0.9,
+      `${(unluckyDrops * 100).toFixed(0)}% at 0 LUK against ` +
+        `${(luckyDrops * 100).toFixed(0)}% at 255`,
+    )
+
+    /* One roll for the kill, not one per coin: a brute pays properly or pays
+       nothing. Anything between the two would be a quieter payout rather than
+       a chance. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.recomputeStats()
+    let partial = 0
+    for (let i = 0; i < 200; i++) {
+      world.pickups.releaseAll()
+      world.spawnEnemy()
+      const victim = world.enemies.items.find((e) => e.active)
+      victim.arriving = 0
+      victim.drop = 4
+      victim.hp = 0
+      world.kill(victim)
+      const dropped = world.pickups.used
+      if (dropped !== 0 && dropped !== 4) {
+        partial += 1
+      }
+    }
+    world.pickups.releaseAll()
+    check(
+      'a kill pays in full or not at all',
+      partial === 0,
+      `${partial} of two hundred four-coin kills paid a part of it`,
+    )
+
     game.scene.resume('arena')
     return checks
   })

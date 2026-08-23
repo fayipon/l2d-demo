@@ -50,7 +50,7 @@ export const ATTRIBUTES: readonly { id: AttributeId; label: string; feeds: strin
   { id: 'dex', label: 'DEX', feeds: '命中 · 遠程攻擊力' },
   { id: 'sta', label: 'STA', feeds: '生命 · 防禦' },
   { id: 'int', label: 'INT', feeds: '魔法攻擊力' },
-  { id: 'luk', label: 'LUK', feeds: '暴擊 · 商品品階' },
+  { id: 'luk', label: 'LUK', feeds: '暴擊 · 金幣 · 品階' },
 ]
 
 /**
@@ -88,6 +88,15 @@ export const PER_POINT = {
   critChance: 0.0012,
   /** LUK. Raises what the shop is willing to put on the shelf. */
   shopLuck: 1,
+  /**
+   * LUK. Added to the chance a kill drops anything at all.
+   *
+   * A kill is no longer guaranteed to pay, and this is the stat that buys the
+   * guarantee back: at 0 it is BASE_COIN_CHANCE, and 255 points take it to
+   * within a few percent of certain. Which makes LUK the only attribute that
+   * changes how often something happens rather than how large it is.
+   */
+  coinChance: 0.002,
 } as const
 
 /** Everything the six produce: the stat-block half, and the two that are not
@@ -98,6 +107,9 @@ export interface DerivedAttributes {
   accuracy: number
   /** Handed to the shop's roll. */
   shopLuck: number
+  /** Added to the base chance a kill drops coins. Clamped with the base, not
+   *  here -- the base is content and this is only what the attribute adds. */
+  coinChance: number
 }
 
 export function deriveAttributes(attributes: Attributes): DerivedAttributes {
@@ -115,6 +127,7 @@ export function deriveAttributes(attributes: Attributes): DerivedAttributes {
     },
     accuracy: dex * PER_POINT.accuracy,
     shopLuck: luk * PER_POINT.shopLuck,
+    coinChance: luk * PER_POINT.coinChance,
   }
 }
 
