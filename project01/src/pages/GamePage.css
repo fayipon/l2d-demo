@@ -629,26 +629,10 @@
   --group-glow: rgba(79, 195, 255, 0.28);
 }
 
-/* ---------- level up ---------- */
-.levelup {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  /* Nearly opaque. The arena is frozen behind it, and a bright white sprite
-     stopped mid-flight shows through anything looser as a stray sliver between
-     two cards -- which reads as a rendering fault, not as atmosphere. The
-     floor still comes through; the point lights no longer do. */
-  background: rgba(6, 2, 10, 0.97);
-  /* Takes input back for the whole screen: the arena is frozen behind it and
-     there is nothing under here to click through to. */
-  pointer-events: auto;
-  animation: levelup-in 0.16s ease both;
-}
-
+/* The level-up screen is gone -- a level is the class's growth now and stops
+   nothing -- but its entrance animation outlived it: the shop and the
+   equipment sheet were both written against it and it is the right one for
+   them. Renaming it would be a rename for its own sake. */
 @keyframes levelup-in {
   from {
     opacity: 0;
@@ -658,8 +642,9 @@
 
 /* ---------- the head of a full-screen choice ---------- */
 /*
- * Shared by the level-up and the shop, because the mock draws them as one
- * screen with a different noun in the title. An eyebrow above, a display title,
+ * Shared by the shop, the death screen and the equipment sheet, because the
+ * mock draws them as one screen with a different noun in the title. An
+ * eyebrow above, a display title,
  * a line of context under it.
  */
 .screen-head {
@@ -1870,4 +1855,61 @@
 
 .grid-cell.is-dimmed .grid-value {
   opacity: 0.5;
+}
+
+/* ---------- the six primaries, on the sheet ---------- */
+/*
+ * Above the derived stats, because everything below is computed from these.
+ * Two columns: the derived block under it is one long list and a second long
+ * list on top of it would push the sheet past the fold.
+ */
+.sheet-attrs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem 0.9rem;
+}
+
+.sheet-attr {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr auto;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.sheet-attr-name {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sheet-attr-feeds {
+  font-size: 0.64rem;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sheet-attr-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+/* The cap, quiet. It is context for the number beside it, not a second
+   number -- 255 is a long way off and saying so loudly would make every
+   attribute read as nearly empty. */
+.sheet-attr-value i {
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.sheet-group.group-primary .sheet-group-name {
+  color: rgba(255, 199, 74, 0.85);
 }

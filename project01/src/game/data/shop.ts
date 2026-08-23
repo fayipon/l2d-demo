@@ -7,6 +7,7 @@ import {
   type PlayerStats,
   type WeaponFamily,
 } from './content'
+import { ATTRIBUTE_CAP } from './attributes'
 
 /**
  * The shop between waves.
@@ -164,7 +165,23 @@ interface RollContext {
    *  an item is worse than a card here: the card is one wasted pick, the item
    *  is coins. */
   families: WeaponFamily[]
+  /**
+   * From LUK, and coarse on purpose.
+   *
+   * It buys the shelf, not the price: a stat that made things cheaper would be
+   * a coin stat, and coins already exist. Two effects, both blunt --
+   * `LUCK_PER_TIER` points raise the tier the roll is willing to reach, and
+   * the item pick leans towards the expensive end rather than being uniform.
+   * The fine version of this is a later pass.
+   */
+  luck: number
 }
+
+/** Points of luck per extra tier the shelf will reach. At the attribute cap
+ *  that is the whole tier range, which is what a maxed LUK should mean. */
+const LUCK_PER_TIER = 85
+/** How hard luck leans the item pick towards the expensive end, at the cap. */
+const LUCK_ITEM_BIAS = 0.7
 
 /** Whether an item does anything for this rack. Only the family attack powers
  *  can fail this; everything else applies to any run. */
@@ -200,6 +217,8 @@ export function rollShop(context: RollContext, random: () => number): ShopOffer[
   const shelf = SHOP_ITEMS.map((_, index) => index).filter((index) =>
     itemSuits(SHOP_ITEMS[index], context.families),
   )
+  // Sorted cheap to expensive, so "further along the shelf" means "rarer".
+  shelf.sort((a, b) => SHOP_ITEMS[a].price - SHOP_ITEMS[b].price)
 
   for (let slot = 0; slot < SHOP_SLOTS; slot++) {
     const wantsWeapon = canTakeWeapon && random() < 0.34
@@ -214,8 +233,12 @@ export function rollShop(context: RollContext, random: () => number): ShopOffer[
         tier = target.tier
       } else {
         index = Math.floor(random() * WEAPONS.length) % WEAPONS.length
-        // Higher tiers show up later, and never above the merge ceiling.
-        const ceiling = Math.min(MAX_WEAPON_TIER, 1 + Math.floor((context.wave - 1) / 5))
+        // Higher tiers show up later, luck reaches further, and neither goes
+        // above the merge ceiling.
+        const ceiling = Math.min(
+          MAX_WEAPON_TIER,
+          1 + Math.floor((context.wave - 1) / 5) + Math.floor(context.luck / LUCK_PER_TIER),
+        )
         tier = 1 + Math.floor(random() * ceiling)
       }
       offers.push({
@@ -227,9 +250,17 @@ export function rollShop(context: RollContext, random: () => number): ShopOffer[
       continue
     }
 
-    // Items do not repeat within one layout; a shop showing the same charm
-    // twice reads as a bug whatever the odds say.
-    let cursor = Math.floor(random() * shelf.length)
+    /* Items do not repeat within one layout; a shop showing the same charm
+       twice reads as a bug whatever the odds say.
+
+       Luck skews where the walk starts, over a shelf sorted by price: at zero
+       it is uniform and rolls exactly what it rolled before this stat existed,
+       and at the cap it starts most of the way up the expensive end. Skewing
+       the start rather than filtering the shelf keeps every item reachable at
+       every value, which is the difference between luck and a gate. */
+    const bias = Math.min(1, context.luck / ATTRIBUTE_CAP) * LUCK_ITEM_BIAS
+    const roll = random()
+    let cursor = Math.floor((bias + (1 - bias) * roll) * shelf.length) % shelf.length
     for (let guard = 0; guard < shelf.length && usedItems.has(shelf[cursor]); guard++) {
       cursor = (cursor + 1) % shelf.length
     }

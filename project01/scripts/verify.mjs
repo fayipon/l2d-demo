@@ -66,7 +66,6 @@ try {
       world.projectiles.releaseAll()
       world.pickups.releaseAll()
       world.status = 'fighting'
-      world.pendingLevels = 0
       world.player.hp = world.player.stats.maxHp
       world.player.invuln = 0
       /* The director held off for the length of any check.
@@ -76,23 +75,21 @@ try {
          "it survived", which is the most expensive kind of passing test. */
       world.spawnTimer = 999
       world.waveTimeLeft = 999
-      /* The level too. A check that grants experience to force a card draw
-         leaves the level hundreds high, and the next one's grant then buys no
-         level at all -- so it reads whatever `offers` was left holding by the
-         check before it, which is a stale answer that looks like a real one.
-         Cost one confused diagnosis already. */
+      /* The level too, and the attributes with it. A check that grants
+         experience to force levels leaves both hundreds high, and the next
+         check then measures a character it did not set up -- a stale answer
+         that looks like a real one. Cost one confused diagnosis already. */
       world.player.level = 1
       world.player.xp = 0
       world.player.xpToLevel = 10
-      world.offers = []
+      world.attributes = { str: 20, agi: 20, dex: 20, sta: 20, int: 20, luk: 20 }
+      world.ownedItems.length = 0
+      world.recomputeStats()
     }
     const still = { x: 0, y: 0 }
     const steps = (n) => {
       for (let i = 0; i < n; i++) {
         world.step(still)
-        // Level-ups freeze the scene, not the world, so stepping by hand is
-        // unaffected -- but they would change the stats mid-check.
-        world.pendingLevels = 0
       }
     }
     const check = (name, ok, detail) => checks.push({ name, ok, detail })
@@ -358,38 +355,6 @@ try {
       'a stat that is supposed to apply everywhere did not',
     )
 
-    /* A family's card is dead weight to a rack holding nothing of that family,
-       and the elemental one has no weapon in the game to attach to at all. */
-    reset()
-    world.player.weapons.length = 0
-    world.player.weapons.push({ kind: 3, tier: 1, cooldown: 0 }) // 貫穿槍, ranged
-    /* Through real level-ups rather than a hook opened in the world for the
-       benefit of this file: what is under test is what the player is shown,
-       and a private path to the roll could drift from the one they get. */
-    const drawn = new Set()
-    for (let i = 0; i < 400; i++) {
-      world.grantXp(100000)
-      for (const id of world.offers) {
-        drawn.add(id)
-      }
-      /* Cleared, not just unqueued. A level-up only rolls new cards when
-         there are none on the table -- which is right, since offers stand
-         until they are taken -- so leaving them would have every later draw
-         return the first one forever. */
-      world.pendingLevels = 0
-      world.offers = []
-    }
-    check(
-      'a rack with no melee weapon is never offered melee attack power',
-      !drawn.has('meleePower') && !drawn.has('elementalPower'),
-      `offered ${[...drawn].filter((id) => id.endsWith('Power')).join(', ')} to a ranged-only rack`,
-    )
-    check(
-      'the family it does hold is still offered',
-      drawn.has('rangedPower'),
-      'the ranged card never came up in four hundred draws',
-    )
-
     /* The same rule on the shelf, where getting it wrong costs coins rather
        than one pick. */
     reset()
@@ -398,10 +363,15 @@ try {
     /* Bought rather than inspected: the script cannot see the item table from
        in here, and buying everything the shelf offers is the same question
        asked in the only terms the player has -- if a melee charm was ever on
-       sale, the stat it feeds moves. */
-    world.player.stats.meleePower = 0
-    world.player.stats.rangedPower = 0
-    world.player.stats.elementalPower = 0
+       sale, the stat it feeds moves.
+
+       The attributes go to zero first, because STR, DEX and INT each put a
+       floor under one of these three now. Zeroing the stat block directly
+       would not survive the next recompute -- the whole point of that function
+       is that the block is rebuilt rather than edited -- so the floor has to
+       be removed at its source. */
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.recomputeStats()
     for (let i = 0; i < 300; i++) {
       world.status = 'break'
       world.breakTimeLeft = 0
@@ -431,26 +401,6 @@ try {
     reset()
     world.player.weapons.length = 0
     world.player.weapons.push({ kind: 5, tier: 1, cooldown: 0 }) // 魔導杖
-    const elemental = new Set()
-    for (let i = 0; i < 400; i++) {
-      world.grantXp(100000)
-      for (const id of world.offers) {
-        elemental.add(id)
-      }
-      /* Cleared, not just unqueued. A level-up only rolls new cards when
-         there are none on the table -- which is right, since offers stand
-         until they are taken -- so leaving them would have every later draw
-         return the first one forever. */
-      world.pendingLevels = 0
-      world.offers = []
-    }
-    check(
-      'a rack holding the staff is offered elemental attack power',
-      elemental.has('elementalPower') &&
-        !elemental.has('meleePower') &&
-        !elemental.has('rangedPower'),
-      `offered ${[...elemental].filter((id) => id.endsWith('Power')).join(', ')}`,
-    )
 
     const staffBase = damageOf(5, {})
     check(
@@ -494,6 +444,209 @@ try {
       'positive armour still protects',
       hitFor(20) < plain,
       `20 armour took ${hitFor(20)} against ${plain} unarmoured`,
+    )
+
+    /* ---------- the six primaries ---------- */
+
+    /* The cap is the whole design of the scale -- every per-point value was
+       chosen so that 255 lands somewhere worth arriving at -- so an attribute
+       that can be pushed past it makes all ten of those numbers wrong. */
+    reset()
+    world.attributes = { str: 250, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.loadout.growth = { str: 40, agi: -10 }
+    for (let i = 0; i < 5; i++) {
+      world.player.xp = 0
+      world.player.xpToLevel = 1
+      world.grantXp(2)
+    }
+    check(
+      'every attribute clamps at 0 and at 255',
+      world.attributes.str === 255 && world.attributes.agi === 0,
+      `five levels of +40 STR from 250 came to ${world.attributes.str}, ` +
+        `and -10 AGI from 0 came to ${world.attributes.agi}`,
+    )
+
+    /* Recomputing must be idempotent. Attributes are folded into a fresh copy
+       of the base every time; folding them into the live block instead would
+       be shorter, and would add every point already spent a second time on the
+       next recompute. The symptom -- stats that grow when nothing bought
+       anything -- is a long way from the cause, which is why this is a check
+       and not a comment. */
+    reset()
+    world.attributes = { str: 40, agi: 30, dex: 25, sta: 50, int: 10, luk: 20 }
+    world.recomputeStats()
+    const once = { ...world.player.stats }
+    world.recomputeStats()
+    world.recomputeStats()
+    const thrice = world.player.stats
+    check(
+      'recomputing the stat block twice changes nothing',
+      Object.keys(once).every((key) => Math.abs(once[key] - thrice[key]) < 1e-9),
+      Object.keys(once)
+        .filter((key) => Math.abs(once[key] - thrice[key]) >= 1e-9)
+        .map((key) => `${key} ${once[key]} -> ${thrice[key]}`)
+        .join(', '),
+    )
+
+    /* An item bought is an item remembered, not an item added. The rebuild
+       reads `ownedItems` back, so a purchase has to survive the next
+       recompute -- and it is the recompute that applies it in the first
+       place. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.recomputeStats()
+    const beforeBuy = world.player.stats.maxHp
+    world.status = 'break'
+    world.breakTimeLeft = 0
+    world.openShop()
+    world.player.coins = 99999
+    let bought = 0
+    for (let slot = world.shopOffers.length - 1; slot >= 0; slot--) {
+      if (world.shopOffers[slot].sort === 'item' && world.buy(slot)) {
+        bought += 1
+      }
+    }
+    const afterBuy = world.player.stats.maxHp
+    world.recomputeStats()
+    check(
+      'a bought item survives a rebuild',
+      bought === 0 || world.player.stats.maxHp === afterBuy,
+      `${bought} items: ${beforeBuy} -> ${afterBuy} -> ${world.player.stats.maxHp}`,
+    )
+
+    /* Growth is a rate, not a step. Stored as floats and rounded only where it
+       is shown: +0.4 a level rounded at each level is +0 forever. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.loadout.growth = { str: 0.4 }
+    for (let i = 0; i < 10; i++) {
+      world.player.xp = 0
+      world.player.xpToLevel = 1
+      world.grantXp(2)
+    }
+    check(
+      'fractional growth accumulates instead of rounding away',
+      Math.abs(world.attributes.str - 4) < 1e-6,
+      `ten levels of +0.4 STR came to ${world.attributes.str}`,
+    )
+
+    /* A level is the class's growth and nothing else. Nothing queues, nothing
+       waits to be spent, and the arena does not stop -- which is the whole
+       point of the change that removed the card. */
+    reset()
+    world.attributes = { str: 10, agi: 10, dex: 10, sta: 10, int: 10, luk: 10 }
+    world.loadout.growth = { sta: 2 }
+    world.recomputeStats()
+    const hpBefore = world.player.stats.maxHp
+    const levelBefore = world.player.level
+    world.player.xp = 0
+    world.player.xpToLevel = 1
+    world.grantXp(2)
+    check(
+      'a level applies growth and does not stop the run',
+      world.player.level === levelBefore + 1 &&
+        world.player.stats.maxHp > hpBefore &&
+        world.status === 'fighting',
+      `level ${levelBefore} -> ${world.player.level}, hp ceiling ${hpBefore} -> ` +
+        `${world.player.stats.maxHp}, status ${world.status}`,
+    )
+
+    /* And it heals by exactly what the ceiling gained, so a level taken on a
+       nearly empty tank is worth what it says. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.loadout.growth = { sta: 10 }
+    world.recomputeStats()
+    world.player.hp = 5
+    const ceilingBefore = world.player.stats.maxHp
+    world.player.xp = 0
+    world.player.xpToLevel = 1
+    world.grantXp(2)
+    check(
+      'a level heals by what the ceiling gained',
+      Math.abs(world.player.hp - (5 + (world.player.stats.maxHp - ceilingBefore))) < 1e-6,
+      `hp 5 -> ${world.player.hp} while the ceiling went ${ceilingBefore} -> ` +
+        `${world.player.stats.maxHp}`,
+    )
+
+    /*
+     * Accuracy, driven through the weapon rather than through the function.
+     *
+     * Nothing in the game evades, so DEX changes nothing today -- which is the
+     * whole reason to land the rule now. Testing `hitChance` directly would
+     * pass whether or not anything called it, so the evasion is set on a kind
+     * and the shots are fired: the question is whether the damage path reads
+     * it, and the only honest way to ask is to shoot something.
+     */
+    const kinds = window.__arenaContent.ENEMY_KINDS
+    const damageWith = (evasion, dex) => {
+      const was = kinds[0].evasion
+      kinds[0].evasion = evasion
+      reset()
+      world.attributes = { str: 0, agi: 0, dex, sta: 0, int: 0, luk: 0 }
+      world.recomputeStats()
+      world.player.weapons.length = 0
+      world.player.weapons.push({ kind: 0, tier: 1, cooldown: 0 })
+      world.misses = 0
+      world.spawnEnemy()
+      const target = world.enemies.items.find((e) => e.active)
+      target.kind = 0
+      target.arriving = 0
+      target.x = world.player.x + 40
+      target.y = world.player.y
+      target.hp = 100000
+      target.maxHp = 100000
+      steps(40)
+      kinds[0].evasion = was
+      return { dealt: 100000 - target.hp, misses: world.misses }
+    }
+
+    const noEvasion = damageWith(0, 0)
+    check(
+      'a shot never misses an enemy that does not evade',
+      noEvasion.dealt > 0 && noEvasion.misses === 0,
+      `${noEvasion.misses} misses against zero evasion`,
+    )
+    const blind = damageWith(10, 0)
+    check(
+      'no accuracy against real evasion lands nothing, and says so',
+      blind.dealt === 0 && blind.misses > 0,
+      `dealt ${blind.dealt} with ${blind.misses} misses at 0 accuracy`,
+    )
+    const sharp = damageWith(10, 255)
+    check(
+      'accuracy beats evasion',
+      sharp.dealt > 0 && sharp.misses < blind.misses,
+      `255 DEX against 10 evasion dealt ${sharp.dealt} with ${sharp.misses} misses`,
+    )
+
+    /* Luck buys the shelf. Coarse on purpose, so this asks the coarse question:
+       at the cap the shop reaches tiers the wave alone never would. */
+    reset()
+    world.wave = 1
+    world.player.weapons.length = 0
+    const bestTierAt = (luck) => {
+      world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: luck }
+      world.recomputeStats()
+      let best = 0
+      for (let i = 0; i < 200; i++) {
+        world.status = 'break'
+        world.breakTimeLeft = 0
+        world.openShop()
+        for (const offer of world.shopOffers) {
+          if (offer.sort === 'weapon') {
+            best = Math.max(best, offer.tier)
+          }
+        }
+      }
+      return best
+    }
+    const unlucky = bestTierAt(0)
+    const lucky = bestTierAt(255)
+    check(
+      'luck puts higher tiers on the shelf than the wave alone would',
+      unlucky === 1 && lucky > 1,
+      `wave 1 reached tier ${unlucky} at 0 luck and tier ${lucky} at 255`,
     )
 
     game.scene.resume('arena')

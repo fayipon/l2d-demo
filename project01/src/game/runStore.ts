@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
-import type { PlayerStats, UpgradeId } from './data/content'
+import type { PlayerStats } from './data/content'
+import { ZERO_ATTRIBUTES, type Attributes } from './data/attributes'
 import { BASE_STATS } from './data/content'
 import type { ShopOffer } from './data/shop'
 import type { RunStatus } from './sim/world'
@@ -36,10 +37,11 @@ export interface RunSnapshot {
   /** Live entity counts, so a performance problem is visible rather than felt. */
   enemies: number
   fps: number
-  /** Levels earned and not yet spent. Above zero the arena is frozen and the
-   *  choice overlay is up. */
-  pendingLevels: number
-  offers: UpgradeId[]
+  /** The six primaries, as floats. The sheet rounds them for display; the
+   *  simulation does not, because growth is a fractional rate. */
+  attributes: Attributes
+  /** Shots that missed the enemy's evasion. Zero until something evades. */
+  misses: number
   /** A copy, not the live block -- the HUD compares snapshots by identity and
    *  would never see a stat that was mutated in place. */
   stats: PlayerStats
@@ -93,8 +95,8 @@ const EMPTY: RunSnapshot = {
   deaths: 0,
   enemies: 0,
   fps: 0,
-  pendingLevels: 0,
-  offers: [],
+  attributes: { ...ZERO_ATTRIBUTES },
+  misses: 0,
   stats: { ...BASE_STATS },
   weapons: [],
   items: [],
@@ -145,7 +147,6 @@ export function useRunSnapshot(): RunSnapshot {
  * so it can never go stale and fire a restart later.
  */
 let restartRequested = false
-let upgradeRequested: UpgradeId | null = null
 
 /**
  * Player actions, queued rather than latched.
@@ -210,12 +211,3 @@ export function consumeRestart(): boolean {
   return requested
 }
 
-export function requestUpgrade(id: UpgradeId): void {
-  upgradeRequested = id
-}
-
-export function consumeUpgrade(): UpgradeId | null {
-  const requested = upgradeRequested
-  upgradeRequested = null
-  return requested
-}

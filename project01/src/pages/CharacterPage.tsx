@@ -157,6 +157,32 @@ export function CharacterPage() {
                     be a hand-written block on a scale nothing else in the game
                     used, which is the sort of number people read before
                     choosing and then never see again. */}
+                {/* The six primaries, which is what a class now is: where the
+                    character starts and how fast each one grows. The derived
+                    rows below are the same numbers read as an opening, and
+                    they follow from these rather than being written beside
+                    them. */}
+                <dl className="char-attrs">
+                  {profile.attributes.map((attr) => (
+                    <div className="char-attr" key={attr.id}>
+                      <dt>
+                        {attr.label}
+                        <span className="char-attr-feeds">{attr.feeds}</span>
+                      </dt>
+                      <dd>
+                        {attr.value}
+                        <span className="char-attr-growth">+{attr.growth.toFixed(1)}/級</span>
+                      </dd>
+                      <div className="char-stat-bar">
+                        <div
+                          className="char-stat-fill"
+                          style={{ width: `${Math.round(attr.ratio * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </dl>
+
                 <dl className="char-stats">
                   {profile.rows.map((row) => (
                     <div className="char-stat" key={row.id}>

@@ -1,16 +1,24 @@
 import {
   BASE_LOOT_RANGE,
   BASE_MOVE_SPEED,
-  BASE_STATS,
   BASE_VISION,
   FAMILY_LABEL,
   STAT_INFO,
   WEAPONS,
+  attackPowerFor,
   findWeapon,
   type PlayerStats,
   type UpgradeId,
 } from '../game/data/content'
 import { ARENA_LOADOUTS, DEFAULT_LOADOUT, loadoutFor } from '../game/data/loadouts'
+import {
+  ATTRIBUTES,
+  ATTRIBUTE_CAP,
+  ZERO_ATTRIBUTES,
+  clampAttributes,
+  statsFrom,
+  type AttributeId,
+} from '../game/data/attributes'
 
 /**
  * What a character actually brings into the arena, derived rather than written.
@@ -44,7 +52,23 @@ export interface ProfileMod {
   penalty: boolean
 }
 
+/** One of the six primaries, as a character card shows it. */
+export interface ProfileAttribute {
+  id: AttributeId
+  label: string
+  /** What it feeds, so the card can say why the number matters. */
+  feeds: string
+  /** Where it starts. */
+  value: number
+  /** What a level adds to it. The shape of a class is as much this as it is
+   *  the starting numbers -- Mao starts weak and out-grows everyone. */
+  growth: number
+  /** Against ATTRIBUTE_CAP, for a bar. */
+  ratio: number
+}
+
 export interface ArenaProfile {
+  attributes: ProfileAttribute[]
   rows: ProfileRow[]
   mods: ProfileMod[]
   weapon: {
@@ -59,9 +83,21 @@ export interface ArenaProfile {
   trait: string
 }
 
-/** The stat block a run opens with: the base, plus what the character adds. */
+/** The six a run opens with. */
+function openingAttributes(characterId: string) {
+  return clampAttributes({ ...ZERO_ATTRIBUTES, ...loadoutFor(characterId).start })
+}
+
+/**
+ * The stat block a run opens with: the base, the character's attributes, and
+ * whatever their loadout adds on top.
+ *
+ * The same order the world's own recompute uses, and for the same reason -- if
+ * this screen and the arena disagreed about what a character opens with, the
+ * screen would be the one lying.
+ */
 function openingStats(characterId: string): PlayerStats {
-  const stats = { ...BASE_STATS }
+  const stats = statsFrom(openingAttributes(characterId))
   for (const [key, value] of Object.entries(loadoutFor(characterId).mods)) {
     stats[key as keyof PlayerStats] += value as number
   }
@@ -81,7 +117,7 @@ function openingDps(characterId: string): number {
   const stats = openingStats(characterId)
   const index = findWeapon(loadoutFor(characterId).weapon)
   const weapon = WEAPONS[index >= 0 ? index : 0]
-  const perShot = (weapon.damage + stats.attackPower) * stats.damage
+  const perShot = (weapon.damage + attackPowerFor(stats, weapon.family)) * stats.damage
   const shots = weapon.count + stats.bonusCount
   return (perShot * shots) / (weapon.cooldown / stats.attackSpeed)
 }
@@ -165,7 +201,19 @@ export function arenaProfile(characterId: string): ArenaProfile {
   const index = findWeapon(loadout.weapon)
   const weapon = index >= 0 ? WEAPONS[index] : null
 
+  const start = openingAttributes(characterId)
+  const growth = loadout.growth
+  const attributes: ProfileAttribute[] = ATTRIBUTES.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    feeds: entry.feeds,
+    value: Math.round(start[entry.id]),
+    growth: growth[entry.id] ?? 0,
+    ratio: start[entry.id] / ATTRIBUTE_CAP,
+  }))
+
   return {
+    attributes,
     rows,
     mods,
     weapon: weapon && {

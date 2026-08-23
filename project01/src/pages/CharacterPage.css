@@ -570,3 +570,72 @@
 .char-mods li.is-penalty b {
   color: #ff7a9c;
 }
+
+/* ---------- the six primaries ---------- */
+/*
+ * What a class is. The derived rows under this block are the same numbers read
+ * as an opening -- attack, health, armour, speed -- and they follow from these
+ * rather than being written beside them, which is the arrangement the whole
+ * screen has been on since the hand-written stat block came out.
+ *
+ * Each row says three things: where the character starts, what a level adds,
+ * and where that sits against the cap of 255. The growth is the half people
+ * miss on a selection screen: two characters can open identically and be
+ * completely different by wave ten.
+ */
+.char-attrs {
+  margin: 0 0 1.6cqh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9cqh 2cqw;
+}
+
+.char-attr {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  row-gap: 0.35cqh;
+  font-size: 1.9cqh;
+}
+
+.char-attr dt {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7cqw;
+  /* Or the longest of the six -- DEX, which feeds two things -- wraps and
+     stands its row taller than the one beside it. */
+  min-width: 0;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.char-attr-feeds {
+  font-size: 1.4cqh;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.char-attr dd {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6cqw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.char-attr-growth {
+  font-size: 1.4cqh;
+  font-weight: 600;
+  color: rgba(92, 230, 160, 0.85);
+}
+
+.char-attr .char-stat-bar {
+  grid-column: 1 / -1;
+}

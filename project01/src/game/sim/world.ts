@@ -1,3 +1,10 @@
+import {
+  ZERO_ATTRIBUTES,
+  clampAttributes,
+  deriveAttributes,
+  hitChance,
+  type Attributes,
+} from '../data/attributes'
 import { Pool, type Pooled } from './pool'
 import { SpatialGrid } from './grid'
 import {
@@ -6,7 +13,6 @@ import {
   BASE_STATS,
   DODGE_CAP,
   ENEMY_KINDS,
-  LEVEL_BONUS,
   MAX_WEAPON_SLOTS,
   MAX_WEAPON_TIER,
   MERGE_COUNT,
@@ -16,10 +22,8 @@ import {
   attackPowerFor,
   canMerge,
   findWeapon,
-  getUpgrade,
   healthScale,
   pickEnemyKind,
-  rollUpgradeOffers,
   spawnInterval,
   speedScale,
   tierDamageScale,
@@ -28,7 +32,6 @@ import {
   waveDuration,
   xpForLevel,
   type PlayerStats,
-  type UpgradeId,
 } from '../data/content'
 import {
   SHOP_ITEMS,
@@ -337,16 +340,22 @@ export class World {
   deaths = 0
 
   /**
-   * Levels gained but not yet spent.
+   * The six primaries. Everything in `player.stats` is computed from these
+   * plus the base block plus whatever the run has bought -- see
+   * `recomputeStats`, which is the only thing allowed to write the block
+   * wholesale.
    *
-   * The scene stops stepping while this is above zero, which is the whole
-   * pause mechanism -- there is no separate paused flag to keep in sync with
-   * anything. Levels queue rather than overwrite, because one fat pickup burst
-   * can cross two thresholds at once and the second choice must not be eaten.
+   * Stored as floats. Growth of +1.4 STA a level is a rate, and rounding it to
+   * 1 at every level would quietly turn it into +1.
    */
-  pendingLevels = 0
-  /** What to offer for the level at the front of that queue. */
-  offers: UpgradeId[] = []
+  attributes: Attributes = { ...ZERO_ATTRIBUTES }
+  /** From DEX, against an enemy's evasion. See `hitChance`. */
+  accuracy = 0
+  /** From LUK, handed to the shop's roll. */
+  shopLuck = 0
+  /** Shots that missed, for the HUD -- a hit that does nothing and says
+   *  nothing is a bug report. */
+  misses = 0
 
   /** The shop laid out for this break. Empty while fighting. */
   shopOffers: ShopOffer[] = []
@@ -463,18 +472,58 @@ export class World {
   /**
    * Stamps the chosen character onto a fresh run.
    *
-   * Modifiers are added to the block the same way an item or an upgrade card
-   * adds to it -- a trait is not a special case, it is just the first writer.
+   * A class is its attributes now. What is left in `mods` is the handful of
+   * things no attribute says -- movement speed, pickup radius -- and those are
+   * added the same way an item's are, which is to say by `recomputeStats`
+   * along with everything else.
    */
   private applyLoadout(): void {
     const player = this.player
-    for (const [key, value] of Object.entries(this.loadout.mods)) {
-      player.stats[key as keyof PlayerStats] += value as number
-    }
+    this.attributes = clampAttributes({ ...ZERO_ATTRIBUTES, ...this.loadout.start })
+    this.recomputeStats()
     player.hp = player.stats.maxHp
 
     const kind = findWeapon(this.loadout.weapon)
     player.weapons.push({ kind: kind >= 0 ? kind : 0, tier: 1, cooldown: 0 })
+  }
+
+  /**
+   * Rebuilds the whole stat block from scratch.
+   *
+   * Base, then the class's leftover modifiers, then the attributes, then every
+   * item the run has bought -- in that order, into a *fresh* copy of the base
+   * every time.
+   *
+   * Folding the attributes into the live block instead would be shorter and
+   * wrong: every point already spent would be added again on the next
+   * recompute, and the symptom -- stats that grow when nothing bought anything
+   * -- is a long way from the cause. Rebuilding is why `ownedItems` holds ids
+   * rather than being a bare counter.
+   *
+   * Called on load, on level and on purchase. Never per step.
+   */
+  private recomputeStats(): void {
+    const stats = { ...BASE_STATS } as PlayerStats
+    const add = (mods: Partial<PlayerStats>) => {
+      for (const [key, value] of Object.entries(mods)) {
+        stats[key as keyof PlayerStats] += value as number
+      }
+    }
+
+    add(this.loadout.mods)
+    const derived = deriveAttributes(this.attributes)
+    add(derived.stats)
+    for (const id of this.ownedItems) {
+      const item = SHOP_ITEMS.find((entry) => entry.id === id)
+      if (item) {
+        add(item.mods)
+      }
+    }
+
+    Object.assign(this.player.stats, stats)
+    this.accuracy = derived.accuracy
+    this.shopLuck = derived.shopLuck
+    this.player.hp = Math.min(this.player.hp, stats.maxHp)
   }
 
   /**
@@ -520,7 +569,6 @@ export class World {
     const player = this.player
     player.x = WORLD_WIDTH / 2
     player.y = WORLD_HEIGHT / 2
-    Object.assign(player.stats, BASE_STATS)
     player.weapons.length = 0
     this.ownedItems.length = 0
     player.invuln = 0
@@ -541,55 +589,12 @@ export class World {
     this.hitsTaken = 0
     this.shake = 0
     this.hitCount = 0
-    this.pendingLevels = 0
-    this.offers = []
+    this.misses = 0
     this.shopOffers = []
     this.rerolls = 0
     this.random = mulberry32(0x9e3779b9)
 
     this.applyLoadout()
-  }
-
-  /* ---------- upgrades ---------- */
-
-  /**
-   * Spends the level at the front of the queue.
-   *
-   * Ignored when nothing is pending, because the command comes in from a
-   * button that React may still be showing for a frame after the choice was
-   * made -- a second click must not spend a level that was never earned.
-   */
-  applyUpgrade(id: UpgradeId): void {
-    if (this.pendingLevels <= 0) {
-      return
-    }
-
-    const upgrade = getUpgrade(id)
-    if (!upgrade) {
-      return
-    }
-
-    const player = this.player
-    const stats = player.stats
-
-    // Every upgrade is the same operation on a different field, which is the
-    // whole reason the stats are one flat block rather than named properties
-    // scattered across the player.
-    stats[id] += upgrade.step
-    if (upgrade.cap !== undefined) {
-      stats[id] = Math.min(stats[id], upgrade.cap)
-    }
-
-    // Raising the ceiling has to raise the water with it, or taking it at low
-    // health is nearly worthless -- which is not what the card says.
-    if (id === 'maxHp') {
-      player.hp = Math.min(stats.maxHp, player.hp + upgrade.step)
-    }
-
-    this.pendingLevels -= 1
-    // Rolled fresh for the next level in the queue, so two levels taken back
-    // to back are two separate decisions rather than one repeated.
-    this.offers = this.pendingLevels > 0 ? rollUpgradeOffers(stats, this.player.weapons, this.random) : []
   }
 
   /* ---------- player ---------- */
@@ -669,6 +674,7 @@ export class World {
         weaponCount: this.player.weapons.length,
         mergeable: this.mergeTargets(),
         families: [...new Set(this.player.weapons.map((slot) => WEAPONS[slot.kind].family))],
+        luck: this.shopLuck,
       },
       this.random,
     )
@@ -706,16 +712,16 @@ export class World {
       }
     } else {
       const item = SHOP_ITEMS[offer.index]
-      for (const [key, value] of Object.entries(item.mods)) {
-        this.player.stats[key as keyof PlayerStats] += value as number
-      }
+      // Recorded, then recomputed. An item does not write into the block any
+      // more -- `recomputeStats` reads this list back, which is what makes a
+      // rebuild reproduce the run exactly.
+      this.ownedItems.push(item.id)
+      this.recomputeStats()
       // A maximum-health item that raises the ceiling should raise the water
       // with it, the same as a level does.
       if (item.mods.maxHp && item.mods.maxHp > 0) {
         this.player.hp = Math.min(this.player.stats.maxHp, this.player.hp + item.mods.maxHp)
       }
-      this.player.hp = Math.min(this.player.hp, this.player.stats.maxHp)
-      this.ownedItems.push(item.id)
     }
 
     this.player.coins -= offer.price
@@ -1334,6 +1340,22 @@ export class World {
     const stats = player.stats
 
     /*
+     * Accuracy against the enemy's evasion, before anything else. Every kind
+     * in the game evades zero, so this passes for all of them today and the
+     * stat changes nothing -- which is the point of landing the rule while
+     * nothing depends on it. The first evasive enemy is then one number on one
+     * kind, not a combat change shipped with the enemy that needs it.
+     *
+     * A miss is counted rather than silent. A shot that lands and does nothing
+     * with no feedback is a bug report.
+     */
+    const kind = ENEMY_KINDS[enemy.kind]
+    if (kind.evasion > 0 && this.random() >= hitChance(this.accuracy, kind.evasion)) {
+      this.misses += 1
+      return
+    }
+
+    /*
      * Crit is rolled per hit rather than per volley, so a piercing shot can
      * crit on its second target and not its first. Rolling once at fire time
      * would make a lucky volley uniformly lucky, which shows a bigger number
@@ -1503,17 +1525,30 @@ export class World {
       player.level += 1
       player.xpToLevel = xpForLevel(player.level)
 
-      // The automatic half of a level, before the card is even offered. Health
-      // is healed by what it gained, for the same reason the card does it:
-      // a ceiling raised over an empty tank is not a reward.
-      player.stats.maxHp += LEVEL_BONUS.maxHp
-      player.hp = Math.min(player.stats.maxHp, player.hp + LEVEL_BONUS.maxHp)
-      player.stats.attackPower += LEVEL_BONUS.attackPower
-
-      this.pendingLevels += 1
-      if (this.offers.length === 0) {
-        this.offers = rollUpgradeOffers(player.stats, player.weapons, this.random)
+      /*
+       * A level is the class's growth and nothing else. There is no card and
+       * no pause: two runs of the same character are the same curve, and two
+       * characters are visibly different ones, which is what a class is for.
+       *
+       * Health is healed by exactly what the ceiling gained, so a level taken
+       * on a nearly empty tank is worth what it says. Measured across the
+       * recompute rather than assumed, because STA is not the only thing that
+       * can move maxHp.
+       */
+      const before = player.stats.maxHp
+      const growth = this.loadout.growth
+      {
+        this.attributes = clampAttributes({
+          str: this.attributes.str + (growth.str ?? 0),
+          agi: this.attributes.agi + (growth.agi ?? 0),
+          dex: this.attributes.dex + (growth.dex ?? 0),
+          sta: this.attributes.sta + (growth.sta ?? 0),
+          int: this.attributes.int + (growth.int ?? 0),
+          luk: this.attributes.luk + (growth.luk ?? 0),
+        })
       }
+      this.recomputeStats()
+      player.hp = Math.min(player.stats.maxHp, player.hp + Math.max(0, player.stats.maxHp - before))
     }
   }
 }

@@ -1,4 +1,5 @@
 import { Emblem } from '../components/Emblem'
+import { ATTRIBUTES, ATTRIBUTE_CAP } from '../game/data/attributes'
 import { Icon, type IconName } from '../components/icons'
 import { BASE_STATS, MAX_WEAPON_SLOTS, STAT_INFO, type PlayerStats, type UpgradeId } from '../game/data/content'
 import { SHOP_ITEMS } from '../game/data/shop'
@@ -54,6 +55,30 @@ export function StatSection({ run, views }: { run: RunSnapshot; views: StatViews
   return (
     <section className="sheet-col is-stats">
       <h3 className="sheet-heading">屬性</h3>
+
+      {/*
+        The six primaries first, because everything under them is computed from
+        them. A level adds to these and the block below follows -- showing the
+        derived numbers alone would be showing the result and hiding the rule.
+
+        Rounded here and nowhere else: growth is fractional, so 34.6 STR is the
+        real value and 35 is what a player needs to read.
+      */}
+      <div className="sheet-group group-primary">
+        <p className="sheet-group-name">主屬性</p>
+        <ul className="sheet-attrs">
+          {ATTRIBUTES.map((entry) => (
+            <li className="sheet-attr" key={entry.id}>
+              <span className="sheet-attr-name">{entry.label}</span>
+              <span className="sheet-attr-feeds">{entry.feeds}</span>
+              <b className="sheet-attr-value">
+                {Math.round(run.attributes[entry.id])}
+                <i>/{ATTRIBUTE_CAP}</i>
+              </b>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {groups.map(({ group, ids }) => (
         <div key={group} className={`sheet-group group-${group}`}>

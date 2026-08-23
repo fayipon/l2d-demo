@@ -8,6 +8,7 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from './scenes/ArenaScene'
+import { ENEMY_KINDS } from './data/content'
 import { resetRun } from './runStore'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from './data/loadouts'
 import { DEFAULT_SCENE, type ArenaMap } from './data/scenes'
@@ -92,12 +93,25 @@ export function GameCanvas({
       const hooks = window as unknown as {
         __arena?: Phaser.Game
         __arenaWorld?: { width: number; height: number }
+        __arenaContent?: { ENEMY_KINDS: typeof ENEMY_KINDS }
       }
       hooks.__arena = game
       // The size of the map, which nothing on the page can otherwise find out:
       // the scene is told it, Phaser is not. scripts/bench.mjs needs it to
       // scatter a crowd across the world rather than across the window.
       hooks.__arenaWorld = { width: WORLD_WIDTH, height: WORLD_HEIGHT }
+      /*
+       * The enemy table, which the page cannot otherwise reach and which
+       * scripts/verify needs to set an evasion on.
+       *
+       * Data, not a measurement hook -- the rule this project keeps is that
+       * nothing is added to the *game* for the benefit of a script, and this
+       * adds nothing: it is the same table the scene already holds, published
+       * under the same dev guard as the handle above and stripped from the
+       * production bundle with it. Testing the accuracy rule any other way
+       * would mean testing the function instead of the shot.
+       */
+      hooks.__arenaContent = { ENEMY_KINDS }
     }
 
     return () => {

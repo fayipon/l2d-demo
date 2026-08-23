@@ -10,7 +10,6 @@ import {
   requestLeaveShop,
   requestReroll,
   requestRestart,
-  requestUpgrade,
   useRunSnapshot,
 } from '../game/runStore'
 import {
@@ -18,7 +17,6 @@ import {
   FAMILY_LABEL,
   STAT_INFO,
   WEAPONS,
-  getUpgrade,
   type PlayerStats,
   type UpgradeId,
 } from '../game/data/content'
@@ -69,10 +67,6 @@ const RARITY_LABEL: Record<EmblemTone, string> = {
   epic: '進階',
   legend: '傳說',
 }
-
-/** Rarer draws are rarer cards. Weights in the pool run 3 to 10. */
-const rarityOfWeight = (weight: number): EmblemTone =>
-  weight >= 10 ? 'common' : weight >= 8 ? 'rare' : weight >= 6 ? 'epic' : 'legend'
 
 /** The list price, not the wave-scaled one: what the shop charges climbs with
  *  the wave, and a card that changed rank as the run went on would be lying. */
@@ -249,7 +243,7 @@ export function GamePage() {
      setState is a second render to reach a value that was already knowable
      during the first, and it would also fight the key handler over who owns
      the flag. */
-  const overlayUp = run.pendingLevels > 0 || run.status === 'shop' || run.status === 'dead'
+  const overlayUp = run.status === 'shop' || run.status === 'dead'
   const showSheet = sheetOpen && !overlayUp
 
   useEffect(() => {
@@ -269,28 +263,6 @@ export function GamePage() {
   }, [overlayUp])
 
   const hpPercent = run.maxHp > 0 ? (run.hp / run.maxHp) * 100 : 0
-  const choosing = run.pendingLevels > 0
-
-  /*
-   * 1/2/3 pick a card.
-   *
-   * On window rather than through Phaser: these keys are not registered with
-   * its keyboard plugin, and the choice belongs to the overlay anyway -- the
-   * arena is frozen while it is up.
-   */
-  useEffect(() => {
-    if (!choosing) {
-      return
-    }
-    const onKey = (event: KeyboardEvent) => {
-      const id = run.offers[Number(event.key) - 1]
-      if (id) {
-        requestUpgrade(id)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [choosing, run.offers])
 
   /*
    * Only what the run has actually changed. Thirteen stats at their starting
@@ -470,63 +442,6 @@ export function GamePage() {
           <Inventory run={run} views={STAT_VIEWS} onClose={() => setSheetOpen(false)} />
         ) : null}
 
-        {/* ---------- level up ---------- */}
-        {choosing ? (
-          <div className="levelup">
-            <header className="screen-head">
-              <p className="screen-eyebrow">LEVEL {run.level}</p>
-              <h2 className="screen-title">升級選擇</h2>
-              <p className="screen-sub">
-                選擇一項強化
-                {run.pendingLevels > 1 ? ` · 還有 ${run.pendingLevels - 1} 次` : ''}
-              </p>
-              <i className="ui-rule is-wide uk-rule-lg" aria-hidden="true" />
-            </header>
-
-            <div className="card-row">
-              {run.offers.map((id, index) => {
-                const upgrade = getUpgrade(id)
-                if (!upgrade) {
-                  return null
-                }
-                const tone = rarityOfWeight(upgrade.weight)
-                const group = STAT_INFO[id].group
-                return (
-                  <button
-                    type="button"
-                    key={id}
-                    className={`card uk-frame-md tone-${tone} group-${group}`}
-                    onClick={() => requestUpgrade(id)}
-                  >
-                    <kbd className="card-key">{index + 1}</kbd>
-                    <span className="card-name">{STAT_INFO[id].label}</span>
-                    <span className="card-rarity">{RARITY_LABEL[tone]}</span>
-                    {/* The medallion the achievements screen uses. The mock has
-                        painted item art here; this is the same trick that stood
-                        in for it there, and a real illustration replaces the
-                        component without touching the card around it. */}
-                    <Emblem
-                      className="card-art"
-                      frame={group === 'defence' ? 'shield' : 'ring'}
-                      glyph={STAT_ICON[id]}
-                      tone={tone}
-                    />
-                    <span className="card-detail">{upgrade.detail}</span>
-                    <span className="card-stats">
-                      <span className="card-stat">
-                        <span className="card-stat-name">{STAT_INFO[id].label}</span>
-                        <b className="card-stat-value">{upgrade.effect}</b>
-                      </span>
-                    </span>
-                    {/* Where it stands now, so a pick is a change to something
-                        rather than a number in isolation. */}
-                    <span className="card-plate">目前 {STAT_FORMAT[id](run.stats[id])}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        ) : null}
 
         {/* ---------- shop ---------- */}
         {run.status === 'shop' ? (

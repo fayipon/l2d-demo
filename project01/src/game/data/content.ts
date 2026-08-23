@@ -39,6 +39,15 @@ export interface EnemyKind {
   xp: number
   /** How much this one resists being shoved by a hit. */
   mass: number
+  /**
+   * Against the player's accuracy, per `hitChance` in data/attributes.
+   *
+   * Zero on every kind that exists, and that is not an oversight: the rule,
+   * the DEX that feeds it and the checks that cover it were all built before
+   * anything evades, so an evasive enemy is one number here rather than a
+   * combat change arriving with the enemy that needs it.
+   */
+  evasion: number
   /** First wave this kind can appear on. */
   fromWave: number
   /** Relative spawn weight once it is available. */
@@ -58,6 +67,7 @@ export const ENEMY_KINDS: EnemyKind[] = [
     drop: 1,
     xp: 1,
     mass: 1,
+    evasion: 0,
     fromWave: 1,
     weight: 10,
   },
@@ -73,6 +83,7 @@ export const ENEMY_KINDS: EnemyKind[] = [
     drop: 1,
     xp: 1,
     mass: 0.7,
+    evasion: 0,
     fromWave: 2,
     weight: 7,
   },
@@ -88,6 +99,7 @@ export const ENEMY_KINDS: EnemyKind[] = [
     drop: 4,
     xp: 4,
     mass: 3.2,
+    evasion: 0,
     fromWave: 4,
     weight: 3,
   },
@@ -626,19 +638,28 @@ export function armourReduction(armour: number): number {
  */
 export const SPREAD_PER_EXTRA_SHOT = 0.13
 
-/* ---------- level-up upgrades ---------- */
+/* ---------- the stat vocabulary ---------- */
 
+/**
+ * A derived stat, by name.
+ *
+ * Still called an upgrade id, because that is what the shop calls the things
+ * it sells and what the equipment sheet is written against. What is gone is
+ * the level-up card that used to draw from a list of these: a level applies
+ * the class's growth now, and the attributes in data/attributes.ts are where
+ * the numbers below come from.
+ */
 export type UpgradeId = keyof PlayerStats
 
-/** Grouping. All it decides is the card's colour. */
+/** Grouping. All it decides is the colour a stat is shown in. */
 export type UpgradeGroup = 'offence' | 'defence' | 'utility'
 
 /**
- * Name and grouping for every stat, including the ones no card offers.
+ * Name and grouping for every stat.
  *
- * Kept apart from UPGRADES because attack power is granted by levelling and
- * never drawn, and it still has to be labelled on the HUD -- a stat that only
- * has a name when a card exists for it is a stat the player cannot read.
+ * Every one of them, whether anything sells it or not: a stat the player can
+ * see on the sheet is a stat that needs a name, and several are only ever
+ * moved by an attribute.
  */
 export const STAT_INFO: Record<UpgradeId, { label: string; group: UpgradeGroup }> = {
   attackPower: { label: '所有攻擊力', group: 'offence' },
@@ -660,265 +681,4 @@ export const STAT_INFO: Record<UpgradeId, { label: string; group: UpgradeGroup }
   lootRange: { label: '拾取範圍', group: 'utility' },
   vision: { label: '視野', group: 'utility' },
   xpGain: { label: '經驗加成', group: 'utility' },
-}
-
-export interface Upgrade {
-  id: UpgradeId
-  /** Added to the stat on each pick. */
-  step: number
-  /** Shown on the card. Written out rather than derived, because "+15%",
-   *  "+1 發" and "+0.6 /秒" have nothing in common to derive from. */
-  effect: string
-  detail: string
-  /** Relative draw weight. The strongest upgrades are the rarest. */
-  weight: number
-  /** At or above this the upgrade stops being offered. */
-  cap?: number
-}
-
-export const UPGRADES: Upgrade[] = [
-  /* --- offence --- */
-  /*
-   * The family cards give more per pick than the universal one does, and they
-   * have to: a point that only counts on half the rack is worth less than a
-   * point that counts everywhere, so at equal steps nobody would ever take
-   * one. Drawn more often as well, since a run that has committed to a family
-   * is the run they are for.
-   */
-  {
-    id: 'meleePower',
-    step: 1.6,
-    effect: '+1.6',
-    detail: '近戰武器的基礎傷害。',
-    weight: 7,
-  },
-  {
-    id: 'rangedPower',
-    step: 1.6,
-    effect: '+1.6',
-    detail: '遠程武器的基礎傷害。',
-    weight: 7,
-  },
-  {
-    id: 'elementalPower',
-    step: 1.6,
-    effect: '+1.6',
-    detail: '元素武器的基礎傷害。',
-    weight: 7,
-  },
-  {
-    id: 'damage',
-    step: 0.15,
-    effect: '+15%',
-    detail: '所有武器的傷害提升。',
-    weight: 10,
-  },
-  {
-    id: 'attackSpeed',
-    step: 0.15,
-    effect: '+15%',
-    detail: '所有武器的冷卻時間縮短。',
-    weight: 10,
-  },
-  {
-    id: 'bonusCount',
-    step: 1,
-    effect: '+1 發',
-    detail: '每次射擊多一發，並自動散開。',
-    // The strongest single pick in the pool, so the rarest.
-    weight: 4,
-  },
-  {
-    id: 'critChance',
-    step: 0.06,
-    effect: '+6%',
-    detail: '命中時觸發暴擊的機率。',
-    weight: 8,
-  },
-  {
-    id: 'critDamage',
-    step: 0.25,
-    effect: '+25%',
-    detail: '暴擊時的傷害倍率。',
-    weight: 7,
-  },
-
-  /* --- defence --- */
-  {
-    id: 'maxHp',
-    step: 20,
-    effect: '+20',
-    detail: '上限提高，並立刻回復等量生命。',
-    weight: 9,
-  },
-  {
-    id: 'regen',
-    step: 0.6,
-    effect: '+0.6 /秒',
-    detail: '持續回復生命。',
-    weight: 7,
-  },
-  {
-    id: 'lifesteal',
-    step: 0.4,
-    effect: '+0.4 /命中',
-    detail: '每次命中回復生命。',
-    weight: 6,
-  },
-  {
-    id: 'armour',
-    step: 6,
-    effect: '+6',
-    detail: '減少受到的傷害，效果遞減。',
-    weight: 8,
-  },
-  {
-    id: 'dodge',
-    step: 0.06,
-    effect: '+6%',
-    detail: '機率完全免疫一次傷害。',
-    weight: 7,
-    cap: DODGE_CAP,
-  },
-
-  /* --- utility --- */
-  {
-    id: 'range',
-    step: 0.12,
-    effect: '+12%',
-    detail: '武器射程與子彈飛行距離。',
-    weight: 7,
-  },
-  {
-    id: 'vision',
-    step: 0.15,
-    effect: '+15%',
-    detail: '看得更遠，來的東西更早出現。',
-    /* Rarer than the other utility cards. It buys information rather than a
-       number, so it is worth most to a run that has already traded some away
-       -- and a run that never did should not keep being offered it. */
-    weight: 5,
-    cap: 1.6,
-  },
-  {
-    id: 'moveSpeed',
-    step: 0.08,
-    effect: '+8%',
-    detail: '移動更快。',
-    weight: 8,
-  },
-  {
-    id: 'lootRange',
-    step: 0.25,
-    effect: '+25%',
-    detail: '金幣從更遠的地方被吸過來。',
-    weight: 6,
-  },
-  {
-    id: 'xpGain',
-    step: 0.2,
-    effect: '+20%',
-    detail: '擊殺與金幣獲得的經驗都提升。',
-    // Rare, because compounding into every other stat is the strongest thing
-    // an upgrade can do -- and the earlier it is drawn the stronger it gets.
-    weight: 5,
-  },
-]
-
-const UPGRADE_BY_ID = new Map(UPGRADES.map((upgrade) => [upgrade.id, upgrade]))
-
-export function getUpgrade(id: UpgradeId): Upgrade | undefined {
-  return UPGRADE_BY_ID.get(id)
-}
-
-/**
- * Granted by every level on top of whatever card is chosen.
- *
- * The card is the decision; this is the floor under it. Without something
- * automatic, a run that keeps drawing utility cards gets no sturdier as the
- * waves scale, and levelling stops feeling like progress in the two numbers
- * that matter most.
- *
- * Deliberately small. It is a floor, not the reward -- if it were large the
- * card would stop mattering.
- */
-export const LEVEL_BONUS = {
-  /** Flat, and healed by the same amount. */
-  maxHp: 4,
-  /**
-   * Flat attack power.
-   *
-   * This was a +4% multiplier, which at level 20 was worth +4.8 damage to the
-   * pistol -- real, but invisible next to a weapon's own number. Flat is the
-   * readable form: at level 20 it is +8, so the pistol goes from 6 to 14 and
-   * the figure on the strip means something on its own.
-   *
-   * Slightly above what the multiplier gave, deliberately. Tune here.
-   */
-  attackPower: 0.4,
-} as const
-
-/** How many cards a level offers. */
-export const OFFER_COUNT = 3
-
-/**
- * Whether a card is worth offering to this rack at all.
- *
- * A family's attack power is dead weight to a run holding nothing of that
- * family, and a card that does nothing is worse than one card fewer -- the
- * same rule the cap already applies to a stat that has topped out. It also
- * settles the elemental family: there is no elemental weapon in the game yet,
- * so the card for it simply never comes up, and the day one exists it starts
- * appearing on its own.
- */
-function offerableFor(id: UpgradeId, held: readonly { kind: number }[]): boolean {
-  for (const family of Object.keys(FAMILY_POWER) as WeaponFamily[]) {
-    if (id === FAMILY_POWER[family]) {
-      return held.some((slot) => WEAPONS[slot.kind].family === family)
-    }
-  }
-  return true
-}
-
-/**
- * Draws the choices for one level.
- *
- * Weighted, without repeats, and skipping anything already at its cap -- a
- * card the player cannot benefit from is worse than one card fewer. Returns a
- * short list rather than padding with duplicates if the pool ever runs dry.
- */
-export function rollUpgradeOffers(
-  stats: PlayerStats,
-  held: readonly { kind: number }[],
-  random: () => number,
-  count = OFFER_COUNT,
-): UpgradeId[] {
-  const pool = UPGRADES.filter(
-    (upgrade) =>
-      (upgrade.cap === undefined || stats[upgrade.id] < upgrade.cap) &&
-      offerableFor(upgrade.id, held),
-  )
-  const picked: UpgradeId[] = []
-
-  for (let n = 0; n < count && pool.length > 0; n++) {
-    let total = 0
-    for (const upgrade of pool) {
-      total += upgrade.weight
-    }
-    let cursor = random() * total
-    let index = pool.length - 1
-    for (let i = 0; i < pool.length; i++) {
-      cursor -= pool[i].weight
-      if (cursor <= 0) {
-        index = i
-        break
-      }
-    }
-    picked.push(pool[index].id)
-    // Removed rather than re-rolled, so one level never offers the same card
-    // twice and the draw cannot loop.
-    pool.splice(index, 1)
-  }
-
-  return picked
 }

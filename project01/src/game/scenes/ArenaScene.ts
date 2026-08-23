@@ -12,7 +12,7 @@ import {
 } from '../view/atlas'
 import { FLOOR_KEY, FLOOR_URL, TILES_KEY, TILES_URL } from '../view/tiles'
 import { buildScenery, raiseNearWall, type Scenery } from '../view/scenery'
-import { consumeRestart, consumeUpgrade, drainCommands, publishRun } from '../runStore'
+import { consumeRestart, drainCommands, publishRun } from '../runStore'
 import { rerollPrice } from '../data/shop'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from '../data/loadouts'
 import { actorFor, type ActorAnim, type ActorSheet } from '../data/actors'
@@ -257,10 +257,9 @@ export class ArenaScene extends Phaser.Scene {
 
   private accumulator = 0
   private publishTimer = 0
-  /* Last values published. A change in either forces a snapshot out at once
-     rather than waiting up to 66ms -- an overlay that appears a frame late is
-     an overlay that appears after the click that should have opened it. */
-  private lastPending = 0
+  /* Last status published. A change forces a snapshot out at once rather than
+     waiting up to 66ms -- an overlay that appears a frame late is an overlay
+     that appears after the click that should have opened it. */
   private lastStatus = ''
   /** Movement axis for the current frame. Not named `input`: Scene.input is
    *  Phaser's own plugin, and a field of that name would shadow it. */
@@ -419,11 +418,6 @@ export class ArenaScene extends Phaser.Scene {
       this.accumulator = 0
     }
 
-    const chosen = consumeUpgrade()
-    if (chosen) {
-      world.applyUpgrade(chosen)
-    }
-
     for (const command of drainCommands()) {
       /*
        * Exhaustive on purpose. This was a chain ending in a bare `else` that
@@ -458,11 +452,11 @@ export class ArenaScene extends Phaser.Scene {
 
     this.readInput()
 
-    /* Frozen means frozen. The simulation stops for both an unspent level and
-       an open shop, and so does everything drawn on real time rather than on
-       simulation time -- otherwise the damage numbers keep drifting upward
-       over a screen where nothing else moves. */
-    const frozen = world.pendingLevels > 0 || world.status === 'shop'
+    /* Frozen means frozen. The shop is the only thing that stops the
+       simulation now -- a level is the class's growth and interrupts nothing --
+       and everything drawn on real time stops with it, otherwise the damage
+       numbers keep drifting upward over a screen where nothing else moves. */
+    const frozen = world.status === 'shop'
 
     /*
      * Fixed timestep. The renderer runs at whatever the display gives it; the
@@ -505,16 +499,11 @@ export class ArenaScene extends Phaser.Scene {
 
     this.syncSprites()
 
-    // The overlay has to appear on the frame the level lands, not up to a
-    // publish interval later, so a change in the queue jumps the schedule.
+    // The shop has to appear on the frame it opens, not up to a publish
+    // interval later, so a change of status jumps the schedule.
     this.publishTimer += delta
-    if (
-      this.publishTimer >= PUBLISH_MS ||
-      world.pendingLevels !== this.lastPending ||
-      world.status !== this.lastStatus
-    ) {
+    if (this.publishTimer >= PUBLISH_MS || world.status !== this.lastStatus) {
       this.publishTimer = 0
-      this.lastPending = world.pendingLevels
       this.lastStatus = world.status
       this.publish()
     }
@@ -940,8 +929,8 @@ export class ArenaScene extends Phaser.Scene {
       deaths: world.deaths,
       enemies: world.enemies.used,
       fps: Math.round(this.game.loop.actualFps),
-      pendingLevels: world.pendingLevels,
-      offers: world.offers,
+      attributes: { ...world.attributes },
+      misses: world.misses,
       stats: { ...player.stats },
       weapons: player.weapons.map((slot) => ({ kind: slot.kind, tier: slot.tier })),
       items: [...world.ownedItems],
