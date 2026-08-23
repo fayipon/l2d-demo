@@ -60,11 +60,14 @@ export interface ClassSkill {
  * armour into health per second -- so a coin spent on defence pays twice, which
  * is what makes the class a build rather than a stat line.
  *
- * The regeneration numbers are the ones to turn. At Haru's opening -- five
- * armour and 151 health -- they come to almost exactly 1 HP/s, against a
- * crawler's 6 contact damage; at a late-run 40 and 400 they are 3.4. Whether
- * that is irrelevant or decisive is not knowable without playing it, which is
- * why they are three numbers in one place.
+ * The regeneration numbers are the ones to turn. At Haru's opening -- under
+ * three armour and 26 health -- they come to 0.18 HP/s, which is two thirds of
+ * a percent of the bar a second and the same fraction they were worth before
+ * the scale came down. A tick is five seconds of that, so the first few arrive
+ * as a single point.
+ *
+ * Whether that is irrelevant or decisive is not knowable without playing it,
+ * which is why they are three numbers in one place.
  */
 export const HARU_SKILLS: readonly ClassSkill[] = [
   {
@@ -79,7 +82,7 @@ export const HARU_SKILLS: readonly ClassSkill[] = [
     name: '自然回復',
     kind: '被動',
     description: '持續回復生命，回復量隨護甲與生命上限提升。',
-    effect: { sort: 'regenFrom', base: 0.2, fromArmour: 0.04, fromMaxHp: 0.004 },
+    effect: { sort: 'regenFrom', base: 0.05, fromArmour: 0.008, fromMaxHp: 0.004 },
   },
 ]
 

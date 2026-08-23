@@ -60,10 +60,10 @@ export const ENEMY_KINDS: EnemyKind[] = [
     label: '爬行者',
     frame: 'grunt',
     tint: 0xf4436c,
-    hp: 12,
+    hp: 4,
     speed: 62,
     radius: 13,
-    contactDamage: 6,
+    contactDamage: 2,
     drop: 1,
     xp: 1,
     mass: 1,
@@ -76,10 +76,10 @@ export const ENEMY_KINDS: EnemyKind[] = [
     label: '疾走者',
     frame: 'runner',
     tint: 0xffc74a,
-    hp: 7,
+    hp: 2,
     speed: 132,
     radius: 11,
-    contactDamage: 5,
+    contactDamage: 1,
     drop: 1,
     xp: 1,
     mass: 0.7,
@@ -92,10 +92,10 @@ export const ENEMY_KINDS: EnemyKind[] = [
     label: '重甲者',
     frame: 'brute',
     tint: 0x7f2ce4,
-    hp: 58,
+    hp: 18,
     speed: 38,
     radius: 22,
-    contactDamage: 14,
+    contactDamage: 4,
     drop: 4,
     xp: 4,
     mass: 3.2,
@@ -169,7 +169,7 @@ export const WEAPONS: WeaponKind[] = [
     price: 14,
     detail: '穩定的單發武器，射程中等。',
     cooldown: 0.42,
-    damage: 6,
+    damage: 2,
     range: 420,
     projectileSpeed: 620,
     projectileRadius: 4,
@@ -188,7 +188,7 @@ export const WEAPONS: WeaponKind[] = [
     price: 26,
     detail: '三片扇形飛刃，會穿透。近距離最強。',
     cooldown: 1.05,
-    damage: 5,
+    damage: 2,
     range: 240,
     projectileSpeed: 400,
     projectileRadius: 8,
@@ -207,7 +207,7 @@ export const WEAPONS: WeaponKind[] = [
     price: 32,
     detail: '五發散射，貼臉時全部命中。',
     cooldown: 1.25,
-    damage: 4,
+    damage: 1.5,
     range: 200,
     projectileSpeed: 520,
     projectileRadius: 5,
@@ -226,7 +226,7 @@ export const WEAPONS: WeaponKind[] = [
     price: 48,
     detail: '射程極遠的穿透彈，冷卻很長。',
     cooldown: 1.9,
-    damage: 26,
+    damage: 9,
     range: 620,
     projectileSpeed: 940,
     projectileRadius: 6,
@@ -245,7 +245,7 @@ export const WEAPONS: WeaponKind[] = [
     price: 22,
     detail: '射速極快，單發傷害很低。',
     cooldown: 0.17,
-    damage: 2,
+    damage: 0.8,
     range: 380,
     projectileSpeed: 780,
     projectileRadius: 3,
@@ -275,7 +275,7 @@ export const WEAPONS: WeaponKind[] = [
     price: 38,
     detail: '射出緩慢的火球，體積大且會穿透一次。',
     cooldown: 0.95,
-    damage: 14,
+    damage: 5,
     range: 380,
     projectileSpeed: 340,
     projectileRadius: 11,
@@ -294,7 +294,7 @@ export const WEAPONS: WeaponKind[] = [
     price: 44,
     detail: '朝八方甩出短刃，只打身邊。',
     cooldown: 1.5,
-    damage: 7,
+    damage: 2.5,
     range: 150,
     projectileSpeed: 300,
     projectileRadius: 9,
@@ -432,6 +432,24 @@ export function healthScale(wave: number): number {
 
 /** Enemy speed multiplier. Deliberately much flatter than health -- speed is
  *  what makes a wave unfair, health is what makes it long. */
+/**
+ * What a contact hit is multiplied by, by wave.
+ *
+ * New with the small-number scale, and forced by it. Contact damage was flat:
+ * a brute hit for 14 whatever the wave, which was survivable against 151 health
+ * and fine. Against the ten health a run opens with now -- and the hundred and
+ * something a maxed STA build ends with -- a flat four would make the late game
+ * unable to kill anyone at all.
+ *
+ * Gentler than the health curve and capped, because this one is measured
+ * against a bar the player has been growing all run and the other is measured
+ * against damage that grew faster. Past the cap the crowd gets bigger rather
+ * than harder, which is the pressure this genre is supposed to apply.
+ */
+export function damageScale(wave: number): number {
+  return Math.min(3.5, 1 + 0.055 * (wave - 1))
+}
+
 export function speedScale(wave: number): number {
   return Math.min(1.45, 1 + 0.028 * (wave - 1))
 }
@@ -559,13 +577,13 @@ export const BASE_STATS: Readonly<PlayerStats> = {
   meleePower: 0,
   rangedPower: 0,
   elementalPower: 0,
-  maxHp: 100,
+  maxHp: 10,
   regen: 0,
   lifesteal: 0,
   armour: 0,
   dodge: 0,
   damage: 1,
-  // A little crit from the start, so the first crit upgrade improves something
+  // A little crit from the start, so the first point of LUK improves something
   // the player has already seen happen rather than introducing a new rule.
   critChance: 0.05,
   critDamage: 2,
@@ -638,10 +656,15 @@ export const BASE_COIN_CHANCE = 0.45
  * damage; a flat percentage stacks to immunity. This form gives 50% at 20
  * points, 67% at 40, and never reaches 100.
  *
+ * The half point stayed at 20 through the small-number rescale, deliberately.
+ * Armour did not shrink the way health did -- STA still carries it to 20 at the
+ * attribute cap -- so the curve it is read against is still the right one, and
+ * moving both would have been moving nothing.
+ *
  * It runs below zero as well, and has to. Base armour is nothing, so every
- * design in the game that charges armour was charging nothing: Rice's -3 and
- * the glass lens's -4 both read as a price on the screen and cost the player
- * exactly zero, because this used to clamp at the first point. Negative armour
+ * design in the game that charges armour was charging nothing: the glass
+ * lens's -2 read as a price on the screen and cost the player exactly zero,
+ * because this used to clamp at the first point. Negative armour
  * now takes more damage on the mirrored curve -- -4 is 17% more, -20 is 50%
  * more -- which is what makes armour a currency a trade can spend.
  */

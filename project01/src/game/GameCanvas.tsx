@@ -8,7 +8,7 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from './scenes/ArenaScene'
-import { ENEMY_KINDS } from './data/content'
+import { ENEMY_KINDS, WEAPONS } from './data/content'
 import { resetRun } from './runStore'
 import { DEFAULT_LOADOUT, type ArenaLoadout } from './data/loadouts'
 import { DEFAULT_SCENE, type ArenaMap } from './data/scenes'
@@ -93,7 +93,7 @@ export function GameCanvas({
       const hooks = window as unknown as {
         __arena?: Phaser.Game
         __arenaWorld?: { width: number; height: number }
-        __arenaContent?: { ENEMY_KINDS: typeof ENEMY_KINDS }
+        __arenaContent?: { ENEMY_KINDS: typeof ENEMY_KINDS; WEAPONS: typeof WEAPONS }
       }
       hooks.__arena = game
       // The size of the map, which nothing on the page can otherwise find out:
@@ -111,7 +111,7 @@ export function GameCanvas({
        * production bundle with it. Testing the accuracy rule any other way
        * would mean testing the function instead of the shot.
        */
-      hooks.__arenaContent = { ENEMY_KINDS }
+      hooks.__arenaContent = { ENEMY_KINDS, WEAPONS }
     }
 
     return () => {

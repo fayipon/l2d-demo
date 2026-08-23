@@ -23,6 +23,7 @@ import {
   attackPowerFor,
   canMerge,
   findWeapon,
+  damageScale,
   healthScale,
   pickEnemyKind,
   spawnInterval,
@@ -164,8 +165,8 @@ const PLAYER_INVULN = 0.55
  *
  * Five seconds is long enough that a tick is something you notice and wait for,
  * and short enough that it still arrives inside a fight rather than only
- * between them. It also gives the number something to say -- at Haru's opening
- * rate a tick is five points rather than one.
+ * between them. It also gives the number something to say: at Haru's opening
+ * rate a tick is most of a point rather than a sixtieth of one.
  *
  * Lifesteal is deliberately not on this clock. It is a reward for hitting
  * something and it has to land when the hit does.
@@ -1017,7 +1018,9 @@ export class World {
     enemy.hp = enemy.maxHp
     enemy.speed = kind.speed * speedScale(this.wave)
     enemy.radius = kind.radius
-    enemy.contactDamage = kind.contactDamage
+    /* Scaled at spawn, like the health beside it, so a hit is worth what the
+       wave it came from says rather than what the kind was written at. */
+    enemy.contactDamage = kind.contactDamage * damageScale(this.wave)
     enemy.drop = kind.drop
     enemy.mass = kind.mass
     enemy.flash = 0

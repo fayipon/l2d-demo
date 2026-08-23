@@ -58,16 +58,22 @@ export const ATTRIBUTES: readonly { id: AttributeId; label: string; feeds: strin
  *
  * Linear, not curved. A curve would make the last hundred points worthless and
  * the cap decorative; linear makes 255 a real place to get to and keeps the
- * arithmetic something a player can do in their head. The right-hand column of
- * the plan is just these times 255, and that is the whole design: pick what the
- * ceiling should be, divide.
+ * arithmetic something a player can do in their head. Every value here is
+ * simply what the ceiling should be, divided by 255.
+ *
+ * Sized for a game that opens at ten health and a two-point hit. Maxed, STA is
+ * worth +127 health and +20 armour, and each of the three power attributes is
+ * worth +12.8 flat damage -- which on a nine-damage railgun at tier IV, with a
+ * shelf of items and a crit, comes to about 350 a hit. The ceiling the whole
+ * scale is built under is 1000, and the difference is deliberate: it is the
+ * room left for weapons, tiers and skills that do not exist yet.
  *
  * `accuracy` and `shopLuck` are not stat-block entries -- see `PlayerStats`,
  * which has neither. They are returned separately by `deriveAttributes`.
  */
 export const PER_POINT = {
   /** STR. Flat damage on melee weapons only. */
-  meleePower: 0.12,
+  meleePower: 0.05,
   /** AGI. Divides weapon cooldown. */
   attackSpeed: 0.004,
   /** AGI. Chance a contact hit is ignored. Runs into DODGE_CAP well before
@@ -75,15 +81,15 @@ export const PER_POINT = {
    *  reason and AGI should hit that ceiling rather than raise it. */
   dodge: 0.0016,
   /** DEX. Flat damage on ranged weapons only. */
-  rangedPower: 0.12,
+  rangedPower: 0.05,
   /** DEX. Against an enemy's evasion. See `hitChance`. */
   accuracy: 1,
-  /** STA. Flat, on a base of 100. */
-  maxHp: 1.6,
+  /** STA. Flat, on a base of 10. */
+  maxHp: 0.5,
   /** STA. Points, run through `armourReduction` -- not a percentage. */
-  armour: 0.16,
+  armour: 0.08,
   /** INT. Flat damage on elemental weapons only. */
-  elementalPower: 0.12,
+  elementalPower: 0.05,
   /** LUK. Chance a hit crits, on a base of 0.05. */
   critChance: 0.0012,
   /** LUK. Raises what the shop is willing to put on the shelf. */

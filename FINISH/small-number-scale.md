@@ -164,3 +164,71 @@ about them is a damage number.
 
 ## Notes
 Execution starts only after the user explicitly says start.
+
+## Progress
+
+Done, to the table, with one correction to the plan's own arithmetic.
+
+**Steps 1–5 — the numbers.** Base health 100 → 10; the three flat power
+attributes 0.12 → 0.05 a point; STA 1.6 → 0.5 health and 0.16 → 0.08 armour;
+seven weapons divided by three; three enemy kinds' health and contact damage;
+eleven shop items and the `detail` strings that print their numbers; Haru's
+regeneration constants. `damageScale(wave) = min(3.5, 1 + 0.055(w-1))` is new,
+and applied where `contactDamage` is read at spawn, beside the health scale that
+was already there.
+
+**Step 6 — the prose.** Four comments quoted numbers that had moved: `PER_POINT`
+said "on a base of 100", the armour curve cited Rice's -3 and a -4 glass lens
+(Rice's armour is an attribute now and the lens is -2), the regeneration tick
+said a tick was worth five points, and the crit note still referred to an
+upgrade card that was removed two changes ago. All four fixed. Two were found by
+reading rather than by anything failing, which is what the step is for.
+
+The measured performance comments in `world.ts` are left alone: they are a
+frame-time budget rather than a balance number, and re-measuring them is not
+this change.
+
+### Where it landed
+
+| | before | after |
+|---|---|---|
+| Haru opens | 151 health, 5 a blade | **26 health, 3.7 a blade** |
+| a crawler | 12 health, 6 contact | **4 health, 2 contact** |
+| a crawler at wave 30 | 6 contact | **5.2 contact** |
+| ceiling: railgun IV, DEX 255, items, crit | 886 | **342** |
+
+Against a design ceiling of 1000, that is 2.9× of headroom.
+
+**Where the plan was wrong.** It claimed the opening exchange would go from
+twenty-five hits to "four or five". That was arithmetic done on the base health
+alone, forgetting that a class puts its STA on top: Haru opens at 26 rather than
+10, so the exchange is about *twice* as sharp, not four times. The check asserts
+the honest range and says why in a comment, rather than the numbers being bent
+to match a claim I got wrong.
+
+### Measured
+
+`npm run verify`: **53/53**, three new and three repaired.
+
+New:
+- an opening run is a handful of hits from dead — the ratio, not the constants:
+  every number in the table could be checked against itself and pass while the
+  game was unplayable
+- and kills a crawler in a couple of hits
+- contact damage rises with the wave and stops
+
+Repaired, and each one is a small lesson about checks that hardcode a scale:
+- *an item's health is doubled too* measured against a remembered base of 100.
+  It measures against a run holding nothing now.
+- *healing is reported, not silent* filled a bar with no room in it: at zero STA
+  the ceiling is the base ten and the check was healing a full bar.
+- *armour and health from attributes are not doubled* asserted 16 and 260, which
+  are now 8 and 60.
+
+`npm run bench -- --enemies 700 --spread world`: 16.69ms, 59.2 fps, sim step
+0.588ms. Unmoved, as expected — none of this is work, all of it is constants.
+
+### Left where it was
+Coins, prices and the experience curve, as scoped. They now want a look for a
+reason this change did not create but did sharpen: a kill pays 45% of the time
+since the drop roll landed, and coins are experience.

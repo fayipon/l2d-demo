@@ -34,10 +34,10 @@ export interface ShopItem {
 
 export const SHOP_ITEMS: ShopItem[] = [
   /* --- offence --- */
-  { id: 'whetstone', label: '磨刀石', detail: '所有攻擊力 +2', price: 24, mods: { attackPower: 2 } },
-  { id: 'gauntlet', label: '鐵手甲', detail: '近戰攻擊力 +3', price: 26, mods: { meleePower: 3 } },
-  { id: 'sight', label: '瞄具', detail: '遠程攻擊力 +3', price: 26, mods: { rangedPower: 3 } },
-  { id: 'emberstone', label: '燼石', detail: '元素攻擊力 +3', price: 26, mods: { elementalPower: 3 } },
+  { id: 'whetstone', label: '磨刀石', detail: '所有攻擊力 +1', price: 24, mods: { attackPower: 1 } },
+  { id: 'gauntlet', label: '鐵手甲', detail: '近戰攻擊力 +1', price: 26, mods: { meleePower: 1 } },
+  { id: 'sight', label: '瞄具', detail: '遠程攻擊力 +1', price: 26, mods: { rangedPower: 1 } },
+  { id: 'emberstone', label: '燼石', detail: '元素攻擊力 +1', price: 26, mods: { elementalPower: 1 } },
   { id: 'fury', label: '狂怒符', detail: '攻擊力 +12%', price: 30, mods: { damage: 0.12 } },
   { id: 'trigger', label: '輕扳機', detail: '攻擊速度 +12%', price: 30, mods: { attackSpeed: 0.12 } },
   { id: 'splitter', label: '分裂彈', detail: '彈數 +1', price: 68, mods: { bonusCount: 1 } },
@@ -46,10 +46,10 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'longbarrel', label: '長槍管', detail: '射程 +15%', price: 22, mods: { range: 0.15 } },
 
   /* --- defence --- */
-  { id: 'ironheart', label: '鐵心', detail: '生命上限 +25', price: 24, mods: { maxHp: 25 } },
-  { id: 'ward', label: '護符', detail: '護甲 +6', price: 22, mods: { armour: 6 } },
-  { id: 'salve', label: '再生藥膏', detail: '生命回復 +0.8/秒', price: 28, mods: { regen: 0.8 } },
-  { id: 'bloodstone', label: '血晶', detail: '吸血 +0.5/命中', price: 34, mods: { lifesteal: 0.5 } },
+  { id: 'ironheart', label: '鐵心', detail: '生命上限 +4', price: 24, mods: { maxHp: 4 } },
+  { id: 'ward', label: '護符', detail: '護甲 +3', price: 22, mods: { armour: 3 } },
+  { id: 'salve', label: '再生藥膏', detail: '生命回復 +0.25/秒', price: 28, mods: { regen: 0.25 } },
+  { id: 'bloodstone', label: '血晶', detail: '吸血 +0.15/命中', price: 34, mods: { lifesteal: 0.15 } },
   { id: 'shadowstep', label: '影步', detail: '閃避 +6%', price: 30, mods: { dodge: 0.06 } },
 
   /* --- utility --- */
@@ -62,30 +62,30 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: 'recklessblade',
     label: '亡命之刃',
-    detail: '所有攻擊力 +5，生命上限 -15',
+    detail: '所有攻擊力 +2，生命上限 -3',
     price: 26,
-    mods: { attackPower: 5, maxHp: -15 },
+    mods: { attackPower: 2, maxHp: -3 },
   },
   {
     id: 'heavyplate',
     label: '重甲板',
-    detail: '護甲 +12，移動速度 -8%',
+    detail: '護甲 +5，移動速度 -8%',
     price: 34,
-    mods: { armour: 12, moveSpeed: -0.08 },
+    mods: { armour: 5, moveSpeed: -0.08 },
   },
   {
     id: 'glasslens',
     label: '琉璃鏡',
-    detail: '暴擊率 +14%，護甲 -4',
+    detail: '暴擊率 +14%，護甲 -2',
     price: 36,
-    mods: { critChance: 0.14, armour: -4 },
+    mods: { critChance: 0.14, armour: -2 },
   },
   {
     id: 'siphon',
     label: '抽取器',
-    detail: '吸血 +0.8/命中，攻擊速度 -10%',
+    detail: '吸血 +0.25/命中，攻擊速度 -10%',
     price: 38,
-    mods: { lifesteal: 0.8, attackSpeed: -0.1 },
+    mods: { lifesteal: 0.25, attackSpeed: -0.1 },
   },
   /*
    * The one thing in the game that takes vision away, and the reason the stat

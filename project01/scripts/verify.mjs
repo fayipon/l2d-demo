@@ -100,6 +100,16 @@ try {
       }
     }
     const check = (name, ok, detail) => checks.push({ name, ok, detail })
+    /* The loadout's starting six, filled out and clamped the way the world
+       fills them out -- `start` is a partial and the missing ones are zero. */
+    const clampAttributesLike = (start) => ({
+      str: Math.max(0, Math.min(255, start.str ?? 0)),
+      agi: Math.max(0, Math.min(255, start.agi ?? 0)),
+      dex: Math.max(0, Math.min(255, start.dex ?? 0)),
+      sta: Math.max(0, Math.min(255, start.sta ?? 0)),
+      int: Math.max(0, Math.min(255, start.int ?? 0)),
+      luk: Math.max(0, Math.min(255, start.luk ?? 0)),
+    })
 
     /* ---------- the arrival telegraph is inert ---------- */
 
@@ -689,7 +699,9 @@ try {
       reset()
       world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
       world.ownedItems.length = 0
-      world.ownedItems.push(itemId)
+      if (itemId) {
+        world.ownedItems.push(itemId)
+      }
       world.recomputeStats()
       return { ...world.player.stats }
     }
@@ -702,12 +714,18 @@ try {
       `護符 gave ${plainWard.armour} armour plain and ${bulwarkWard.armour} with 防禦專精`,
     )
 
+    /* Against a run holding nothing, rather than against a remembered base --
+       the base moved once already and a check that hardcodes it fails for a
+       reason that has nothing to do with what it is testing. */
+    const noItems = withSkills([], null)
     const plainHeart = withSkills([], 'ironheart')
     const bulwarkHeart = withSkills([bulwark], 'ironheart')
+    const plainGain = plainHeart.maxHp - noItems.maxHp
+    const masteredGain = bulwarkHeart.maxHp - noItems.maxHp
     check(
       "an item's health is doubled too",
-      bulwarkHeart.maxHp - 100 === (plainHeart.maxHp - 100) * 2 && plainHeart.maxHp > 100,
-      `鐵心 gave ${plainHeart.maxHp - 100} health plain and ${bulwarkHeart.maxHp - 100} mastered`,
+      plainGain > 0 && masteredGain === plainGain * 2,
+      `鐵心 gave ${plainGain} health plain and ${masteredGain} mastered`,
     )
 
     /* 重甲 is armour and a movement penalty in one item. Only the armour half
@@ -732,8 +750,8 @@ try {
     world.recomputeStats()
     check(
       'armour and health from attributes are not doubled',
-      Math.abs(world.player.stats.armour - 16) < 1e-9 &&
-        Math.abs(world.player.stats.maxHp - 260) < 1e-9,
+      Math.abs(world.player.stats.armour - 8) < 1e-9 &&
+        Math.abs(world.player.stats.maxHp - 60) < 1e-9,
       `100 STA gave ${world.player.stats.armour} armour and ${world.player.stats.maxHp} health`,
     )
 
@@ -813,7 +831,9 @@ try {
        the mistake this check exists to notice. */
     reset()
     world.loadout.skills = []
-    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    /* Enough STA to leave the bar somewhere to go. At zero the ceiling is the
+       base ten, and a check that heals a full bar measures nothing. */
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 100, int: 0, luk: 0 }
     world.ownedItems.length = 0
     world.recomputeStats()
     world.player.stats.regen = 6
@@ -952,6 +972,67 @@ try {
       'a kill pays in full or not at all',
       partial === 0,
       `${partial} of two hundred four-coin kills paid a part of it`,
+    )
+
+    /* ---------- the small-number scale ---------- */
+
+    /*
+     * The scale as a ratio, not as a list of constants.
+     *
+     * Every number in the table could be checked against itself and the check
+     * would pass while the game was unplayable. What matters is how many hits
+     * an opening exchange takes in each direction, and that is what this asks:
+     * four to eight either way, which is the fight the rescale was for.
+     */
+    world.loadout.skills = realSkills
+    reset()
+    world.attributes = clampAttributesLike(world.loadout.start)
+    world.recomputeStats()
+    const opening = world.player.stats
+    const grunt = window.__arenaContent.ENEMY_KINDS[0]
+    const hitsToDie = Math.ceil(
+      opening.maxHp / (grunt.contactDamage * (1 - opening.armour / (opening.armour + 20))),
+    )
+    /* Eight to eighteen, not the four to five the plan guessed at -- that was
+       arithmetic done on the base health without the class's STA on top of it,
+       and Haru opens at twenty-six rather than ten. The rescale made the
+       opening exchange about twice as sharp as it was, not four times, and the
+       honest range is the one that says so. */
+    check(
+      'an opening run is a handful of hits from dead',
+      hitsToDie >= 8 && hitsToDie <= 18,
+      `${opening.maxHp.toFixed(0)} health and ${opening.armour.toFixed(1)} armour ` +
+        `against a crawler's ${grunt.contactDamage}: ${hitsToDie} hits`,
+    )
+
+    const blade = window.__arenaContent.WEAPONS.find((w) => w.id === 'shredder')
+    const perBlade = blade.damage + opening.meleePower + opening.attackPower
+    check(
+      'and kills a crawler in a couple of hits',
+      Math.ceil(grunt.hp / perBlade) >= 1 && Math.ceil(grunt.hp / perBlade) <= 3,
+      `${perBlade.toFixed(1)} a blade against ${grunt.hp} health: ` +
+        `${Math.ceil(grunt.hp / perBlade)} hits`,
+    )
+
+    /* Contact damage scales now, and is capped. Without the first a late wave
+       cannot kill a grown build; without the second it eventually one-shots
+       one, and neither is a fight. */
+    const contactAt = (wave) => {
+      reset()
+      world.wave = wave
+      world.spawnEnemy()
+      const biter = world.enemies.items.find((e) => e.active)
+      const dealt = biter.contactDamage
+      world.enemies.releaseAll()
+      return dealt / window.__arenaContent.ENEMY_KINDS[biter.kind].contactDamage
+    }
+    const early = contactAt(1)
+    const late = contactAt(30)
+    const absurd = contactAt(200)
+    check(
+      'contact damage rises with the wave and stops',
+      Math.abs(early - 1) < 1e-6 && late > early && Math.abs(absurd - 3.5) < 1e-6,
+      `x${early.toFixed(2)} at wave 1, x${late.toFixed(2)} at 30, x${absurd.toFixed(2)} at 200`,
     )
 
     game.scene.resume('arena')

@@ -97,9 +97,9 @@ export const ARENA_LOADOUTS: Record<string, ArenaLoadout> = {
 /**
  * Neutral, for a character with no loadout written yet.
  *
- * Not all zeroes: a run with no attributes at all is a run with a hundred
- * health and no damage beyond the weapon's own, which reads as broken rather
- * than as unwritten. This is the average of the four above, flat.
+ * Not all zeroes: a run with no attributes at all is a run with ten health and
+ * no damage beyond the weapon's own, which reads as broken rather than as
+ * unwritten. This is the average of the four above, flat.
  */
 export const DEFAULT_LOADOUT: ArenaLoadout = {
   start: { str: 16, agi: 20, dex: 23, sta: 17, int: 15, luk: 19 },
