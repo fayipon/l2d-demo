@@ -245,3 +245,9 @@ what shows through the gaps in the ornament is the card rather than the screen.
 `2 / 10`, the bar under the health bar was a second, quieter way of saying the
 same thing. The kit's smaller bar leaves the cut with it -- thirteen pieces and
 a fill strip now, 281 kB.
+
+**The scene label moved to the minimap.** It sat above the wave clock, which
+put two unrelated answers in one column -- which fight this is, and how far into
+it you are -- and only one of them ever changes. The minimap is the panel that
+is about the place, so `SCENE 1-1 · 血色祭壇` is its header now, and the clock has
+the middle of the screen back.

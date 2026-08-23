@@ -56,12 +56,16 @@ const LOOT_DOT = 1.3
 const PLAYER_ARROW = 6
 
 interface MinimapProps {
-  /** The scene's number, printed in the header. The map of a place should say
-   *  which place, and this is the only panel on the HUD that is one. */
+  /** The scene's number and name, printed above the ring.
+   *
+   *  They used to sit over the wave clock, which put two unrelated answers in
+   *  one column -- where this is, and how far into it you are. The map of a
+   *  place is the thing on the HUD that should be labelled with the place. */
   code: string
+  name: string
 }
 
-export function Minimap({ code }: MinimapProps) {
+export function Minimap({ code, name }: MinimapProps) {
   const run = useRunSnapshot()
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -162,7 +166,10 @@ export function Minimap({ code }: MinimapProps) {
 
   return (
     <div className="minimap">
-      <p className="minimap-title">戰場 {code}</p>
+      <p className="minimap-title">
+        <span className="scene-code">SCENE {code}</span>
+        <span className="scene-name">{name}</span>
+      </p>
       <div className="minimap-plate uk-ring">
         <canvas ref={canvasRef} width={SIZE} height={SIZE} />
       </div>

@@ -368,19 +368,7 @@ export function GamePage() {
           </span>
         </div>
 
-        {/* ---------- where, and which wave of it ---------- */}
-        {/*
-          The scene number sits above the wave clock because the two answer
-          the same question at different scales: which fight this is, and how
-          far into it you are. It never changes during a run, so it is styled
-          quiet -- a heading over the readout rather than another number
-          competing with it.
-        */}
-        <p className="scene-badge">
-          <span className="scene-code">SCENE {map.code}</span>
-          <span className="scene-name">{map.name}</span>
-        </p>
-
+        {/* ---------- which wave ---------- */}
         <div className="wave-readout">
           {run.status === 'break' ? (
             <>
@@ -402,7 +390,7 @@ export function GamePage() {
           )}
         </div>
 
-        <Minimap code={map.code} />
+        <Minimap code={map.code} name={map.name} />
 
         {/* ---------- what the run is for ---------- */}
         {/*
