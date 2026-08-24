@@ -136,30 +136,58 @@ sample models do not ship.
 What the legs do have is a ride on the body angles. So the motion is a **weight
 shift**: the one thing a body angle can express that a person actually does.
 
-### The measurement that changed the design
+### Finding the legs took four attempts, and the first three were wrong
 
-The first version put `ParamBodyAngleX` at the centre of it, on the intuition
-that X is the side-to-side one. That was wrong, and the table says so — leg
-centroid displacement swept across each parameter's full range, in canvas
-pixels on a 2400×4500 model:
+The trap is not obvious and it invalidated two rounds of design.
 
-| parameter | Δx | Δy | over |
-|---|---|---|---|
-| **ParamBodyAngleZ** | **97.1** | −0.2 | ±10 |
-| ParamBodyAngleX | 33.9 | −0.1 | ±10 |
-| **ParamBodyAngleY** | 0.6 | **113.8** | ±10 |
-| ParamBodyUpper | −4.9 | 24.9 | ±10 |
-| ParamBreath | −0.6 | 10.8 | ±1 |
-| ParamBustY | 0 | 0 | ±1 |
+Selecting the leg drawables **by UV** — "the ones that sample the stockings
+column of the atlas" — catches strands of hair that happen to sample from the
+same corner of the texture. Those sit up by the head, where `ParamAngleX` swings
+them 145 pixels, and every measurement taken against that set was contaminated
+by movement that had nothing to do with legs.
 
-**Z rolls and rolling swings the feet; X only leans.** Three to one, and the
-name gives no hint of it.
+The legs have to be found by **where they are drawn**, not where they sample:
+`D_PSD_00` and `D_PSD_01`, spanning y2215–y4233 of a 4500-tall figure. Vertices,
+not UVs.
 
-The second thing the table settled was the counter-rotation.
-`ParamBodyUpper` moves the legs by five pixels across its whole range, which
-makes it the right parameter to bring the shoulders back over the feet — a
-counter built from Z would have cancelled the movement it was meant to
-complete.
+Measured against those two, maximum leg vertex displacement across each
+parameter's full range:
+
+| parameter | leg movement |
+|---|---|
+| `ParamBodyUpper` | **120 px** |
+| `ParamBodyAngleY` | 106 px |
+| `ParamBodyAngleX` | 100 px |
+| `ParamBodyAngleZ` | 77 px |
+| `ParamBreath` | 11 px |
+| the other 37 | **0 px** |
+
+Two earlier designs were built on the contaminated numbers. The first made
+`ParamBodyAngleZ` the primary — it is the weakest of the four. The second used
+`ParamBodyUpper` as a counter-rotation on the belief that it "barely reaches the
+legs at 4.9 px" — it is in fact the **largest** contributor at 120 px, so the
+motion was spending its strongest parameter cancelling its other three.
+
+### The ceiling
+
+All four in phase at full range: **189 px, or 4.2% of the figure's height.**
+Lateral centroid travel over real playback: **84 px, 1.9%.**
+
+That is not a tuning result, it is the limit. Thirty-seven of the forty-two
+parameters do not touch the legs at all, so there is no combination that does
+better. On screen, with the figure rendered about 600 px tall, 1.9% is roughly
+eleven pixels.
+
+**A visible leg motion is not achievable on this rig.** The motion below spends
+everything available and still reads as a slight sway rather than as legs
+moving. Getting further means adding a leg parameter, which means the `.cmo3`
+in Cubism Editor, which the sample models do not ship.
+
+For contrast, measured the same way: Rice has `ParamLegKnee`, `ParamLegR` and
+`ParamLegRUpDw`, and `ParamLegR` moves two drawables by 302 px. Hiyori has
+`ParamLeg`. Haru and Mao have nothing. That comparison is recorded because it is
+the fact that decides whether this is worth attempting on a given model — not
+because anything here should change base.
 
 ### The motion
 

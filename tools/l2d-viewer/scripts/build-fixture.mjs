@@ -241,50 +241,51 @@ function phase(t) {
  * the scarf: they are not animated, they are *late*.
  */
 /*
- * What each parameter is worth to the legs, measured rather than assumed.
+ * What each parameter is worth to the legs, measured against the two drawables
+ * that *are* the legs.
  *
- * The leg drawables' centroid, swept from one end of each parameter to the
- * other, in canvas pixels on a 2400x4500 model:
+ * Identifying those took four attempts and the first three were wrong, which is
+ * worth recording because the trap is not obvious. Selecting by UV -- "the
+ * drawables that sample the stockings column of the atlas" -- catches strands
+ * of hair that happen to sample from the same corner, and those sit up by the
+ * head where `ParamAngleX` swings them 145 pixels. The legs have to be found by
+ * where they are *drawn*: `D_PSD_00` and `D_PSD_01`, spanning y2215..y4233 of a
+ * 4500-tall figure. Vertices, not UVs.
  *
- *   parameter          Δx      Δy    over
- *   ParamBodyAngleZ    97.1    -0.2   ±10     <- the lateral one
- *   ParamBodyAngleX    33.9    -0.1   ±10
- *   ParamBodyAngleY     0.6   113.8   ±10     <- the vertical one
- *   ParamBodyUpper     -4.9    24.9   ±10     <- barely reaches them
- *   ParamBreath        -0.6    10.8   ±1
- *   ParamBustY          0       0     ±1
+ * Maximum leg vertex displacement across each parameter's full range:
  *
- * Two things fall out of that table and both shape the motion below.
+ *   ParamBodyUpper     120px
+ *   ParamBodyAngleY    106px
+ *   ParamBodyAngleX    100px
+ *   ParamBodyAngleZ     77px
+ *   ParamBreath         11px
+ *   the other 37          0px
  *
- * **Z, not X, is what moves the legs sideways** -- by three to one. The name
- * says body *angle*, and the intuition that X is the side-to-side one is
- * wrong: X leans, Z rolls, and rolling swings the feet.
+ * All four body parameters together, in phase: **189px, 4.2% of the figure.**
+ * That is the ceiling. There is no combination that does better, because 37 of
+ * the 42 parameters do not touch the legs at all.
  *
- * **`ParamBodyUpper` is nearly free.** It moves the legs by five pixels over
- * its whole range, which makes it the ideal counter-rotation: it can bring the
- * shoulders back over the feet without undoing any of the work below the waist.
- * A counter built out of Z instead would have cancelled the motion it was
- * meant to complete.
+ * So this motion is built to spend all of it. Everything that reaches the legs
+ * moves the same way at full range; the only counters left are the head angles,
+ * which move the legs by exactly zero and are therefore free to make the pose
+ * read as deliberate rather than as a topple.
  */
 const CURVES = {
-  /* The roll, and the workhorse -- three quarters of the lateral travel. Run to
-     the declared maximum, because the legs are the point of this motion and
-     anything left here is movement the rig could express and did not. */
-  ParamBodyAngleZ: (t) => phase(t) * 10,
-  /* The lean. Same direction, a third of the effect, and it is what keeps the
-     roll from reading as the figure tipping over rather than stepping across. */
+  /* The largest single contributor, and the one an earlier version of this file
+     used as a *counter* -- on a measurement that had hair in the leg set. It was
+     cancelling the three below it. */
+  ParamBodyUpper: (t) => phase(t) * 10,
   ParamBodyAngleX: (t) => phase(t) * 10,
+  ParamBodyAngleZ: (t) => phase(t) * 10,
   /* Sinking onto the loaded leg. Absolute, so it dips at both extremes rather
      than leaning through the middle -- settling onto one leg is a drop, not a
-     slide. Small, because this parameter is worth 114 pixels over its range and
-     a quarter of that is already a visible knee-bend's worth of travel. */
-  ParamBodyAngleY: (t) => -Math.abs(phase(t)) * 4,
-  /* The counter. Without this the figure leans as one piece and stops looking
-     like it has a waist -- and per the table it costs the legs almost nothing. */
-  ParamBodyUpper: (t) => -phase(t) * 6,
-  /* And the head counters again, so the face stays level over the feet. */
-  ParamAngleX: (t) => -phase(t) * 8,
-  ParamAngleZ: (t) => -phase(t) * 5,
+     slide. Full range, like the rest: there is not enough travel available here
+     to be polite with any of it. */
+  ParamBodyAngleY: (t) => -Math.abs(phase(t)) * 10,
+  /* The head counters, and costs the legs nothing to do it -- it is the one
+     place left where the pose can be made to look intended. */
+  ParamAngleX: (t) => -phase(t) * 12,
+  ParamAngleZ: (t) => -phase(t) * 8,
   /* Eyes lead the movement very slightly -- people look where they are going,
      even when where they are going is six inches sideways. */
   ParamEyeBallX: (t) => phase(t + 0.15) * 0.35,
