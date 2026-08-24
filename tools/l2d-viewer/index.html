@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live2D 檢測台</title>
+
+    <!--
+      The same Core the game is pinned to, served out of project01/public by
+      this tool's publicDir. Not a copy: see vite.config.ts.
+
+      DO NOT UPGRADE IT HERE EITHER -- there is nothing to upgrade here, the
+      file lives in project01 and the note above it there is the one that
+      matters. What this bench is for is finding out whether a model works
+      against *that* file, so a different Core would make it useless.
+    -->
+    <script defer src="/live2d/live2dcubismcore.min.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,99 @@
+# Live2D 檢測台
+
+A bench for answering three questions about a Live2D model before it goes near
+the game: **will it load at all**, **what is in it**, and **what config does it
+need**.
+
+```bash
+npm --prefix tools/l2d-viewer install
+npm --prefix tools/l2d-viewer run dev
+```
+
+http://localhost:5174 — a different port from the game's 5173, so both can be
+open at once, which is the normal way to use this.
+
+## The one thing to read before commissioning a model
+
+The Core this project is pinned to loads **moc3 version 5 and below**.
+
+`public/live2d/live2dcubismcore.min.js` is Cubism Core 5, pinned to the
+framework that `pixi-live2d-display-advanced@1.1.0` bundles. Core 6 loads and
+then renders nothing — `getDrawableRenderOrders()` comes back undefined inside
+`doDrawModel`. So the ceiling cannot be lifted by upgrading the Core; it would
+take upgrading the library, and the only newer release is a `2.0.0-beta` that
+targets Pixi 8 while this project is on Pixi 7.
+
+**A model authored in a current Cubism Editor is likely to export moc3 v6.**
+That is a purchase or a commission that cannot be used, found out after the
+money is spent. Mao, already in the repo, is at 5 — the ceiling is not
+theoretical.
+
+So: *"moc3 匯出版本必須是 v5 或以下"* belongs in the spec you hand a rigger, and
+this bench is where you check that they did it.
+
+`project01/scripts/fetch-models.mjs` applies the same check, but only to models
+fetched from Live2D's own sample repository. Anything acquired any other way has
+nothing looking at it except this.
+
+## What it does
+
+**Reports the moc3 version before the loader is called.** Which is the whole
+order-of-operations point: Core 5 refuses a v6 moc with
+`Failed to CubismMoc.create()`, and that message tells someone who has not read
+the note in `project01/index.html` precisely nothing. Here it is one line.
+
+**Takes a model from anywhere.** The four in `project01/public/live2d` from the
+picker, or any folder dragged onto the drop target — no copying a model into the
+repository to find out it does not work.
+
+**Exercises it.** Every motion group and index, with the voiced ones marked;
+every expression; the hit areas, which matter because `Live2DStage` has to wire
+`hit` to a motion group by hand — the names never match.
+
+**Emits the config.** Sliders for `heightRatio` and `position`, then a
+`Live2DModelBase` block to paste into `project01/src/pixi/live2dConfig.ts`. The
+model canvas and the measured artwork box are drawn as overlays, so a model
+sitting off-centre shows *why*: Mao's artwork box starts 50px from the left edge
+of a 5800px canvas because two meshes are parked out there, and that is the
+whole story behind `MAO_NUDGE`.
+
+Captions are emitted blank on purpose. `tapLines` carries dialogue, that is
+writing rather than data, and a tool that invented it would be a tool that feeds
+placeholder Chinese into the game.
+
+## How it relates to project01
+
+**The runtime versions are pinned exactly and must match project01's.** `pixi`
+7.4.3, `pixi-live2d-display-advanced` 1.1.0, `@pixi/sound` 5.2.3, with no
+caret. A bench running a newer runtime would cheerfully load a model the game
+then refuses, which would make it worse than useless. If project01's versions
+move, move these with them.
+
+**It serves `project01/public` rather than copying it** — see `vite.config.ts`.
+That is where the Core file and the four models come from, and a second copy of
+the Core in this directory is exactly what the DO-NOT-UPGRADE note exists to
+prevent.
+
+**It imports no code from `project01/src`.** Tempting, because the art-bounds
+measurement in `Live2DStage` is the good part and this duplicates a simplified
+version of it. But the bench has to survive models the game would throw on, so
+its loading path is deliberately more defensive; sharing one would mean either
+weakening the game's or having the bench quietly not do what the game does. Both
+copies carry a note.
+
+## Known sharp edge
+
+`ModelSettings.resolveURL` **destroys blob URLs** — it normalises the `//` in
+`blob:http://host/id` down to `blob:http//host/id`, eating the scheme's colon,
+after which every texture 404s and the model arrives as an untextured mesh with
+no obvious cause. The dropped-folder path replaces every declared path with an
+absolute blob URL and then overrides `resolveURL` to identity. See the note in
+`src/sources.ts`; it is the kind of thing that only shows up when you look for
+it.
+
+## Not here yet
+
+A parameter inspector — live sliders over all 132 of Mao's Cubism parameters —
+is the obvious next thing and is deliberately absent. It is the deepest testing
+feature and the one with the most UI in it, and it should wait until the bench
+has been used enough to say whether it is wanted.
