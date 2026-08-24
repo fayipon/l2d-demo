@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fixture": "node scripts/build-fixture.mjs"
   },
   "comment": [
     "The three runtime versions are pinned EXACTLY, with no caret, and they must",
@@ -21,6 +22,8 @@
     "pixi.js": "7.4.3"
   },
   "devDependencies": {
+    "@types/node": "^24.13.3",
+    "sharp": "^0.35.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0"
   }

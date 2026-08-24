@@ -107,6 +107,18 @@ export class Bench {
     this.model = model
     this.app.stage.addChild(model)
 
+    /*
+     * A handle, on purpose.
+     *
+     * project01 forbids measurement hooks in game code, and rightly -- the game
+     * is the thing under test and a hook in it is a hole in the thing. This is
+     * the other side of that rule: a bench that cannot be driven from the
+     * console is a bench that can only answer the questions its buttons already
+     * ask. Everything the UI does not surface -- drawable ids, UV rectangles,
+     * the parameter table -- is one line away from here.
+     */
+    ;(window as unknown as { __model?: Live2DModel }).__model = model
+
     this.overlay = new Graphics()
     this.app.stage.addChild(this.overlay)
 

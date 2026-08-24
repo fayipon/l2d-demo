@@ -12,6 +12,35 @@ npm --prefix tools/l2d-viewer run dev
 http://localhost:5174 — a different port from the game's 5173, so both can be
 open at once, which is the normal way to use this.
 
+## The fixture
+
+`fixtures/haru-kai/` is **HARU改**: Haru with a crimson blazer instead of a navy
+one, and the bench's own reference model. It is in the picker beside the four
+game models.
+
+It exists because a bench needs something whose answer is already known, so that
+when the tool says something surprising the tool is the suspect. The four game
+models cannot do that job — they are the subject, they belong to project01, and
+they change when it does.
+
+It is a **complete folder** rather than one texture pointing at Haru for the
+rest, because a real folder can be dragged onto the drop target — which is the
+tool's headline feature and the part never exercised by hand.
+
+```bash
+npm --prefix tools/l2d-viewer run fixture   # rebuild it
+```
+
+The recolour is ten rectangles, nine exclusions and three numbers in
+`scripts/build-fixture.mjs`, and the script proves its own claim: every region
+that must not move is sampled before and after, and a leak fails the build
+rather than warning. Only the blazer changes — not the skirt, the tie, the white
+blouse or the hair, all of which share the same atlas.
+
+The voice clips are left out, which drops 645 kB and makes it a second test
+case: with no `Sound` anywhere, the emitter takes its "no motion carries a
+Sound" branch.
+
 ## The one thing to read before commissioning a model
 
 The Core this project is pinned to loads **moc3 version 5 and below**.

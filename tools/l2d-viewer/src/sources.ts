@@ -27,6 +27,15 @@ type SettingsInput = ConstructorParameters<typeof Cubism4ModelSettings>[0]
 export interface ModelSource {
   /** Shown in the picker. */
   label: string
+  /**
+   * Identifier for the emitted config, as a lowercase slug.
+   *
+   * Carried rather than derived from the label, because deriving it is what
+   * broke: `HARU改` stripped of everything outside `[a-z0-9]` is `haru`, which
+   * is a different character that already exists, and the emitted block would
+   * have quietly redefined it.
+   */
+  id: string
   /** For the emitted config's `modelPath`, when there is a meaningful one. */
   servedPath: string | null
   settings: Cubism4ModelSettings
@@ -38,21 +47,33 @@ export interface ModelSource {
 }
 
 /**
- * The four in project01/public/live2d.
+ * What the picker offers.
  *
- * Hardcoded because HTTP has no directory listing and the static directory is
- * not part of the module graph, so there is nothing to glob. It mirrors the
+ * Two kinds, from two places. The four game models come out of
+ * `project01/public/live2d`, which is this tool's `publicDir` -- they are the
+ * subject, they belong to the game, and they change when it does. HARU改 comes
+ * out of `fixtures/`, served by a middleware in vite.config.ts, and is the
+ * bench's own: a model whose one difference from Haru is known, so that when
+ * the tool says something surprising about it the tool is the suspect.
+ *
+ * Hardcoded because HTTP has no directory listing and neither directory is part
+ * of the module graph, so there is nothing to glob. The game half mirrors the
  * `MODELS` array in project01/scripts/fetch-models.mjs and wants updating
- * alongside it -- a stale entry here is a 404 in the picker and nothing worse.
+ * alongside it -- a stale entry is a 404 in the picker and nothing worse.
  */
 const BUILT_IN = [
-  { id: 'haru', file: 'Haru' },
-  { id: 'hiyori', file: 'Hiyori' },
-  { id: 'mao', file: 'Mao' },
-  { id: 'rice', file: 'Rice' },
+  { id: 'haru', label: 'Haru', url: '/live2d/haru/Haru.model3.json', served: 'live2d/haru/Haru.model3.json' },
+  { id: 'hiyori', label: 'Hiyori', url: '/live2d/hiyori/Hiyori.model3.json', served: 'live2d/hiyori/Hiyori.model3.json' },
+  { id: 'mao', label: 'Mao', url: '/live2d/mao/Mao.model3.json', served: 'live2d/mao/Mao.model3.json' },
+  { id: 'rice', label: 'Rice', url: '/live2d/rice/Rice.model3.json', served: 'live2d/rice/Rice.model3.json' },
+  /* The fixture. No `served` path: it is not in the game's public directory, so
+     a `modelPath` quoting it would be a config that cannot resolve. The emitter
+     falls back to a placeholder, which is the honest answer for a model that
+     does not live where the game looks. */
+  { id: 'haruKai', label: 'HARU改', url: '/fixtures/haru-kai/Haru.model3.json', served: null },
 ]
 
-export const BUILT_IN_LABELS = BUILT_IN.map((m) => m.file)
+export const BUILT_IN_LABELS = BUILT_IN.map((m) => m.label)
 
 /** Joins a relative reference onto the directory of a URL. */
 function relativeTo(url: string, path: string): string {
@@ -61,11 +82,16 @@ function relativeTo(url: string, path: string): string {
 
 export async function loadBuiltIn(index: number): Promise<ModelSource> {
   const entry = BUILT_IN[index]
-  const url = `/live2d/${entry.id}/${entry.file}.model3.json`
+  const url = entry.url
 
   const res = await fetch(url)
   if (!res.ok) {
-    throw new Error(`讀不到 ${url}（${res.status}）— 這個模型可能不在 project01/public 裡`)
+    throw new Error(
+      `讀不到 ${url}（${res.status}）— ` +
+        (entry.served
+          ? '這個模型可能不在 project01/public 裡'
+          : '夾具還沒建，跑一次 npm run fixture'),
+    )
   }
   const json = await res.json()
 
@@ -79,8 +105,9 @@ export async function loadBuiltIn(index: number): Promise<ModelSource> {
   }
 
   return {
-    label: entry.file,
-    servedPath: `live2d/${entry.id}/${entry.file}.model3.json`,
+    label: entry.label,
+    id: entry.id,
+    servedPath: entry.served,
     settings: new Cubism4ModelSettings({ ...(json as object), url } as SettingsInput),
     json,
     moc: await mocRes.arrayBuffer(),
@@ -173,8 +200,12 @@ export async function loadFolder(files: File[]): Promise<ModelSource> {
    */
   settings.resolveURL = (path: string) => path
 
+  const label = settingsFile.name.replace('.model3.json', '')
   return {
-    label: settingsFile.name.replace('.model3.json', ''),
+    label,
+    // A dropped model has no id but its own filename. Stripped to a slug here
+    // rather than in the emitter, so there is one place that decides.
+    id: label.toLowerCase().replace(/[^a-z0-9]/g, '') || 'model',
     servedPath: null,
     settings,
     json,

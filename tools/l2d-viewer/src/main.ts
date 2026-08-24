@@ -70,7 +70,7 @@ async function use(next: () => Promise<ModelSource>): Promise<void> {
     const loaded = await next()
     source = loaded
     settingsReport = readSettings(loaded.json)
-    modelId = loaded.label.toLowerCase().replace(/[^a-z0-9]/g, '') || 'model'
+    modelId = loaded.id
 
     /*
      * The version check runs before the loader is given anything, which is the
