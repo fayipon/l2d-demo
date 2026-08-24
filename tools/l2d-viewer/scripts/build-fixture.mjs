@@ -333,6 +333,17 @@ function buildMotion() {
       Duration: MOTION.duration,
       Fps: 30,
       Loop: false,
+      /*
+       * Stated, because the default is about a second and this motion is four.
+       *
+       * Left unstated, the first extreme -- held from 0.9s to 1.5s -- arrives
+       * while the motion is still blending in from the idle pose, so the pose
+       * the curves describe never fully lands and the whole thing plays as a
+       * shrug. A quarter of a second is enough to avoid a snap and short
+       * enough that the hold is a hold.
+       */
+      FadeInTime: 0.25,
+      FadeOutTime: 0.35,
       AreBeziersRestricted: true,
       CurveCount: curves.length,
       TotalSegmentCount: totalSegments,

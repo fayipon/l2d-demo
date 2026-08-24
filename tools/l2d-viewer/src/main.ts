@@ -302,6 +302,28 @@ function renderRight(): void {
   )
 
   const presets = el('div', { class: 'chips' })
+
+  /*
+   * Whole-body first, and it is not a convenience.
+   *
+   * Both game framings crop at the waist -- that is what they are for, the
+   * lobby shows a character from the chest up. Which means the bench opened on
+   * a view where the legs are not on screen, and a motion that moves the lower
+   * body played as a faint wobble of the shoulders and nothing else. The tool
+   * was hiding the thing it was being asked about.
+   *
+   * Deliberately not added to SHARED_FRAMINGS: that list is what the emitter
+   * matches against to say "this needs no nudge", and a framing the game does
+   * not have would make it claim a match that cannot be pasted anywhere.
+   */
+  const fit = el('button', {}, '全身')
+  fit.addEventListener('click', () => {
+    framing = { heightRatio: 0.88, x: 0.5, y: 0.5 }
+    bench.setFraming(framing)
+    render()
+  })
+  presets.append(fit)
+
   SHARED_FRAMINGS.forEach(({ name, framing: preset }) => {
     const b = el('button', {}, name)
     b.addEventListener('click', () => {
