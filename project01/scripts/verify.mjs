@@ -666,6 +666,193 @@ try {
       `wave 1 reached tier ${unlucky} at 0 luck and tier ${lucky} at 255`,
     )
 
+    /* ---------- the grade bands ---------- */
+
+    /*
+     * The item table, imported from the dev server rather than reconstructed.
+     *
+     * Vite serves the module and the browser already has it cached from the
+     * game's own import, so this is the *same* array the shop is rolling from
+     * -- not a copy that could drift out of step with it. Worth doing this way
+     * rather than the buy-everything-and-infer trick the family checks above
+     * use: grades are not observable from a purchase, and the alternative would
+     * be a hook in the game put there to be measured by.
+     */
+    const shop = await import('/src/game/data/shop.ts')
+    const GRADE_OF = shop.SHOP_ITEMS.map((item) => item.grade)
+
+    /** The grade mix of the items offered over many layouts, as fractions. */
+    const mixAt = (luck, rounds) => {
+      reset()
+      world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: luck }
+      world.ownedItems.length = 0
+      world.recomputeStats()
+      const seen = [0, 0, 0]
+      let total = 0
+      for (let i = 0; i < rounds; i++) {
+        world.status = 'break'
+        world.breakTimeLeft = 0
+        world.openShop()
+        for (const offer of world.shopOffers) {
+          if (offer.sort === 'item') {
+            seen[GRADE_OF[offer.index] - 1] += 1
+            total += 1
+          }
+        }
+      }
+      return { mix: seen.map((n) => n / total), total }
+    }
+
+    const bandI = mixAt(0, 600)
+    const bandII = mixAt(60, 600)
+    const bandIII = mixAt(140, 600)
+
+    /* The gate, and the whole reason the table has an empty cell. A gate that
+       leaks occasionally is not one -- 神髓 and 分裂彈 have to be genuinely
+       unavailable until LUK is bought or grown into, or the first grade is
+       merely a discount on patience. */
+    check(
+      'the lowest band is never offered a 3階 item',
+      bandI.mix[2] === 0,
+      `${(bandI.mix[2] * 100).toFixed(2)}% of ${bandI.total} items across 600 shelves at 0 luck`,
+    )
+
+    /* And the table is the design, so the rolls have to agree with it rather
+       than merely lean the right way. Sampling error over this many items is
+       about a percent; five is generous and still catches a transposed row. */
+    const declared = [
+      { name: 'I', at: bandI, want: [0.75, 0.25, 0] },
+      { name: 'II', at: bandII, want: [0.5, 0.35, 0.15] },
+      { name: 'III', at: bandIII, want: [0.25, 0.45, 0.3] },
+    ]
+    for (const band of declared) {
+      const off = band.want.map((w, i) => Math.abs(band.at.mix[i] - w))
+      check(
+        `band ${band.name} rolls the mix its row declares`,
+        Math.max(...off) < 0.05,
+        `${band.want.map((w) => `${(w * 100).toFixed(0)}%`).join(' / ')} declared, ` +
+          `${band.at.mix.map((m) => `${(m * 100).toFixed(1)}%`).join(' / ')} rolled ` +
+          `over ${band.at.total} items`,
+      )
+    }
+
+    /* Falling downward is the rule; falling upward would hand a low band the
+       rare shelf it has not earned. Asked with the top grade exhausted -- at
+       band III a third of rolls want 3階 and there are only seven of them, so
+       four slots reach the end of that pool regularly. */
+    const everLeaked = (() => {
+      reset()
+      world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 140 }
+      world.ownedItems.length = 0
+      world.recomputeStats()
+      for (let i = 0; i < 400; i++) {
+        world.status = 'break'
+        world.breakTimeLeft = 0
+        world.openShop()
+        const items = world.shopOffers.filter((o) => o.sort === 'item')
+        const grades = items.map((o) => GRADE_OF[o.index])
+        // Within one layout no grade may appear more often than the pool holds.
+        for (let g = 1; g <= 3; g++) {
+          const pool = shop.SHOP_ITEMS.filter((item) => item.grade === g).length
+          if (grades.filter((x) => x === g).length > pool) {
+            return true
+          }
+        }
+      }
+      return false
+    })()
+    check(
+      'the fallback never hands out more of a grade than exists',
+      !everLeaked,
+      'four hundred layouts at band III, where the 3階 pool is smallest',
+    )
+
+    /* ---------- the stones ---------- */
+
+    /* A stone moves a primary, and the primary moves everything derived from
+       it. Measured through the derived stat rather than the attribute, because
+       an attribute that rose and fed nothing would be a number on a sheet. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.ownedItems.length = 0
+    world.recomputeStats()
+    const bareMelee = world.player.stats.meleePower
+    world.ownedItems.push('str-1')
+    world.recomputeStats()
+    const stonedMelee = world.player.stats.meleePower
+    check(
+      'a stone raises the derived stat its column feeds',
+      Math.abs(stonedMelee - bareMelee - 12 * 0.05) < 1e-9,
+      `力量原石 took 近戰攻擊力 from ${bareMelee.toFixed(2)} to ${stonedMelee.toFixed(2)}`,
+    )
+
+    /*
+     * The trap this whole design exists to avoid.
+     *
+     * The run's own attributes are accumulated -- `grantXp` adds growth to them
+     * at every level -- so a stone writing there would be counted again on
+     * every rebuild, and "attributes that climb when nothing bought anything"
+     * is a symptom a long way from its cause. Two stones must be worth two, and
+     * three rebuilds must not make them worth six.
+     */
+    world.ownedItems.push('str-1')
+    world.recomputeStats()
+    const twoStones = world.player.stats.meleePower
+    world.recomputeStats()
+    world.recomputeStats()
+    check(
+      'two stones are worth two, and rebuilding does not compound them',
+      Math.abs(twoStones - bareMelee - 24 * 0.05) < 1e-9 &&
+        Math.abs(world.player.stats.meleePower - twoStones) < 1e-9,
+      `two 力量原石 gave ${(twoStones - bareMelee).toFixed(2)} and still ` +
+        `${(world.player.stats.meleePower - bareMelee).toFixed(2)} after three rebuilds`,
+    )
+
+    /* The earned six are what levelling wrote; the effective six are what the
+       run is playing with. The sheet reads the second, so they have to differ
+       once a stone is held or the screen is describing someone else. */
+    check(
+      'the effective six carry the stones and the earned six do not',
+      world.attributes.str === 0 && world.effectiveAttributes.str === 24,
+      `earned ${world.attributes.str}, effective ${world.effectiveAttributes.str}`,
+    )
+
+    /* Stones stop at the cap like everything else. Six 神髓 is 720 points into
+       a column that ends at 255. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.ownedItems.length = 0
+    for (let i = 0; i < 6; i++) {
+      world.ownedItems.push('str-3')
+    }
+    world.recomputeStats()
+    check(
+      "a stone's points stop at the attribute cap",
+      world.effectiveAttributes.str === 255,
+      `six 力量神髓 is 720 points and landed at ${world.effectiveAttributes.str}`,
+    )
+
+    /* ---------- the coin rate has a ceiling ---------- */
+
+    /* `ownedItems` takes duplicates, so without a cap a long run stacks 賞金袋
+       into a rate over four -- four guaranteed payouts a kill, and a stat that
+       has stopped being a decision. Clamped in the recompute rather than at the
+       roll, so the number on the sheet is the number the run is paid at. */
+    reset()
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 255 }
+    world.ownedItems.length = 0
+    for (let i = 0; i < 10; i++) {
+      world.ownedItems.push('pouch')
+    }
+    world.recomputeStats()
+    check(
+      'the coin rate stops at twice, however much is stacked on it',
+      world.player.stats.coinRate === 2,
+      `base, 255 LUK and ten 賞金袋 came to ${world.player.stats.coinRate}`,
+    )
+
+    reset()
+
     /* ---------- class skills ---------- */
 
     /*
@@ -1028,9 +1215,14 @@ try {
     }
 
     const unluckyDrops = dropRateAt(0)
+    /* The band tracks BASE_COIN_CHANCE, which is 0.70 -- it was 0.45, and the
+       opening could not carry it. What is under test is that the base is a
+       chance at all rather than the certainty it started life as, so the band
+       is wide enough to survive the next tune and still fail a stat that has
+       quietly become guaranteed. */
     check(
       'a kill is not guaranteed to drop coins',
-      unluckyDrops > 0.3 && unluckyDrops < 0.6,
+      unluckyDrops > 0.55 && unluckyDrops < 0.85,
       `${(unluckyDrops * 100).toFixed(0)}% of four hundred kills paid at 0 LUK`,
     )
 

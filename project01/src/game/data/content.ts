@@ -615,8 +615,32 @@ export interface PlayerStats {
  * Coins are experience as well as money, so this slows levelling by roughly
  * what it slows earning. Deliberate, and the curve to watch if a run starts
  * feeling flat.
+ *
+ * It was 0.45, which turned out to be more than the opening could carry: below
+ * half, a bad stretch is not an event, it is most of the wave, and the coins
+ * that do not drop are experience that does not arrive either. 0.70 keeps a
+ * missed payout something a run notices while making the first few waves less
+ * of a tax.
  */
-export const BASE_COIN_CHANCE = 0.45
+export const BASE_COIN_CHANCE = 0.7
+
+/**
+ * Where the coin rate stops.
+ *
+ * The only stat on the block that had no ceiling at all, and it needed one:
+ * `ownedItems` takes duplicates, so five 賞金袋 across a long run is +2.75 on a
+ * base of 0.70 with another 0.51 from a maxed LUK -- a rate over four, which is
+ * four guaranteed payouts a kill and a stat that has stopped being a decision.
+ *
+ * Two, so the ceiling is a clean "every kill pays double" rather than an
+ * arbitrary number. Getting there is still most of a run's shopping.
+ *
+ * Clamped in `recomputeStats`, not at the roll in `World.kill`. `DODGE_CAP` is
+ * applied at its roll, which means a sheet can read 80% dodge on a run that
+ * dodges 60% -- clamping at the recompute keeps the number the player is shown
+ * and the number the run plays with the same one.
+ */
+export const COIN_RATE_CAP = 2
 
 export const BASE_STATS: Readonly<PlayerStats> = {
   attackPower: 0,

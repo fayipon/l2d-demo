@@ -1002,7 +1002,10 @@ export class ArenaScene extends Phaser.Scene {
       deaths: world.deaths,
       enemies: world.enemies.used,
       fps: Math.round(this.game.loop.actualFps),
-      attributes: { ...world.attributes },
+      /* The effective six, not the earned ones -- a run holding stones plays
+         with numbers the level-up total does not know about, and a sheet
+         quoting the earned figure would report a character nobody is using. */
+      attributes: { ...world.effectiveAttributes },
       misses: world.misses,
       /* The list itself, not a copy of its numbers: a skill is a constant for
          the length of a run, and what the sheet needs from it -- the name, the

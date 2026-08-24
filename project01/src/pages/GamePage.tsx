@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { GameCanvas } from '../game/GameCanvas'
 import { Minimap } from './Minimap'
 import { Inventory, ItemSection, StatSection, WeaponSection, type StatViews } from './Inventory'
+import { TONE_BY_GRADE, itemGlyph } from './itemLook'
 import { Icon, type IconName } from '../components/icons'
 import { Emblem, type EmblemTone } from '../components/Emblem'
 import {
@@ -68,10 +69,10 @@ const RARITY_LABEL: Record<EmblemTone, string> = {
   legend: '傳說',
 }
 
-/** The list price, not the wave-scaled one: what the shop charges climbs with
- *  the wave, and a card that changed rank as the run went on would be lying. */
-const rarityOfPrice = (price: number): EmblemTone =>
-  price < 25 ? 'common' : price < 32 ? 'rare' : price < 40 ? 'epic' : 'legend'
+/* An item's rank is its grade -- see TONE_BY_GRADE in Inventory. It used to be
+   read off the list price, which was right while price was also what LUK
+   walked along and wrong the moment the two came apart: 分裂彈 is 68 coins and
+   the rarest card in the game, and price alone drew it as merely dear. */
 
 const RARITY_BY_TIER: EmblemTone[] = ['common', 'common', 'rare', 'epic', 'legend']
 
@@ -100,12 +101,9 @@ const STAT_ICON: Record<UpgradeId, IconName> = {
   coinRate: 'coin',
 }
 
-/* An item's glyph is the glyph of the first stat it moves, so a new shop entry
-   gets a sensible medallion for free and there is no second table to forget to
-   update. Ordering is the literal's own, which is the order the detail string
-   lists them in. */
-const glyphForItem = (mods: Partial<PlayerStats>): IconName =>
-  STAT_ICON[Object.keys(mods)[0] as UpgradeId] ?? 'sigil'
+/* The medallion glyph and the rank both live in Inventory now, beside the item
+   row that draws the same two things -- one item, one appearance, whichever
+   screen it is on. */
 
 /**
  * How each stat reads on the strip.
@@ -507,7 +505,7 @@ export function GamePage() {
                   )
                 }
                 const item = SHOP_ITEMS[offer.index]
-                const tone = rarityOfPrice(item.price)
+                const tone = TONE_BY_GRADE[item.grade]
                 return (
                   <button
                     type="button"
@@ -521,7 +519,7 @@ export function GamePage() {
                     <Emblem
                       className="card-art"
                       frame="shield"
-                      glyph={glyphForItem(item.mods)}
+                      glyph={itemGlyph(item, STAT_ICON)}
                       tone={tone}
                     />
                     <span className="card-detail">{item.detail}</span>

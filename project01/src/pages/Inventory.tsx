@@ -3,6 +3,7 @@ import { ATTRIBUTES, ATTRIBUTE_CAP } from '../game/data/attributes'
 import { Icon, type IconName } from '../components/icons'
 import { BASE_STATS, MAX_WEAPON_SLOTS, STAT_INFO, type PlayerStats, type UpgradeId } from '../game/data/content'
 import { SHOP_ITEMS } from '../game/data/shop'
+import { TONE_BY_GRADE, itemGlyph } from './itemLook'
 import type { RunSnapshot } from '../game/runStore'
 import { WeaponGrid } from './WeaponGrid'
 
@@ -24,6 +25,7 @@ export interface StatViews {
   format: Record<UpgradeId, (value: number) => string>
   order: UpgradeId[]
 }
+
 
 const GROUP_LABEL: Record<string, string> = {
   offence: '攻擊',
@@ -152,14 +154,13 @@ export function ItemSection({ run, views }: { run: RunSnapshot; views: StatViews
           if (!item) {
             return null
           }
-          const first = Object.keys(item.mods)[0] as UpgradeId | undefined
           return (
             <li key={`${id}-${i}`} className="sheet-row">
               <Emblem
                 className="sheet-art"
                 frame="shield"
-                glyph={first ? views.icon[first] : 'sigil'}
-                tone={item.price < 25 ? 'common' : item.price < 32 ? 'rare' : 'epic'}
+                glyph={itemGlyph(item, views.icon)}
+                tone={TONE_BY_GRADE[item.grade]}
               />
               <div className="sheet-body">
                 <p className="sheet-name">{item.label}</p>

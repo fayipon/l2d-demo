@@ -3,6 +3,7 @@ import {
   clampAttributes,
   deriveAttributes,
   hitChance,
+  type AttributeId,
   type Attributes,
 } from '../data/attributes'
 import { Pool, type Pooled } from './pool'
@@ -11,6 +12,7 @@ import {
   BASE_LOOT_RANGE,
   BASE_MOVE_SPEED,
   BASE_STATS,
+  COIN_RATE_CAP,
   DODGE_CAP,
   ENEMY_KINDS,
   MAX_WEAPON_SLOTS,
@@ -390,6 +392,20 @@ export class World {
    * 1 at every level would quietly turn it into +1.
    */
   attributes: Attributes = { ...ZERO_ATTRIBUTES }
+  /**
+   * The six as the run actually plays them: earned, plus whatever stones the
+   * shop has sold, clamped.
+   *
+   * A second field rather than folding the stones into `attributes`, and that
+   * is the same discipline `recomputeStats` keeps everywhere else. `attributes`
+   * is *accumulated* -- `grantXp` adds growth to it at every level -- so an item
+   * writing there would be added again on the next rebuild, and the symptom
+   * (attributes that climb when nothing bought anything) is a long way from the
+   * cause. This one is derived, rebuilt from scratch every recompute, and is
+   * what everything downstream should read: the stat block comes from it and so
+   * does the number on the equipment sheet.
+   */
+  effectiveAttributes: Attributes = { ...ZERO_ATTRIBUTES }
   /** From DEX, against an enemy's evasion. See `hitChance`. */
   accuracy = 0
   /** From LUK, handed to the shop's roll. */
@@ -583,7 +599,29 @@ export class World {
     }
 
     add(this.loadout.mods)
-    const derived = deriveAttributes(this.attributes)
+
+    /*
+     * The stones, first, because everything below is computed from what they
+     * change.
+     *
+     * Into a fresh copy of the earned six every time -- see
+     * `effectiveAttributes`. A pass of its own rather than folding into the
+     * loop below, because that loop adds finished numbers into the block and
+     * this one has to finish before the derivation that feeds it runs.
+     */
+    const effective = { ...this.attributes }
+    for (const id of this.ownedItems) {
+      const attrs = SHOP_ITEMS.find((entry) => entry.id === id)?.attrs
+      if (!attrs) {
+        continue
+      }
+      for (const [key, value] of Object.entries(attrs)) {
+        effective[key as AttributeId] += value as number
+      }
+    }
+    this.effectiveAttributes = clampAttributes(effective)
+
+    const derived = deriveAttributes(this.effectiveAttributes)
     add(derived.stats)
 
     /*
@@ -600,7 +638,11 @@ export class World {
       if (!item) {
         continue
       }
+      // A stone has none, and moves the primaries above instead.
       let mods = item.mods
+      if (!mods) {
+        continue
+      }
       for (const skill of this.loadout.skills) {
         if (skill.effect.sort !== 'itemBonus') {
           continue
@@ -637,6 +679,11 @@ export class World {
         stats.regen += skill.effect.base + stats.armour * skill.effect.fromArmour
       }
     }
+
+    /* The one stat on the block with a ceiling, clamped here rather than at the
+       roll in `kill` so the sheet cannot show a rate the run is not paid at.
+       See COIN_RATE_CAP. */
+    stats.coinRate = Math.min(COIN_RATE_CAP, stats.coinRate)
 
     Object.assign(this.player.stats, stats)
     this.accuracy = derived.accuracy
@@ -890,13 +937,21 @@ export class World {
       // Recorded, then recomputed. An item does not write into the block any
       // more -- `recomputeStats` reads this list back, which is what makes a
       // rebuild reproduce the run exactly.
+      /*
+       * A purchase that raises the ceiling raises the water with it, the same
+       * as a level does -- and measured across the recompute for the same
+       * reason `grantXp` measures it rather than reading the growth.
+       *
+       * It used to read `item.mods.maxHp`, which was wrong in two directions
+       * that have both arrived at once. A 體魄 stone moves maximum health
+       * without naming it, through STA; and an `itemBonus` class doubles what
+       * an item's health is worth, so Haru buying 鐵心 gained eight of ceiling
+       * and was handed four of water. Neither is visible from the modifier.
+       */
+      const ceilingBefore = this.player.stats.maxHp
       this.ownedItems.push(item.id)
       this.recomputeStats()
-      // A maximum-health item that raises the ceiling should raise the water
-      // with it, the same as a level does.
-      if (item.mods.maxHp && item.mods.maxHp > 0) {
-        this.player.hp = Math.min(this.player.stats.maxHp, this.player.hp + item.mods.maxHp)
-      }
+      this.heal(Math.max(0, this.player.stats.maxHp - ceilingBefore))
     }
 
     this.player.coins -= offer.price
