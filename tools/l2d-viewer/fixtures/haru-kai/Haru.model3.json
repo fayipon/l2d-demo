@@ -77,6 +77,11 @@
 					"FadeInTime": 0.5,
 					"FadeOutTime": 0.5
 				}
+			],
+			"WeightShift": [
+				{
+					"File": "motions/haru_kai_weight_shift.motion3.json"
+				}
 			]
 		},
 		"UserData": "Haru.userdata3.json"
