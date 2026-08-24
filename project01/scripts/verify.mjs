@@ -687,7 +687,11 @@ try {
       name: '自然回復',
       kind: '被動',
       description: '',
-      effect: { sort: 'regenFrom', base: 0.2, fromArmour: 0.04, fromMaxHp: 0.004 },
+      /* Deliberately far larger than the real skill's rates -- these checks are
+         about the shape of the sum and the order it runs in, and a rate small
+         enough to be realistic would put the differences under the tolerance
+         they are compared with. */
+      effect: { sort: 'regenFrom', base: 0.2, fromArmour: 0.04 },
     }
     const realSkills = world.loadout.skills
 
@@ -755,8 +759,11 @@ try {
       `100 STA gave ${world.player.stats.armour} armour and ${world.player.stats.maxHp} health`,
     )
 
-    /* Regeneration reads the finished block, so it moves when either of its two
-       inputs does. */
+    /* Regeneration reads the finished block, so it moves when the armour in it
+       does. Health is not in this sum any more and must not be: the rate is a
+       fraction that the payout multiplies by maxHp, so a term here reading maxHp
+       would be squaring it. STA still moves the number, through the armour it
+       carries rather than through the health. */
     world.loadout.skills = [mending]
     reset()
     world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
@@ -767,17 +774,34 @@ try {
     world.recomputeStats()
     const staRegen = world.player.stats.regen
     check(
-      'regeneration rises with armour and health',
+      'regeneration rises with armour',
       staRegen > bareRegen && bareRegen > 0,
-      `${bareRegen.toFixed(2)}/s at nothing, ${staRegen.toFixed(2)}/s at 100 STA`,
+      `${(bareRegen * 100).toFixed(1)}%/s at nothing, ` +
+        `${(staRegen * 100).toFixed(1)}%/s at 100 STA`,
     )
+
+    /* The rate is armour and base alone. Raising maximum health without touching
+       armour must leave it exactly where it was -- if a maxHp term ever creeps
+       back into the sum, this is what notices. */
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
+    world.recomputeStats()
+    const beforeHeart = world.player.stats.regen
+    world.ownedItems.push('ironheart')
+    world.recomputeStats()
+    check(
+      'maximum health does not move the rate, only what it is worth',
+      Math.abs(world.player.stats.regen - beforeHeart) < 1e-9,
+      `${(beforeHeart * 100).toFixed(1)}%/s before 鐵心 and ` +
+        `${(world.player.stats.regen * 100).toFixed(1)}%/s after it`,
+    )
+    world.ownedItems.length = 0
 
     world.loadout.skills = []
     world.recomputeStats()
     check(
       'a class without the skill regenerates nothing',
       world.player.stats.regen === 0,
-      `${world.player.stats.regen}/s with no skills at all`,
+      `${world.player.stats.regen}%/s with no skills at all`,
     )
 
     /*
@@ -794,9 +818,9 @@ try {
     check(
       'mastery feeds regeneration, not just the armour number',
       bonus > 0 && Math.abs(bonus - (both.armour - mendOnly.armour) * 0.04) < 1e-9,
-      `the same 護符 gave ${mendOnly.regen.toFixed(2)}/s alone and ` +
-        `${both.regen.toFixed(2)}/s with 防禦專精 -- the doubled armour is ` +
-        `worth ${bonus.toFixed(2)}/s and should be`,
+      `the same 護符 gave ${(mendOnly.regen * 100).toFixed(1)}%/s alone and ` +
+        `${(both.regen * 100).toFixed(1)}%/s with 防禦專精 -- the doubled armour ` +
+        `is worth ${(bonus * 100).toFixed(1)}%/s and should be`,
     )
 
     /* And the block still rebuilds to the same thing twice, now that two more
@@ -836,13 +860,15 @@ try {
     world.attributes = { str: 0, agi: 0, dex: 0, sta: 100, int: 0, luk: 0 }
     world.ownedItems.length = 0
     world.recomputeStats()
-    world.player.stats.regen = 6
+    /* A tenth of the bar a second, which on the 60 that 100 STA buys is six
+       points a tick -- the same absolute rate this check used when the stat was
+       flat, so what it measures has not moved. */
+    world.player.stats.regen = 0.1
     world.player.hp = 10
     world.healCount = 0
-    /* One interval and two frames. Regeneration pays out on a clock now, so
-       half a second of it is nothing at all -- and 300 steps of 1/60 come to
-       4.999999999999998, which is the kind of thing that makes a check fail
-       for a reason that has nothing to do with what it is testing. */
+    /* Five intervals and two frames. The spare frames are because 300 steps of
+       1/60 come to 4.999999999999998, which is the kind of thing that makes a
+       check fail for a reason that has nothing to do with what it is testing. */
     steps(60 * 5 + 2)
     const healed = world.player.hp - 10
     const reported = Array.from({ length: world.healCount }, (_, i) => world.heals[i].amount)
@@ -857,16 +883,21 @@ try {
        readout, so a fraction of a point is kept and not shown. */
     reset()
     world.loadout.skills = []
+    world.attributes = { str: 0, agi: 0, dex: 0, sta: 0, int: 0, luk: 0 }
     world.recomputeStats()
-    world.player.stats.regen = 0.1
-    world.player.hp = 10
+    /* Half a percent of the ten-point bar a run opens on: a twentieth of a point
+       a tick, so ten ticks still have not added up to one. This is the case the
+       one-second clock made common rather than rare -- the bar moves every
+       second and the readout stays quiet until there is a whole number to say. */
+    world.player.stats.regen = 0.005
+    world.player.hp = 5
+    world.healPool = 0
     world.healCount = 0
-    // Two intervals of a rate too slow to add up to a point in either of them.
     steps(60 * 10)
     check(
       'a fraction of a point is healed but not announced',
-      world.healCount === 0 && world.player.hp > 10,
-      `${world.healCount} events for ${(world.player.hp - 10).toFixed(2)} restored over ten seconds`,
+      world.healCount === 0 && world.player.hp > 5,
+      `${world.healCount} events for ${(world.player.hp - 5).toFixed(2)} restored over ten seconds`,
     )
 
     /* The clock itself. Nothing arrives before the interval is up, and what
@@ -875,25 +906,59 @@ try {
     reset()
     world.loadout.skills = []
     world.recomputeStats()
-    world.player.stats.regen = 2
+    world.player.stats.regen = 0.02
     world.player.stats.maxHp = 500
     world.player.hp = 100
     world.healCount = 0
-    steps(60 * 4)
+    /* Fifty-nine frames is 0.983s, which is inside the interval however the
+       floats land; two more crosses it. The margin matters more now that the
+       interval is one second -- at 60 steps exactly the sum is 0.9999999999999999
+       about as often as it is 1.0000000000000002. */
+    steps(59)
     const beforeTick = world.player.hp
-    steps(60 * 1 + 2)
+    steps(2)
     check(
       'regeneration arrives on the interval rather than every step',
       beforeTick === 100 && world.player.hp - beforeTick >= 9.9,
-      `${(beforeTick - 100).toFixed(2)} restored in the first four seconds, ` +
-        `${(world.player.hp - beforeTick).toFixed(2)} on the fifth`,
+      `${(beforeTick - 100).toFixed(2)} restored in the first 0.98s, ` +
+        `${(world.player.hp - beforeTick).toFixed(2)} when the second turned over`,
+    )
+
+    /*
+     * The point of the whole change: one rate, two bars, and the bigger bar
+     * gets proportionally more.
+     *
+     * A flat stat passes every check above this one and fails this. It is also
+     * the check that notices a `maxHp` factor dropped anywhere on the path from
+     * the stat to the heal -- which would look like nothing at all until someone
+     * wondered why the item stopped being worth buying.
+     */
+    const restoredOn = (ceiling) => {
+      reset()
+      world.loadout.skills = []
+      world.recomputeStats()
+      world.player.stats.regen = 0.05
+      world.player.stats.maxHp = ceiling
+      world.player.hp = 1
+      world.healPool = 0
+      world.healCount = 0
+      steps(60 * 2 + 2)
+      return world.player.hp - 1
+    }
+    const smallBar = restoredOn(40)
+    const bigBar = restoredOn(400)
+    check(
+      'the same rate restores more on a bigger bar',
+      smallBar > 0 && Math.abs(bigBar - smallBar * 10) < 1e-6,
+      `5%/s gave ${smallBar.toFixed(2)} on a 40 bar and ${bigBar.toFixed(2)} on a 400 one ` +
+        `over the same two seconds`,
     )
 
     /* And nothing is reported at full health, where nothing happened. */
     reset()
     world.loadout.skills = []
     world.recomputeStats()
-    world.player.stats.regen = 20
+    world.player.stats.regen = 0.5
     world.player.hp = world.player.stats.maxHp
     world.healCount = 0
     steps(60 * 6)

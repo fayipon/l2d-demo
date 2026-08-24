@@ -156,21 +156,25 @@ const PLAYER_INVULN = 0.55
 /**
  * How often regeneration actually arrives, in seconds.
  *
- * The stat is still health per second and every label that quotes it still
- * means it -- what changed is the delivery. Trickled in sixty times a second it
- * was a bar that crept, and the readout above it was a "+1" every second or so
- * that never stopped: a number that is always on screen has stopped being an
- * event and become part of the background.
+ * A clock rather than a trickle, still: sixty payments a second is a bar that
+ * creeps and a readout that never stops, and a number that is always on screen
+ * has stopped being an event and become part of the background.
  *
- * Five seconds is long enough that a tick is something you notice and wait for,
- * and short enough that it still arrives inside a fight rather than only
- * between them. It also gives the number something to say: at Haru's opening
- * rate a tick is most of a point rather than a sixtieth of one.
+ * It was five seconds, and the argument for five was that a tick had to be big
+ * enough to see -- which was a real problem while the rate was flat and tiny,
+ * and stopped being one when the stat became a fraction of the bar. What five
+ * seconds costs is rhythm: it is long enough that a player under pressure
+ * cannot feel where the next tick is, so regeneration was something noticed
+ * afterwards rather than counted on. One second is a pulse you can play against.
+ *
+ * The reporting problem five seconds was solving is handled where it belongs --
+ * healing pools to whole points before it is announced, so a tenth of a point a
+ * second is still a bar that moves every second and a "+1" every ten.
  *
  * Lifesteal is deliberately not on this clock. It is a reward for hitting
  * something and it has to land when the hit does.
  */
-const REGEN_INTERVAL = 5
+const REGEN_INTERVAL = 1
 
 /**
  * How many of each may be alive at once.
@@ -615,11 +619,14 @@ export class World {
     /*
      * And last, the skills that read the finished block.
      *
-     * Last is not a detail. `regenFrom` reads the armour and health that the
-     * loop above has just doubled, which is what makes Haru's two skills
-     * compound rather than merely coexist -- defence buys defence. Run before
-     * the items, this would still work, still look right, and quietly not be
-     * the class.
+     * Last is not a detail. `regenFrom` reads the armour that the loop above
+     * has just doubled, which is what makes Haru's two skills compound rather
+     * than merely coexist -- defence buys defence. Run before the items, this
+     * would still work, still look right, and quietly not be the class.
+     *
+     * The health half of that doubling reaches regeneration too, just not from
+     * here: `regen` is a fraction and the payout multiplies it by `maxHp`, so a
+     * term reading maximum health in this sum would be squaring it.
      *
      * Added to `regen` rather than replacing it, because an item sells the
      * same stat and a skill that silently cancelled a purchase is a skill that
@@ -627,10 +634,7 @@ export class World {
      */
     for (const skill of this.loadout.skills) {
       if (skill.effect.sort === 'regenFrom') {
-        stats.regen +=
-          skill.effect.base +
-          stats.armour * skill.effect.fromArmour +
-          stats.maxHp * skill.effect.fromMaxHp
+        stats.regen += skill.effect.base + stats.armour * skill.effect.fromArmour
       }
     }
 
@@ -730,14 +734,16 @@ export class World {
     if (player.dodgeFlash > 0) {
       player.dodgeFlash -= dt
     }
-    /* Banked and paid out on the interval, not per step. The rate is unchanged
-       -- a tick is worth REGEN_INTERVAL seconds of it -- so nothing that quotes
-       the stat has to be re-worded. */
+    /* Banked and paid out on the interval, not per step. The rate is a
+       fraction of the ceiling rather than a number of points, so the bar it is
+       measured against has to be read here at payout -- an item bought two
+       waves ago is worth more now than it was, and that is the whole reason the
+       stat has this shape. */
     if (stats.regen > 0) {
       this.regenTimer += dt
       if (this.regenTimer >= REGEN_INTERVAL) {
         this.regenTimer -= REGEN_INTERVAL
-        this.heal(stats.regen * REGEN_INTERVAL)
+        this.heal(stats.maxHp * stats.regen * REGEN_INTERVAL)
       }
     } else {
       /* Held at zero while there is nothing to give, so a run that buys

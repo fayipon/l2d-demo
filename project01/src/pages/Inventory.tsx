@@ -62,6 +62,12 @@ export function StatSection({ run, views }: { run: RunSnapshot; views: StatViews
         one quotes what it is currently worth: a passive whose value moves with
         the build is a passive worth watching, and one that only said 隨護甲提升
         would be asking the player to do the arithmetic.
+
+        Both halves of it, since the stat became a fraction. The percentage is
+        what the skill produces and the health is what the player gets, and they
+        move independently -- buying maximum health raises the second without
+        touching the first, which is exactly the thing a rate is for and exactly
+        the thing quoting only the rate would hide.
       */}
       {run.skills.length > 0 ? (
         <div className="sheet-group group-skill">
@@ -74,7 +80,8 @@ export function StatSection({ run, views }: { run: RunSnapshot; views: StatViews
                 <p className="sheet-skill-detail">{skill.description}</p>
                 {skill.effect.sort === 'regenFrom' ? (
                   <b className="sheet-skill-value">
-                    目前 {run.stats.regen.toFixed(1)} /秒
+                    目前 {(run.stats.regen * 100).toFixed(1)}%/秒 ·{' '}
+                    {(run.stats.maxHp * run.stats.regen).toFixed(1)} HP/秒
                   </b>
                 ) : null}
               </li>

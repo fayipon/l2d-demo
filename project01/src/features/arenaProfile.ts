@@ -146,7 +146,7 @@ const MOD_TEXT: Partial<Record<UpgradeId, (value: number) => string>> = {
   critChance: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
   critDamage: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
   dodge: (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`,
-  regen: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}/秒`,
+  regen: (v) => `${v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%/秒`,
   lifesteal: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}/命中`,
 }
 

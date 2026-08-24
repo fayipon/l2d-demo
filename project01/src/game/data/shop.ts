@@ -48,7 +48,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   /* --- defence --- */
   { id: 'ironheart', label: '鐵心', detail: '生命上限 +4', price: 24, mods: { maxHp: 4 } },
   { id: 'ward', label: '護符', detail: '護甲 +3', price: 22, mods: { armour: 3 } },
-  { id: 'salve', label: '再生藥膏', detail: '生命回復 +0.25/秒', price: 28, mods: { regen: 0.25 } },
+  { id: 'salve', label: '再生藥膏', detail: '生命回復 +1%/秒', price: 28, mods: { regen: 0.01 } },
   { id: 'bloodstone', label: '血晶', detail: '吸血 +0.15/命中', price: 34, mods: { lifesteal: 0.15 } },
   { id: 'shadowstep', label: '影步', detail: '閃避 +6%', price: 30, mods: { dodge: 0.06 } },
 

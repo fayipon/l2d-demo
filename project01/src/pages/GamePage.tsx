@@ -120,7 +120,7 @@ const STAT_FORMAT: Record<UpgradeId, (value: number) => string> = {
   rangedPower: (v) => `+${v.toFixed(1)}`,
   elementalPower: (v) => `+${v.toFixed(1)}`,
   maxHp: (v) => String(Math.round(v)),
-  regen: (v) => `${v.toFixed(1)}/s`,
+  regen: (v) => `${(v * 100).toFixed(1)}%/s`,
   lifesteal: (v) => v.toFixed(1),
   armour: (v) => String(Math.round(v)),
   dodge: (v) => `${Math.round(v * 100)}%`,

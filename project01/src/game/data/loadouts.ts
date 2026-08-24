@@ -78,7 +78,7 @@ export const ARENA_LOADOUTS: Record<string, ArenaLoadout> = {
     // Scales instead of starting strong, and the scaling is INT.
     start: { str: 8, agi: 14, dex: 16, sta: 20, int: 34, luk: 18 },
     growth: { str: 0.2, agi: 0.5, dex: 0.6, sta: 0.9, int: 1.9, luk: 0.4 },
-    mods: { xpGain: 0.3, regen: 0.5, range: 0.15 },
+    mods: { xpGain: 0.3, regen: 0.015, range: 0.15 },
     skills: NO_SKILLS,
     weapon: 'pistol',
     trait: '書庫看守：成長最快，起手最弱。',

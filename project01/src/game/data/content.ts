@@ -529,7 +529,19 @@ export interface PlayerStats {
   elementalPower: number
   /** Flat. Also the ceiling live hp is clamped to. */
   maxHp: number
-  /** HP per second. */
+  /**
+   * Fraction of maximum health restored per second. 0.01 is one percent.
+   *
+   * A rate and not a number of points, because a flat one is worth what the bar
+   * is small: 0.25 a second was nearly a percent of Haru's opening 26 and is
+   * under a fifth of one against the 137 the same run ends on, so the coin spent
+   * on it quietly became nothing. A fraction means the same thing at any scale,
+   * which is the same reason the small-number rescale left the multipliers alone.
+   *
+   * Paid on a one-second clock rather than every step -- see `REGEN_INTERVAL` in
+   * sim/world.ts, which is the only place that turns this into health and the
+   * only place that reads `maxHp` to do it.
+   */
   regen: number
   /** HP per projectile hit. */
   lifesteal: number
