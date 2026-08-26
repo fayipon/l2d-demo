@@ -1,0 +1,57 @@
+<!doctype html>
+<!--
+  The site-wide 404, and the reason deep links into the app still work.
+
+  GitHub Pages has no rewrite rule: it answers a path it has no file for with
+  404.html. That is what makes /l2d-demo/project01/character survive a refresh
+  -- vite.config.ts's spaFallback ships a copy of the app shell as
+  project01/404.html for exactly this.
+
+  What is not documented anywhere we can rely on is whether Pages consults the
+  404.html nearest the requested path or only the one at the site root. If it
+  is the root one, the app's own fallback never gets a chance and every deep
+  link lands here instead. So this page handles that case: a path under the
+  app's base is stashed and replaced with the app's entry URL, and a boot-time
+  script in project01/index.html puts the URL back before the router reads it.
+
+  The redirect is a no-op when the nested 404 does get used, so both worlds are
+  covered by the same two files. Anything else -- a genuinely wrong URL at the
+  site root -- falls through to the message below.
+-->
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/l2d-demo/favicon.svg" />
+    <title>找不到頁面 — l2d-demo</title>
+    <script>
+      // Must match `base` in project01/vite.config.ts.
+      ;(function () {
+        var APP = '/l2d-demo/project01/'
+        var path = location.pathname
+        if (path.indexOf(APP) === 0 && path !== APP) {
+          try {
+            sessionStorage.setItem(
+              'l2d-demo:deep-link',
+              path + location.search + location.hash,
+            )
+          } catch (e) {
+            // Storage blocked: the app still opens, just on its home route.
+          }
+          location.replace(APP)
+        }
+      })()
+    </script>
+    <link rel="stylesheet" href="/l2d-demo/style.css" />
+  </head>
+  <body>
+    <main class="shell notfound">
+      <h1>404</h1>
+      <p>找不到這個頁面。</p>
+      <a class="enter" href="/l2d-demo/">
+        回到首頁
+        <span class="enter-arrow" aria-hidden="true">→</span>
+      </a>
+    </main>
+  </body>
+</html>

@@ -12,6 +12,11 @@ import react from '@vitejs/plugin-react'
  * Without it every route but / is a 404 on refresh or on a shared link --
  * which stays invisible during development, because navigating inside the app
  * never asks the server for those paths.
+ *
+ * Since the app moved under /project01/ this copy is no longer the only
+ * fallback in the site: whether Pages consults a 404.html in a subdirectory or
+ * only the one at the site root is not something we can rely on, so site/404.html
+ * catches the other case and redirects back here. Both have to exist.
  */
 function spaFallback() {
   return {
@@ -25,9 +30,11 @@ function spaFallback() {
 }
 
 // https://vite.dev/config/
-// GitHub Pages serves this repo from /l2d-demo/, so production assets need that
-// prefix. Dev stays at / so localhost URLs are unchanged.
+// GitHub Pages serves this repo from /l2d-demo/, where the root is now the
+// repository's landing page (site/) and this app is one level down. Production
+// assets need that whole prefix; site/404.html hardcodes the same string and
+// has to change with it. Dev stays at / so localhost URLs are unchanged.
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/l2d-demo/' : '/',
+  base: command === 'build' ? '/l2d-demo/project01/' : '/',
   plugins: [react(), spaFallback()],
 }))

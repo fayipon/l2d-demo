@@ -31,9 +31,22 @@ jobs:
           cache-dependency-path: project01/package-lock.json
       - run: npm ci
       - run: npm run build
+
+      # The published site is two things: the repository's landing page at the
+      # root, and the app one level down. site/ is hand-written static files, so
+      # assembling is a copy rather than a second install and a second build.
+      # The layout here is the one project01's `base` (/l2d-demo/project01/)
+      # assumes -- change one and the other stops resolving.
+      - name: Assemble the site
+        working-directory: .
+        run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          cp -r project01/dist _site/project01
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: project01/dist
+          path: _site
 
   deploy:
     needs: build

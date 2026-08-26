@@ -7,6 +7,34 @@
     <title>l2d-demo</title>
 
     <!--
+      Restores a deep link that the site's 404 page had to throw away.
+
+      GitHub Pages answers an unknown path with 404.html, and if it uses the one
+      at the site root rather than this app's own copy, a request for
+      /l2d-demo/project01/character cannot be served as that URL at all. The
+      root 404 stashes the intended path and sends the browser to the app's
+      entry URL; this puts the path back.
+
+      It runs here, in the HTML, because it has to happen before the router
+      reads location -- a deferred classic script runs before any module, so
+      BrowserRouter never sees the entry URL. When nothing was stashed, which is
+      every normal visit, this does nothing.
+    -->
+    <script>
+      (function () {
+        try {
+          var target = sessionStorage.getItem('l2d-demo:deep-link')
+          if (target) {
+            sessionStorage.removeItem('l2d-demo:deep-link')
+            history.replaceState(null, '', target)
+          }
+        } catch (e) {
+          // Storage blocked; the app opens on its home route.
+        }
+      })()
+    </script>
+
+    <!--
       The model textures are the largest thing on the page and the last thing
       requested: nothing asks for them until the bundle has booted, React has
       mounted, and a model3.json has been fetched and parsed. This starts them

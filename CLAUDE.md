@@ -21,6 +21,7 @@ English.
 | Path | Role |
 |---|---|
 | `project01/` | the application — run every app command from here |
+| `site/` | the published site's landing page — hand-written HTML/CSS, no build |
 | `PLANS/` | plan for work not yet finished (`xxxx.md`) |
 | `FINISH/` | plans retired after the work shipped |
 | `DESIGN/` | source art and mocks — check here **before** inventing visuals |
@@ -104,10 +105,20 @@ to the framework `pixi-live2d-display-advanced@1.1.0` bundles; Core 6 loads and
 renders nothing. Consequence: models must be moc3 version ≤ 5 —
 `scripts/fetch-models.mjs` rejects anything higher.
 
-**Deployment shape.** GitHub Pages serves from `/l2d-demo/`, so `base` is set
-for builds only, the router uses `import.meta.env.BASE_URL`, and a build plugin
-copies `index.html` to `404.html` for deep links. Breaking either is invisible
-in dev.
+**Deployment shape.** GitHub Pages serves from `/l2d-demo/`, and that root is
+the landing page in `site/`; the app is published one level down, so `base` is
+`/l2d-demo/project01/` for builds only and the router uses
+`import.meta.env.BASE_URL`. The Pages workflow assembles the two into `_site/`
+rather than uploading `dist` — a file added to `site/` ships, a file added
+anywhere else does not.
+
+Deep links need two fallbacks, because whether Pages consults a `404.html` in a
+subdirectory or only the one at the site root is not something to bet on. A
+build plugin copies `index.html` to `dist/404.html`, and `site/404.html` covers
+the other case by stashing the path and bouncing to the app, which a script in
+`index.html` restores before the router reads the URL. `site/404.html` hardcodes
+the base string, so it changes whenever `base` does. Breaking any of this is
+invisible in dev.
 
 **Persisted keys are namespaced and versioned:** `l2d-demo:selected-character`,
 `l2d-demo:profile:v1`, `l2d-demo:portraits:v2`. Bump the suffix when the shape
