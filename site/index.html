@@ -9,23 +9,24 @@
   is what answers the root.
 
   It is hand-written HTML and CSS on purpose. The whole page is a heading and a
-  card; giving it a Vite project would add a second lockfile, a second
+  grid of cards; giving it a Vite project would add a second lockfile, a second
   node_modules and a second install to CI to produce two static files. When the
   homepage needs components it can earn a build then.
 
-  Links are relative -- ./project01/ -- so the same files work at /l2d-demo/ on
-  Pages and at the root of any directory the assembled site is served from,
-  with no base path to keep in step with vite.config.ts.
+  Links are relative -- ./project01/, ./l2d-viewer/ -- so the same files work at
+  /l2d-demo/ on Pages and at the root of any directory the assembled site is
+  served from, with no base path to keep in step with the two vite.config.ts.
 
-  The card grid is auto-fill: a second project is a copied <article> and no
-  layout work.
+  A card is a cover, a title, one line and a button, and nothing else: the third
+  project is a copied <article> and no layout work. That was the claim when this
+  page had one card, and adding the bench cost exactly that.
 -->
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <meta name="description" content="l2d-demo — PixiJS + Live2D 與 Phaser 的瀏覽器遊戲 demo。" />
+    <meta name="description" content="l2d-demo — PixiJS + Live2D 與 Phaser 的瀏覽器遊戲 demo，以及一台 Live2D 模型檢測台。" />
     <title>l2d-demo</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -35,7 +36,8 @@
         <p class="eyebrow">Browser Game Demo</p>
         <h1>l2d-demo</h1>
         <p class="lede">
-          用網頁技術做的手遊介面實驗：大廳是 Live2D 角色，戰鬥是另一顆引擎。
+          用網頁技術做的手遊介面實驗：大廳是 Live2D 角色，戰鬥是另一顆引擎，
+          旁邊擺一台檢查模型的工具。
         </p>
       </header>
 
@@ -57,6 +59,22 @@
             </p>
             <a class="enter" href="./project01/">
               進入 project01
+              <span class="enter-arrow" aria-hidden="true">→</span>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <a class="card-cover" href="./l2d-viewer/" tabindex="-1" aria-hidden="true">
+            <img src="./cover-l2d-viewer.webp" width="1280" height="720" alt="" />
+          </a>
+          <div class="card-body">
+            <h2 class="card-title">Live2D 檢測台</h2>
+            <p class="card-text">
+              丟一個模型進去，回答它跑不跑得起來、裡面有什麼、要什麼 config。
+            </p>
+            <a class="enter" href="./l2d-viewer/">
+              進入檢測台
               <span class="enter-arrow" aria-hidden="true">→</span>
             </a>
           </div>

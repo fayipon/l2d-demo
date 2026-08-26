@@ -61,16 +61,39 @@ export interface ModelSource {
  * `MODELS` array in project01/scripts/fetch-models.mjs and wants updating
  * alongside it -- a stale entry is a 404 in the picker and nothing worse.
  */
+/**
+ * Where the game's models are served from, which is not the same place in dev
+ * and on the deployed site.
+ *
+ * In dev this tool's `publicDir` *is* `project01/public`, so `/live2d/...` is
+ * the game's own file and there is nothing to redirect. A build cannot do that:
+ * copying `publicDir` would put a second 17 MB of models and video on the site
+ * beside the copy project01 already publishes -- the same duplication the
+ * shared directory exists to prevent, on a host instead of on a disk. So the
+ * built bench borrows them, resolving one level up from its own base.
+ *
+ * `../project01/` rather than a hardcoded `/l2d-demo/project01/`: the deploy
+ * path is already written down in vite.config.ts and this derives from it, so
+ * there is one fewer place to forget.
+ */
+const ASSET_ROOT = import.meta.env.DEV
+  ? '/'
+  : new URL('../project01/', location.origin + import.meta.env.BASE_URL).pathname
+
+/* The fixture is the bench's own and ships inside its build, so it is relative
+   to the bench's base rather than to the game's. */
+const FIXTURE_ROOT = `${import.meta.env.BASE_URL}fixtures/`
+
 const BUILT_IN = [
-  { id: 'haru', label: 'Haru', url: '/live2d/haru/Haru.model3.json', served: 'live2d/haru/Haru.model3.json' },
-  { id: 'hiyori', label: 'Hiyori', url: '/live2d/hiyori/Hiyori.model3.json', served: 'live2d/hiyori/Hiyori.model3.json' },
-  { id: 'mao', label: 'Mao', url: '/live2d/mao/Mao.model3.json', served: 'live2d/mao/Mao.model3.json' },
-  { id: 'rice', label: 'Rice', url: '/live2d/rice/Rice.model3.json', served: 'live2d/rice/Rice.model3.json' },
+  { id: 'haru', label: 'Haru', url: `${ASSET_ROOT}live2d/haru/Haru.model3.json`, served: 'live2d/haru/Haru.model3.json' },
+  { id: 'hiyori', label: 'Hiyori', url: `${ASSET_ROOT}live2d/hiyori/Hiyori.model3.json`, served: 'live2d/hiyori/Hiyori.model3.json' },
+  { id: 'mao', label: 'Mao', url: `${ASSET_ROOT}live2d/mao/Mao.model3.json`, served: 'live2d/mao/Mao.model3.json' },
+  { id: 'rice', label: 'Rice', url: `${ASSET_ROOT}live2d/rice/Rice.model3.json`, served: 'live2d/rice/Rice.model3.json' },
   /* The fixture. No `served` path: it is not in the game's public directory, so
      a `modelPath` quoting it would be a config that cannot resolve. The emitter
      falls back to a placeholder, which is the honest answer for a model that
      does not live where the game looks. */
-  { id: 'haruKai', label: 'HARU改', url: '/fixtures/haru-kai/Haru.model3.json', served: null },
+  { id: 'haruKai', label: 'HARU改', url: `${FIXTURE_ROOT}haru-kai/Haru.model3.json`, served: null },
 ]
 
 export const BUILT_IN_LABELS = BUILT_IN.map((m) => m.label)

@@ -74,17 +74,36 @@ body {
 
 /* ---------- card grid ---------- */
 /*
- * auto-fit with a 26rem ceiling, and both halves matter. The ceiling stops a
- * lone card from stretching across 68rem and reading as a banner instead of
- * one of a collection; auto-fit collapses the tracks nothing occupies, which
- * is what lets justify-content actually centre it -- auto-fill would keep the
- * empty tracks and leave the card pinned to the left edge.
+ * auto-fit with a ceiling, and all three numbers were arrived at by measuring
+ * rather than by taste.
+ *
+ * The ceiling exists because a lone card stretched across 68rem reads as a
+ * banner rather than as one of a collection, and auto-fit -- not auto-fill --
+ * because only auto-fit collapses the tracks nothing occupies, which is what
+ * lets justify-content centre a single card instead of pinning it left.
+ *
+ * The ceiling is also what decides when a second column appears, which is not
+ * obvious: the grid spec counts auto-repeat repetitions from the track's
+ * *maximum* when that is definite, so the 22rem minimum never enters the
+ * arithmetic. At 26rem two cards needed 860px of grid and got 845 in a 955px
+ * window -- one column, fifteen pixels short. 24rem asks for 796 and fits.
  */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 26rem));
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 24rem));
   gap: 1.75rem;
   justify-content: center;
+}
+
+/*
+ * Below this the 22rem minimum is wider than the screen and the card would
+ * overflow it, so the track stops being a track. A phone gets one full-width
+ * column.
+ */
+@media (max-width: 27rem) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .card {

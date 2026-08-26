@@ -22,6 +22,7 @@ English.
 |---|---|
 | `project01/` | the application — run every app command from here |
 | `site/` | the published site's landing page — hand-written HTML/CSS, no build |
+| `tools/l2d-viewer/` | the Live2D bench — its own Vite project, published beside the app |
 | `PLANS/` | plan for work not yet finished (`xxxx.md`) |
 | `FINISH/` | plans retired after the work shipped |
 | `DESIGN/` | source art and mocks — check here **before** inventing visuals |
@@ -106,11 +107,20 @@ renders nothing. Consequence: models must be moc3 version ≤ 5 —
 `scripts/fetch-models.mjs` rejects anything higher.
 
 **Deployment shape.** GitHub Pages serves from `/l2d-demo/`, and that root is
-the landing page in `site/`; the app is published one level down, so `base` is
-`/l2d-demo/project01/` for builds only and the router uses
-`import.meta.env.BASE_URL`. The Pages workflow assembles the two into `_site/`
-rather than uploading `dist` — a file added to `site/` ships, a file added
-anywhere else does not.
+the landing page in `site/`; each project is published one directory down —
+`/l2d-demo/project01/` and `/l2d-demo/l2d-viewer/` — so each sets `base` for
+builds only, and project01's router uses `import.meta.env.BASE_URL`. The Pages
+workflow assembles all three into `_site/` rather than uploading a `dist` — a
+file added to `site/` ships, a file added anywhere else does not.
+
+**The bench borrows the game's assets rather than copying them.** In dev its
+`publicDir` *is* `project01/public`, so it tests the game's own models and the
+game's own pinned Cubism Core. A build would copy all 17 MB of that beside the
+copy project01 already publishes, so builds turn `publicDir` off and point the
+model URLs, the Core script and the favicon at `/l2d-demo/project01/...`
+instead; its own fixture is copied into its `dist`. Consequence: **the bench's
+published build depends on project01 being published beside it**, and its
+`dist` is 2.2 MB rather than 18 MB.
 
 Deep links are served by **`site/404.html`**, the one at the site root: measured
 on the live site, Pages ignores the `404.html` in a subdirectory, so a request

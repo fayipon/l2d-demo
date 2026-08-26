@@ -28,21 +28,33 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: project01/package-lock.json
+          cache-dependency-path: |
+            project01/package-lock.json
+            tools/l2d-viewer/package-lock.json
       - run: npm ci
       - run: npm run build
 
-      # The published site is two things: the repository's landing page at the
-      # root, and the app one level down. site/ is hand-written static files, so
-      # assembling is a copy rather than a second install and a second build.
-      # The layout here is the one project01's `base` (/l2d-demo/project01/)
-      # assumes -- change one and the other stops resolving.
+      # The bench ships too, and its build is also its only type check -- it has
+      # no other CI. Its dist is 2.2 MB because it borrows the game's models
+      # rather than copying them; see tools/l2d-viewer/vite.config.ts.
+      - name: Build the Live2D bench
+        working-directory: tools/l2d-viewer
+        run: |
+          npm ci
+          npm run build
+
+      # The published site is three things: the repository's landing page at the
+      # root, and one directory per project under it. site/ is hand-written
+      # static files, so assembling is a copy rather than a third install and a
+      # third build. The layout here is the one each project's `base` assumes --
+      # change one and the other stops resolving.
       - name: Assemble the site
         working-directory: .
         run: |
           mkdir -p _site
           cp -r site/. _site/
           cp -r project01/dist _site/project01
+          cp -r tools/l2d-viewer/dist _site/l2d-viewer
 
       - uses: actions/upload-pages-artifact@v3
         with:
