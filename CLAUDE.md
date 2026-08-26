@@ -112,13 +112,14 @@ the landing page in `site/`; the app is published one level down, so `base` is
 rather than uploading `dist` — a file added to `site/` ships, a file added
 anywhere else does not.
 
-Deep links need two fallbacks, because whether Pages consults a `404.html` in a
-subdirectory or only the one at the site root is not something to bet on. A
-build plugin copies `index.html` to `dist/404.html`, and `site/404.html` covers
-the other case by stashing the path and bouncing to the app, which a script in
-`index.html` restores before the router reads the URL. `site/404.html` hardcodes
-the base string, so it changes whenever `base` does. Breaking any of this is
-invisible in dev.
+Deep links are served by **`site/404.html`**, the one at the site root: measured
+on the live site, Pages ignores the `404.html` in a subdirectory, so a request
+for `/l2d-demo/project01/character` gets the root page and not the app shell.
+That page stashes the intended path and bounces to the app, where a script in
+`index.html` restores it before the router reads the URL. It hardcodes the base
+string, so it changes whenever `base` does. The build plugin still writes
+`dist/404.html` — it costs nothing and covers a host that does look there.
+Breaking any of this is invisible in dev.
 
 **Persisted keys are namespaced and versioned:** `l2d-demo:selected-character`,
 `l2d-demo:profile:v1`, `l2d-demo:portraits:v2`. Bump the suffix when the shape

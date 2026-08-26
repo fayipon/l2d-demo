@@ -161,6 +161,11 @@ and the bundle — all read `/l2d-demo/project01/`; landing → project01 → �
 戰鬥 clicked through with no console errors beyond the intended 404 of the
 fallback document itself.
 
-Not done here, because it needs the live host: step 9's check that Pages serves
-the deployed site the same way. The two-fallback design means either behaviour
-is already covered, so this is a confirmation rather than a risk.
+**Step 9, answered on the live site: Pages consults only the root `404.html`.**
+`curl` gives 404 for `/l2d-demo/project01/character` and the body that comes
+back is `site/404.html`, not the app shell — `dist/404.html` never gets a look
+in. So the fallback this plan hedged on is the one carrying every deep link,
+and both routes were then loaded cold in a browser at
+`https://fayipon.github.io/`: the character screen with Haru rendering, and the
+arena mid-wave, each with its URL restored. `CLAUDE.md` now records this as
+measured rather than as an open question.
