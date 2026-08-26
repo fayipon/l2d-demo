@@ -165,3 +165,12 @@ through the automation is not something to trust more than the reasoning; the
 drop target renders and the file-picker fallback is in the page.
 
 `tsc -b` now runs on the bench on every push, which it did not before.
+
+**Live, after the deploy.** `https://fayipon.github.io/l2d-demo/` shows both
+cards; 進入檢測台 lands on `/l2d-demo/l2d-viewer/` with Haru rendering and the
+config block filled in. Read in a fresh tab so nothing was carried over: no
+console errors, and every request 200 — the bundle from `l2d-viewer/`, the Core
+and the model from `project01/`, the fixture from `l2d-viewer/fixtures/`. The
+published HTML says `href="/l2d-demo/project01/favicon.svg"` and
+`src="/l2d-demo/project01/live2d/live2dcubismcore.min.js"`, which is the borrow
+working end to end.
