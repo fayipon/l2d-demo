@@ -1,0 +1,362 @@
+/*
+ * The bench's own skin. Dark, because the thing under test is transparent art
+ * that will be drawn on a dark arena floor, and a white page would flatter
+ * every edge the game is going to show as a halo.
+ *
+ * The one visual decision that carries weight: the canvas sits on a
+ * checkerboard, drawn in CSS rather than baked into anything. Transparency is
+ * what a sprite sheet is made of -- the gutters, the trimmed corners, the soft
+ * outline an upscaler leaves behind -- and a solid background hides exactly the
+ * pixels this tool exists to look at.
+ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0b12;
+  --panel: #14141f;
+  --line: #262637;
+  --ink: #e8e8f0;
+  --muted: #8b93a7;
+  --accent: #50dcff;
+  --ok: #6ee7a8;
+  --bad: #ff5c8a;
+  font-family: 'Noto Sans TC', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.92em;
+  color: var(--accent);
+}
+
+.masthead {
+  padding: 22px 24px 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.masthead h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+}
+
+.lede {
+  margin: 4px 0 14px;
+  color: var(--muted);
+  max-width: 70ch;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(420px, 1.6fr);
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px 14px;
+  min-width: 0;
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+/* The sheet panel is the tall one and spans both columns; everything else
+   stacks beside it. */
+.sheet {
+  grid-column: 1 / -1;
+  order: 2;
+}
+.sources {
+  order: 1;
+}
+.verdict {
+  order: 1;
+}
+.rows {
+  order: 3;
+}
+.play {
+  order: 3;
+}
+.emit {
+  grid-column: 1 / -1;
+  order: 4;
+}
+
+.source-list {
+  display: grid;
+  gap: 6px;
+}
+
+.source {
+  display: grid;
+  text-align: left;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #1b1b29;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.source span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.source:hover {
+  border-color: var(--accent);
+}
+
+.source.active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.drop {
+  display: grid;
+  place-items: center;
+  margin-top: 10px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.drop.over {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.canvas-wrap {
+  overflow: auto;
+  max-height: 62vh;
+  border-radius: 8px;
+  /* 16px squares, two greys. Big enough to read as "nothing is here" and
+     small enough that a 4px gutter still shows against it. */
+  background-image:
+    linear-gradient(45deg, #1c1c28 25%, transparent 25%),
+    linear-gradient(-45deg, #1c1c28 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1c1c28 75%),
+    linear-gradient(-45deg, transparent 75%, #1c1c28 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-color: #131320;
+}
+
+#overlay {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#overlay.one-to-one {
+  width: auto;
+  max-width: none;
+}
+
+.verdict p {
+  margin: 0 0 8px;
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.bad {
+  color: var(--bad);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+td {
+  padding: 3px 6px;
+  border-bottom: 1px solid #1e1e2c;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+input[type='text'],
+input[type='number'],
+select {
+  background: #10101a;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 2px 5px;
+  font: inherit;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+input[type='number'] {
+  width: 4.5em;
+}
+
+button {
+  background: #21212f;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+.stage {
+  border-radius: 8px;
+  background-image:
+    linear-gradient(45deg, #1c1c28 25%, transparent 25%),
+    linear-gradient(-45deg, #1c1c28 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1c1c28 75%),
+    linear-gradient(-45deg, transparent 75%, #1c1c28 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-color: #131320;
+  overflow: hidden;
+}
+
+.stage canvas {
+  display: block;
+  max-width: 100%;
+}
+
+.counter {
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--accent);
+}
+
+.emit-block + .emit-block {
+  margin-top: 12px;
+}
+
+.emit-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: #10101a;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 320px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* The grid fields only exist in grid mode; see the note in index.html. */
+.grid-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.grid-fields input {
+  width: 5em;
+  margin-left: 4px;
+}
+
+tr.is-rejected td {
+  color: var(--muted);
+}
+
+/* `hidden` loses to `display: flex` on specificity, and the fields would sit
+   there in measured mode doing nothing. */
+.grid-fields[hidden] {
+  display: none;
+}
+
+/* The first column carries a checkbox and a word; without this the word wraps
+   one character per line and the table reads like a ransom note. */
+td:first-child,
+th:first-child {
+  white-space: nowrap;
+}

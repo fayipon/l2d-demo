@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "tools/l2d-viewer", "run", "dev"],
       "port": 5174
+    },
+    {
+      "name": "sprite-bench",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "tools/sprite-bench", "run", "dev"],
+      "port": 5175
     }
   ]
 }

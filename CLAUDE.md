@@ -23,6 +23,7 @@ English.
 | `project01/` | the application — run every app command from here |
 | `site/` | the published site's landing page — hand-written HTML/CSS, no build |
 | `tools/l2d-viewer/` | the Live2D bench — its own Vite project, published beside the app |
+| `tools/sprite-bench/` | the sprite-sheet bench — same shape, Phaser instead of Pixi |
 | `PLANS/` | plan for work not yet finished (`xxxx.md`) |
 | `FINISH/` | plans retired after the work shipped |
 | `DESIGN/` | source art and mocks — check here **before** inventing visuals |
@@ -108,10 +109,11 @@ renders nothing. Consequence: models must be moc3 version ≤ 5 —
 
 **Deployment shape.** GitHub Pages serves from `/l2d-demo/`, and that root is
 the landing page in `site/`; each project is published one directory down —
-`/l2d-demo/project01/` and `/l2d-demo/l2d-viewer/` — so each sets `base` for
-builds only, and project01's router uses `import.meta.env.BASE_URL`. The Pages
-workflow assembles all three into `_site/` rather than uploading a `dist` — a
-file added to `site/` ships, a file added anywhere else does not.
+`/l2d-demo/project01/`, `/l2d-demo/l2d-viewer/` and `/l2d-demo/sprite-bench/` —
+so each sets `base` for builds only, and project01's router uses
+`import.meta.env.BASE_URL`. The Pages workflow assembles all four into `_site/`
+rather than uploading a `dist` — a file added to `site/` ships, a file added
+anywhere else does not.
 
 **The bench borrows the game's assets rather than copying them.** In dev its
 `publicDir` *is* `project01/public`, so it tests the game's own models and the
@@ -121,6 +123,15 @@ model URLs, the Core script and the favicon at `/l2d-demo/project01/...`
 instead; its own fixture is copied into its `dist`. Consequence: **the bench's
 published build depends on project01 being published beside it**, and its
 `dist` is 2.2 MB rather than 18 MB.
+
+`tools/sprite-bench` borrows the same way and lands somewhere else, because
+what it wants is not published at all: `actor-haru.webp` lives in
+`project01/src/assets` and Vite hashes it into the game's bundle, so there is
+no URL to point at. Dev serves the real file through middleware at
+`/game-assets`; the build ships only the tool's own fixtures, and **the
+published sprite bench cannot open the game's sheet**. That is deliberate — the
+alternative is a copy that goes stale, which is the failure this bench exists
+to catch.
 
 Deep links are served by **`site/404.html`**, the one at the site root: measured
 on the live site, Pages ignores the `404.html` in a subdirectory, so a request

@@ -31,6 +31,7 @@ jobs:
           cache-dependency-path: |
             project01/package-lock.json
             tools/l2d-viewer/package-lock.json
+            tools/sprite-bench/package-lock.json
       - run: npm ci
       - run: npm run build
 
@@ -39,6 +40,15 @@ jobs:
       # rather than copying them; see tools/l2d-viewer/vite.config.ts.
       - name: Build the Live2D bench
         working-directory: tools/l2d-viewer
+        run: |
+          npm ci
+          npm run build
+
+      # The sprite bench, same deal: its build is its only type check. It does
+      # not borrow anything from project01 -- the one game file it can open is
+      # dev-only, served by middleware -- so its dist is itself plus Phaser.
+      - name: Build the sprite bench
+        working-directory: tools/sprite-bench
         run: |
           npm ci
           npm run build
@@ -55,6 +65,7 @@ jobs:
           cp -r site/. _site/
           cp -r project01/dist _site/project01
           cp -r tools/l2d-viewer/dist _site/l2d-viewer
+          cp -r tools/sprite-bench/dist _site/sprite-bench
 
       - uses: actions/upload-pages-artifact@v3
         with:

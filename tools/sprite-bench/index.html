@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>精靈圖檢測台</title>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1>精靈圖檢測台</h1>
+      <p class="lede">
+        丟一張角色圖進去，回答三件事：切格切在哪、在遊戲的尺寸下看不看得懂、
+        <code>actors.ts</code> 要什麼數字。
+      </p>
+    </header>
+
+    <main class="shell">
+      <section class="panel sources">
+        <h2>來源</h2>
+        <div class="source-list" id="sources"></div>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/png,image/webp" hidden />
+          <span>把圖拖進來，或點一下選檔</span>
+        </label>
+        <dl class="facts" id="facts"></dl>
+      </section>
+
+      <section class="panel sheet">
+        <h2>
+          怎麼切
+          <span class="tools">
+            <label><input type="radio" name="mode" id="mode-measured" /> 照量測</label>
+            <label><input type="radio" name="mode" id="mode-grid" /> 照格線</label>
+            <!--
+              Hidden until the sheet turns out to have a painted grid. See
+              src/rulings.ts.
+            -->
+            <label id="mode-rulings-label" hidden>
+              <input type="radio" name="mode" id="mode-rulings" /> 照線
+            </label>
+            <label>間隔門檻 <input type="number" id="min-gap" min="1" max="64" step="1" /></label>
+            <label><input type="checkbox" id="auto-gap" checked /> 自動</label>
+            <!--
+              Ticked automatically for an image with no working alpha channel,
+              which is what the mushroom sheet is. See src/mask.ts.
+            -->
+            <label><input type="checkbox" id="key-bg" /> 去背</label>
+            <label>亮度 <input type="number" id="key-luma" min="0" max="255" step="5" value="200" /></label>
+            <label><input type="checkbox" id="show-boxes" checked /> 顯示量到的框</label>
+            <label><input type="checkbox" id="zoom" /> 1:1</label>
+          </span>
+        </h2>
+        <!--
+          The grid fields. Present in grid mode only, because in measured mode
+          they would be six numbers that change nothing -- and a control that
+          does nothing is worse than an absent one.
+        -->
+        <div class="grid-fields" id="grid-fields" hidden>
+          <label>frame w <input type="number" id="g-frame-w" min="1" /></label>
+          <label>frame h <input type="number" id="g-frame-h" min="1" /></label>
+          <label>margin <input type="number" id="g-margin" min="0" /></label>
+          <label>spacing <input type="number" id="g-spacing" min="0" /></label>
+          <label>欄 <input type="number" id="g-columns" min="1" /></label>
+          <label>列 <input type="number" id="g-rows" min="1" /></label>
+        </div>
+        <!--
+          The ruling colour window. A control rather than a constant because
+          the grey measured on game_enemy_sprite_02 -- luma 116 -- is that
+          sheet's grey, and hardcoding it makes the tool a one-file tool.
+        -->
+        <div class="grid-fields" id="ruling-fields" hidden>
+          <label>框線亮度 <input type="number" id="r-luma-min" min="0" max="255" step="5" value="80" /></label>
+          <label>到 <input type="number" id="r-luma-max" min="0" max="255" step="5" value="205" /></label>
+          <label>灰度 <input type="number" id="r-chroma" min="0" max="64" step="1" value="16" /></label>
+        </div>
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="overlay"></canvas>
+        </div>
+      </section>
+
+      <section class="panel verdict">
+        <h2>判讀</h2>
+        <div id="verdict"></div>
+      </section>
+
+      <section class="panel rows">
+        <h2>每一列</h2>
+        <table id="rows">
+          <thead>
+            <tr>
+              <th>列</th>
+              <th>名稱</th>
+              <th>格數</th>
+              <th>框</th>
+              <th>fps</th>
+              <th>循環</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <section class="panel play">
+        <h2>
+          播放
+          <span class="tools">
+            <label>
+              對齊
+              <select id="anchor">
+                <option value="centre">中心</option>
+                <option value="feet">底部</option>
+              </select>
+            </label>
+            <button id="stop" type="button">停</button>
+            <span class="counter" id="counter">—</span>
+          </span>
+        </h2>
+        <div class="stage" id="stage"></div>
+      </section>
+
+      <section class="panel emit">
+        <h2>輸出</h2>
+        <div class="emit-block">
+          <div class="emit-head">
+            <span><code>ActorSheet</code> — 貼進 <code>game/data/actors.ts</code></span>
+            <button data-copy="actor" type="button">複製</button>
+          </div>
+          <pre id="emit-actor"></pre>
+        </div>
+        <div class="emit-block">
+          <div class="emit-head">
+            <span>切圖規格 — 重排成等格圖時給打包腳本</span>
+            <button data-copy="slice" type="button">複製</button>
+          </div>
+          <pre id="emit-slice"></pre>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

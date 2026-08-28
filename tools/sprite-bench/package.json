@@ -1,0 +1,28 @@
+{
+  "name": "sprite-bench",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "fixture": "node scripts/build-fixture.mjs"
+  },
+  "comment": [
+    "phaser is pinned EXACTLY, with no caret, and it must match project01's",
+    "installed version. This tool exists to answer 'will this sheet slice and",
+    "play in the arena', and a bench on a newer Phaser would answer for a",
+    "Phaser the game is not running. If project01's version moves, move this",
+    "with it -- see README.md."
+  ],
+  "dependencies": {
+    "phaser": "4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "sharp": "^0.35.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0"
+  }
+}

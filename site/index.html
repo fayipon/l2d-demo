@@ -26,7 +26,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <meta name="description" content="l2d-demo — PixiJS + Live2D 與 Phaser 的瀏覽器遊戲 demo，以及一台 Live2D 模型檢測台。" />
+    <meta name="description" content="l2d-demo — PixiJS + Live2D 與 Phaser 的瀏覽器遊戲 demo，以及兩台檢測工具：Live2D 模型與精靈圖。" />
     <title>l2d-demo</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -37,7 +37,7 @@
         <h1>l2d-demo</h1>
         <p class="lede">
           用網頁技術做的手遊介面實驗：大廳是 Live2D 角色，戰鬥是另一顆引擎，
-          旁邊擺一台檢查模型的工具。
+          旁邊擺兩台工具，一台檢查模型，一台檢查精靈圖。
         </p>
       </header>
 
@@ -74,6 +74,22 @@
               丟一個模型進去，回答它跑不跑得起來、裡面有什麼、要什麼 config。
             </p>
             <a class="enter" href="./l2d-viewer/">
+              進入檢測台
+              <span class="enter-arrow" aria-hidden="true">→</span>
+            </a>
+          </div>
+        </article>
+
+        <article class="card">
+          <a class="card-cover" href="./sprite-bench/" tabindex="-1" aria-hidden="true">
+            <img src="./cover-sprite-bench.webp" width="1280" height="720" alt="" />
+          </a>
+          <div class="card-body">
+            <h2 class="card-title">精靈圖檢測台</h2>
+            <p class="card-text">
+              丟一張角色圖進去，回答它切格切在哪、在遊戲的尺寸下看不看得懂、要什麼數字。
+            </p>
+            <a class="enter" href="./sprite-bench/">
               進入檢測台
               <span class="enter-arrow" aria-hidden="true">→</span>
             </a>
